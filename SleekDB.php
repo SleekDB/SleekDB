@@ -1,27 +1,27 @@
 <?php
 
   require_once './traits/helpers.php';
+  require_once './traits/conditions.php';
 
   class SleekDB {
 
-    use HelperTrait;
+    use HelpersTrait, ConditionsTrait;
 
     protected $root;
     protected $storeName;
+    protected $limit;
+    protected $skip;
+    protected $conditions;
+    protected $orderBy;
+    protected $searchKeyword;
 
     // Initialize the store.
     function __construct( $storeName = false ) {
-      if ( ! $storeName OR empty( $storeName ) ) throw new Exception( 'Invalid store name provided' );
-      // Define the root path of FawlDB
-      $this->root = __DIR__;
-      // Define the store path
-      $this->storeName = $this->root . '/store/data_store/' . $storeName;
-      // Create the store if it is no already created
-      if ( ! file_exists( $this->storeName ) ) mkdir( $this->storeName );
+      $this->init( $storeName );
     }
 
-    public function readStore( $searchBy = '*', $skip = false, $limit = false, $orderBy = false ) {
-      return $this->lookForStore( $searchBy, $skip, $limit );
+    public function readStore() {
+      return $this->findStore();
     }
 
     public function createStore( $storeData = false ) {
@@ -49,9 +49,9 @@
       return $storeData;
     }
 
-    public function updateStore( $searchBy, $updateable ) {
+    public function updateStore( $updateable ) {
       // Find all store objects.
-      $storeObjects = $this->lookForStore( $searchBy );
+      $storeObjects = $this->findStore();
       // If no store object found then return an empty array.
       if ( empty( $storeObjects ) ) return false;
       foreach ( $storeObjects as $data ) {
@@ -69,17 +69,22 @@
       return true;
     }
 
-    public function deleteStore( $searchBy ) {
+    public function deleteStore() {
       // Find all store objects.
-      $storeObjects = $this->lookForStore( $searchBy );
+      $storeObjects = $this->findStore();
       if ( ! empty( $storeObjects ) ) {
         foreach ( $storeObjects as $data ) {
-          unlink( $this->storeName . '/' . $data[ '_id' ] . '.json' );
+          if ( ! unlink( $this->storeName . '/' . $data[ '_id' ] . '.json' ) ) {
+            throw new Exception( 
+              'Unable to delete storage file! 
+              Location: "'.$this->storeName . '/' . $data[ '_id' ] . '.json'.'"' 
+            );
+          }
         }
         return true;
       } else {
         // Nothing found to delete
-        return false;
+        throw new Exception( 'Invalid store object found, nothing to delete.' );
       }
     }
 
