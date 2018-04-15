@@ -5,7 +5,7 @@
    */
   trait HelpersTrait {
 
-    public function init( $storeName ) {
+    private function init( $storeName ) {
       if ( ! $storeName OR empty( $storeName ) ) throw new Exception( 'Invalid store name provided' );
       // Define the root path of FawlDB
       $this->root = __DIR__ . '/../';
@@ -28,18 +28,22 @@
       $this->searchKeyword = '';
     }
     
-    public function getStoreId() {
-      $counter = (int) file_get_contents( './store/system_index/counter.sdb' );
+    private function getStoreId() {
+      if ( file_exists( './store/system_index/counter.sdb' ) ) {
+        $counter = (int) file_get_contents( './store/system_index/counter.sdb' );
+      } else {
+        $counter = 0;
+      }
       $counter++;
       file_put_contents( './store/system_index/counter.sdb', $counter );
       return $counter;
     }
 
-    public function getLastStoreId() {
+    private function getLastStoreId() {
       return (int) file_get_contents( './store/system_index/counter.sdb' );
     }
 
-    public function getStoreById( $id ) {
+    private function getStoreById( $id ) {
       $store = $this->storeName . '/' . $id . '.json';
       if ( file_exists( $store ) ) {
         $data = json_decode( file_get_contents( $store ), true );
@@ -48,7 +52,7 @@
       return [];
     }
 
-    public function findStore() {
+    private function findStore() {
       $found          = [];
       $lastStoreId    = $this->getLastStoreId();
       $searchRank     = [];
@@ -112,21 +116,6 @@
                   // Check less equal.
                   if ( $fieldValue > $condition[ 'value' ] ) $storePassed = false;
                 }
-                // Do a text search if provided.
-                if ( ! empty( $this->searchKeyword ) ) {
-                  // Search can be made for more than one field.
-                  // Check if a matched field was found to search.
-                  if ( in_array( $condition[ 'fieldName' ], $this->searchKeyword[ 'field' ] ) ) {
-                    similar_text( $fieldValue, $this->searchKeyword, $perc );
-                    if ( $perc > 50 ) {
-                      // Check if current store object already has a value, if so then add the new value.
-                      if ( isset( $searchRank[ $data ] ) ) $searchRank[ $data ] += $perc;
-                      else $searchRank[ $data ] = $perc;
-                    } else {
-                      $storePassed = false;
-                    }
-                  }
-                }
               }
             }
             // Check if current store is updatable or not.
@@ -137,13 +126,10 @@
           }
         }
       }
-      print_r( $this->searchKeyword );
-      print_r( $searchRank );
       if ( count( $found ) > 0 ) {
         // If there was text search then we would also sort the result by search ranking.
         if ( ! empty( $this->searchKeyword ) ) {
-          $searchRank = arsort( $searchRank );
-          print_r( $searchRank );
+          $found = $this->performSerach( $found );
         }
         // Skip data
         if ( $this->skip > 0 ) $found = array_slice( $found, $this->skip );
@@ -153,7 +139,7 @@
       return $found;
     }
 
-    public function sortArray( $field, $data, $order = 'ASC' ) {
+    private function sortArray( $field, $data, $order = 'ASC' ) {
       $dryData = [];
       // Check if data is an array.
       if( is_array( $data ) ) {
@@ -173,7 +159,7 @@
       return $finalArray;
     }
 
-    public function getNestedProperty( $field = '', $data ) {
+    private function getNestedProperty( $field = '', $data ) {
       if( is_array( $data ) AND ! empty( $field ) ) {
         // Dive deep step by step.
         foreach( explode( '.', $field ) as $i ) {
@@ -193,6 +179,37 @@
 
     private function performSerach( $data = [] ) {
       if ( empty( $data ) ) return $data;
+      $nodesRank = [];
+      // Looping on each store data.
+      foreach ($data as $key => $value) {
+        // Looping on each field name of search-able fields.
+        foreach ($this->searchKeyword[ 'field' ] as $field) {
+          try {
+            $nodeValue = $this->getNestedProperty( $field, $value );
+            // The searchable field was found, do comparison against search keyword.
+            similar_text( $nodeValue, $this->searchKeyword['keyword'], $perc );
+            if ( $perc > 50 ) {
+              // Check if current store object already has a value, if so then add the new value.
+              if ( isset( $nodesRank[ $key ] ) ) $nodesRank[ $key ] += $perc;
+              else $nodesRank[ $key ] = $perc;
+            }
+          } catch ( Exception $e ) {
+            continue;
+          }
+        }
+      }
+      if ( empty( $nodesRank ) ) {
+        // No matched store was found against the search keyword.
+        return [];
+      }
+      // Sort nodes in descending order by the rank.
+      arsort( $nodesRank );
+      // Map original nodes by the rank.
+      $nodes = [];
+      foreach ($nodesRank as $key => $value) {
+        $nodes[] = $data[$key];
+      }
+      return $nodes;
     }
     
   }
