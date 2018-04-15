@@ -40,7 +40,11 @@
     }
 
     private function getLastStoreId() {
-      return (int) file_get_contents( './store/system_index/counter.sdb' );
+      if ( file_exists( './store/system_index/counter.sdb' ) ) {
+        return (int) file_get_contents( './store/system_index/counter.sdb' );
+      } else {
+        return 0;
+      }
     }
 
     private function getStoreById( $id ) {
