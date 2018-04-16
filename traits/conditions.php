@@ -5,6 +5,7 @@
    */
   trait ConditionsTrait {
 
+    // Add conditions to filter data.
     public function where( $fieldName = '', $condition = '', $value ) {
       if ( empty( $fieldName ) ) throw new Exception( 'Field name in conditional comparision can not be empty.' );
       if ( empty( $condition ) ) throw new Exception( 'The comparison operator can not be empty.' );
@@ -17,18 +18,21 @@
       return $this;
     }
 
+    // Set the amount of data record to skip.
     public function skip( $skip = 0 ) {
       if ( $skip === false ) $skip = 0;
       $this->skip = (int) $skip;
       return $this;
     }
 
+    // Set the amount of data record to limit.
     public function limit( $limit = 0 ) {
       if ( $limit === false ) $limit = 0;
       $this->limit = (int) $limit;
       return $this;
     }
 
+    // Set the sort order.
     public function orderBy( $order = false, $orderBy = '_id' ) {
       $this->orderBy = [
         'order' => $order,
@@ -37,6 +41,7 @@
       return $this;
     }
 
+    // Do a fulltext like search against more than one field.
     public function search( $field = '', $keyword = '' ) {
       if ( empty( $field ) ) throw new Exception( 'Field name cant be empty while search' );
       if ( ! empty( $keyword ) ) $this->searchKeyword = [
@@ -44,6 +49,10 @@
         'keyword' => $keyword
       ];
       return $this;
+    }
+
+    public function makeCache() {
+      
     }
 
   }

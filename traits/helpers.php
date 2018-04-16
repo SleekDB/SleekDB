@@ -2,9 +2,12 @@
 
   /**
    * Collections of method that helps to manage the data.
+   * All methods in this trait should be private.
+   * 
    */
   trait HelpersTrait {
 
+    // Initialize data that SleekDB required to operate.
     private function init( $storeName ) {
       if ( ! $storeName OR empty( $storeName ) ) throw new Exception( 'Invalid store name provided' );
       // Define the root path of FawlDB
@@ -26,8 +29,11 @@
       ];
       // Set the default search keyword as an empty string.
       $this->searchKeyword = '';
+      $this->makeCache = false;
     }
     
+    // Returns a new and unique store object ID, by calling this method it would also
+    // increment the ID system-wide only for the store.
     private function getStoreId() {
       if ( file_exists( './store/system_index/counter.sdb' ) ) {
         $counter = (int) file_get_contents( './store/system_index/counter.sdb' );
@@ -39,6 +45,7 @@
       return $counter;
     }
 
+    // Return the last created store object ID.
     private function getLastStoreId() {
       if ( file_exists( './store/system_index/counter.sdb' ) ) {
         return (int) file_get_contents( './store/system_index/counter.sdb' );
@@ -47,6 +54,7 @@
       }
     }
 
+    // Get a store by its system id. "_id"
     private function getStoreById( $id ) {
       $store = $this->storeName . '/' . $id . '.json';
       if ( file_exists( $store ) ) {
@@ -56,6 +64,7 @@
       return [];
     }
 
+    // Find store objects with conditions, sorting order, skip and limits.
     private function findStore() {
       $found          = [];
       $lastStoreId    = $this->getLastStoreId();
@@ -143,6 +152,7 @@
       return $found;
     }
 
+    // Sort store objects.
     private function sortArray( $field, $data, $order = 'ASC' ) {
       $dryData = [];
       // Check if data is an array.
@@ -163,6 +173,7 @@
       return $finalArray;
     }
 
+    // Get nested properties of a store object.
     private function getNestedProperty( $field = '', $data ) {
       if( is_array( $data ) AND ! empty( $field ) ) {
         // Dive deep step by step.
@@ -181,6 +192,7 @@
       }
     }
 
+    // Do a sesrch in store objects. This is like a doing a fulltext search.
     private function performSerach( $data = [] ) {
       if ( empty( $data ) ) return $data;
       $nodesRank = [];

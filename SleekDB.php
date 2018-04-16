@@ -14,16 +14,32 @@
     protected $conditions;
     protected $orderBy;
     protected $searchKeyword;
+    protected $makeCache;
 
     // Initialize the store.
     function __construct( $storeName = false ) {
       $this->init( $storeName );
     }
 
+    public function cache() {
+      $query = json_encode( [
+        'store' => $this->storeName,
+        'limit' => $this->limit,
+        'skip' => $this->skip,
+        'condition' => $this->conditions,
+        'order' => $this->orderBy,
+        'search' => $this->searchKeyword
+      ] );
+      return md5($query);
+    }
+
+    // Read store objects.
     public function readStore() {
       return $this->findStore();
     }
 
+    // Creates a new object in the store.
+    // The object is a plaintext JSON document.
     public function createStore( $storeData = false ) {
       // Handle invalid data
       if ( ! $storeData OR empty( $storeData ) ) throw new Exception( 'No data found to store' );
@@ -35,8 +51,6 @@
       if ( isset( $storeData[ '_id' ] ) ) throw new Exception( 'The _id index is reserved by SleekDB, please delete 
         the _id key and try again' );
       $id = $this->getStoreId();
-      // Debugging purposes
-      echo __DIR__ . ' : ' . $id;
       // Add the system ID with the store data array.
       $storeData[ '_id' ] = $id;
       // Prepare storable data
@@ -49,6 +63,7 @@
       return $storeData;
     }
 
+    // Updates matched store objects.
     public function updateStore( $updateable ) {
       // Find all store objects.
       $storeObjects = $this->findStore();
@@ -69,6 +84,7 @@
       return true;
     }
 
+    // Deletes matched store objects.
     public function deleteStore() {
       // Find all store objects.
       $storeObjects = $this->findStore();
