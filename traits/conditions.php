@@ -51,16 +51,28 @@
       return $this;
     }
 
-    // Make cache will re-generate the cache for the query.
+    // Re-generate the cache for the query.
     public function makeCache() {
       $this->makeCache = true;
       return $this;
     }
 
-    // Use cache will try to re-use existing cache of the query, if dosent exists 
+    // Re-use existing cache of the query, if dosent exists 
     // then would make new cache.
     public function useCache() {
       $this->useCache = true;
+      return $this;
+    }
+
+    // Delete cache for the current query.
+    public function deleteCache() {
+      $this->_deleteCache();
+      return $this;
+    }
+
+    // Delete all cache of the current store.
+    public function deleteAllCache() {
+      $this->_emptyAllCache();
       return $this;
     }
 
