@@ -42,7 +42,13 @@
         please provide a valid PHP associative array' );
       // Define the store path
       $storePath = $this->storeName . '/' . $id . '.json';
-      file_put_contents( $storePath, $storableJSON );
+      if ( ! file_put_contents( $storePath, $storableJSON ) ) {
+        throw new Exception( "Unable to write the object file! Please check if PHP has write permission." );
+      }
+      // Check do we need to wipe the cache for this store.
+      if ( $this->deleteCacheOnCreate === true ) {
+        $this->_emptyAllCache();
+      }
       return $storeData;
     }
 
