@@ -10,10 +10,22 @@
     // Initialize data that SleekDB required to operate.
     private function init( $storeName ) {
       if ( ! $storeName OR empty( $storeName ) ) throw new Exception( 'Invalid store name provided' );
-      // Define the root path of FawlDB
+      // Define the root path of SleekDB.
       $this->root = __DIR__ . '/../';
+      // Include the config file.
+      require_once $this->root . 'config.php';
       // Define the store path
-      $this->storeName = $this->root . '/store/data_store/' . $storeName;
+      if ( $config[ 'storeLocation' ] === '.' ) {
+        $this->storeName = $this->root . '/store/data_store/' . $storeName;
+      } else {
+        // Check if custom store location exists or not.
+        if ( file_exists( $config[ 'storeLocation' ] ) ) {
+          $this->storeName = $config[ 'storeLocation' ] . '/' . $storeName;
+        } else {
+          throw new Exception( 'Unable to create the directories at: ' . $config[ 'storeLocation' ] . ' 
+           Please create this directory manually and then try again.' );
+        }
+      }
       // Create the store if it is no already created.
       if ( ! file_exists( $this->storeName ) ) {
         // Create the store directory.
@@ -36,8 +48,20 @@
       ];
       // Set the default search keyword as an empty string.
       $this->searchKeyword = '';
+      // Disable make cache by default.
       $this->makeCache = false;
-      $this->useCache = false;
+      // Descide the cache status.
+      if ( $config[ 'autoUseCache' ] === true ) {
+        $this->useCache = true;
+        // A flag that is used to check if cache should be empty 
+        // while create a new object in a store.
+        $this->deleteCacheOnCreate = true; 
+      } else {
+        $this->useCache = false;
+        // A flag that is used to check if cache should be empty 
+        // while create a new object in a store.
+        $this->deleteCacheOnCreate = false; 
+      }      
     }
     
     // Returns a new and unique store object ID, by calling this method it would also
