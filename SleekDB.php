@@ -2,40 +2,23 @@
 
   require_once './traits/helpers.php';
   require_once './traits/conditions.php';
+  require_once './traits/caching.php';
 
   class SleekDB {
 
-    use HelpersTrait, ConditionsTrait;
-
-    protected $root;
-    protected $storeName;
-    protected $limit;
-    protected $skip;
-    protected $conditions;
-    protected $orderBy;
-    protected $searchKeyword;
-    protected $makeCache;
+    use HelpersTrait, ConditionsTrait, CacheTraits;
 
     // Initialize the store.
     function __construct( $storeName = false ) {
       $this->init( $storeName );
     }
 
-    public function cache() {
-      $query = json_encode( [
-        'store' => $this->storeName,
-        'limit' => $this->limit,
-        'skip' => $this->skip,
-        'condition' => $this->conditions,
-        'order' => $this->orderBy,
-        'search' => $this->searchKeyword
-      ] );
-      return md5($query);
-    }
-
     // Read store objects.
     public function readStore() {
-      return $this->findStore();
+      // Check if data should be provided from the cache.
+      if ( $this->makeCache === true ) return $this->reGenerateCache(); // Re-generate cache.
+      else if ( $this->useCache === true ) return $this->useExistingCache(); // Use existing cache else re-generate.
+      else return $this->findStore(); // Returns data without looking for cached data.
     }
 
     // Creates a new object in the store.
