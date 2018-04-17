@@ -51,7 +51,7 @@
       // Disable make cache by default.
       $this->makeCache = false;
       // Descide the cache status.
-      if ( $config[ 'autoUseCache' ] === true ) {
+      if ( $config[ 'enableAutoCache' ] === true ) {
         $this->useCache = true;
         // A flag that is used to check if cache should be empty 
         // while create a new object in a store.
