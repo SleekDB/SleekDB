@@ -45,7 +45,7 @@
         'order' => $this->orderBy,
         'search' => $this->searchKeyword
       ] );
-      return md5($query);
+      return md5( $query );
     }
 
     // Reset the cache flags so the next database query dosent messedup.
@@ -57,6 +57,20 @@
     // Returns the cache directory absolute path for the current store.
     private function getCachePath( $token ) {
       return $this->storeName . '/cache/' . $token . '.json';
+    }
+
+    // Delete a single cache file for current query.
+    private function _deleteCache() {
+      echo "Deleteing a cache\n";
+      echo $this->getCachePath( $token );
+      echo "\n";
+      $token = $this->getCacheToken();
+      unlink( $this->getCachePath( $token ) );
+    }
+
+    // Delete all cache for current store.
+    private function _emptyAllCache() {
+      array_map( 'unlink', glob( $this->storeName . "/cache/*" ) );
     }
 
   }
