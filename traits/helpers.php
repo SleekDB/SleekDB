@@ -14,8 +14,15 @@
       $this->root = __DIR__ . '/../';
       // Define the store path
       $this->storeName = $this->root . '/store/data_store/' . $storeName;
-      // Create the store if it is no already created
-      if ( ! file_exists( $this->storeName ) ) mkdir( $this->storeName );
+      // Create the store if it is no already created.
+      if ( ! file_exists( $this->storeName ) ) {
+        // Create the store directory.
+        mkdir( $this->storeName );
+        // Create the cache directory of this store.
+        mkdir( $this->storeName . '/cache' );
+      }
+      // Set empty results
+      $this->results = [];
       // Set a default limit
       $this->limit = 0;
       // Set a default skip
@@ -30,6 +37,7 @@
       // Set the default search keyword as an empty string.
       $this->searchKeyword = '';
       $this->makeCache = false;
+      $this->useCache = false;
     }
     
     // Returns a new and unique store object ID, by calling this method it would also
