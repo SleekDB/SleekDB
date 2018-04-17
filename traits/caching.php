@@ -5,7 +5,9 @@
    */
   trait CacheTraits {
     
-    // private function 
+    private function makeCache() {
+      
+    }
 
   }
   

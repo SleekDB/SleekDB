@@ -69,7 +69,8 @@
       $found          = [];
       $lastStoreId    = $this->getLastStoreId();
       $searchRank     = [];
-      // Sort found result.
+      // If the query has a sort command, then before we collect data
+      // we would first sort all the data we have.
       if ( $this->orderBy[ 'order' ] !== false ) {
         // Get all store objects.
         $stores = [];
