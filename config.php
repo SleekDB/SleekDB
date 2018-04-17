@@ -2,5 +2,5 @@
 
     $config = [
         'storeLocation' => '.',
-        'enableGlobalCache' => true,
+        'autoUseCache' => true,
     ];
