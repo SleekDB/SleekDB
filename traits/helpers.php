@@ -14,6 +14,8 @@
       $this->root = __DIR__ . '/../';
       // Include the config file.
       require_once $this->root . 'config.php';
+      // Set timeout.
+      set_time_limit( $config[ 'timeOut' ] );
       // Define the store path
       if ( $config[ 'storeLocation' ] === '.' ) {
         $this->storeName = $this->root . '/store/data_store/' . $storeName;
@@ -96,32 +98,16 @@
       return [];
     }
 
+
     // Find store objects with conditions, sorting order, skip and limits.
     private function findStore() {
       $found          = [];
       $lastStoreId    = $this->getLastStoreId();
       $searchRank     = [];
-      // If the query has a sort command, then before we collect data
-      // we would first sort all the data we have.
-      if ( $this->orderBy[ 'order' ] !== false ) {
-        // Get all store objects.
-        $stores = [];
-        for ( $i = 0; $i <= $lastStoreId; $i++ ) {
-          $rawStore = $this->getStoreById( $i );
-          if ( ! empty( $rawStore ) ) $stores[] = $rawStore;
-        }
-        // Start sorting on all data.
-        $stores = $this->sortArray( $this->orderBy[ 'field' ], $stores, $this->orderBy[ 'order' ] );
-      }
-      // Filter data.
+      // Start collecting and filtering data.
       for ( $i = 0; $i <= $lastStoreId; $i++ ) {
-        if ( $this->orderBy[ 'order' ] === false ) {
-          // We dont need to order the data, it will be a natural sort.
-          $data = $this->getStoreById( $i );
-        } else {
-          // We should have a sorted data array.
-          $data = $stores[ $i ];
-        }
+        // Collect data of current iteration.
+        $data = $this->getStoreById( $i );
         if ( ! empty( $data ) ) {
           // Filter data found.
           if ( empty( $this->conditions ) ) {
@@ -173,6 +159,11 @@
         }
       }
       if ( count( $found ) > 0 ) {
+        // Check do we need to sort the data.
+        if ( $this->orderBy[ 'order' ] !== false ) {
+          // Start sorting on all data.
+          $found = $this->sortArray( $this->orderBy[ 'field' ], $found, $this->orderBy[ 'order' ] );
+        }
         // If there was text search then we would also sort the result by search ranking.
         if ( ! empty( $this->searchKeyword ) ) {
           $found = $this->performSerach( $found );
