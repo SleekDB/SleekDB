@@ -54,13 +54,15 @@
     // Re-generate the cache for the query.
     public function makeCache() {
       $this->makeCache = true;
+      $this->useCache  = false;
       return $this;
     }
 
     // Re-use existing cache of the query, if dosent exists 
     // then would make new cache.
     public function useCache() {
-      $this->useCache = true;
+      $this->useCache  = true;
+      $this->makeCache = false;
       return $this;
     }
 
