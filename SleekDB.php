@@ -14,7 +14,7 @@
     }
 
     // Read store objects.
-    public function readStore() {
+    public function fetch() {
       // Check if data should be provided from the cache.
       if ( $this->makeCache === true ) return $this->reGenerateCache(); // Re-generate cache.
       else if ( $this->useCache === true ) return $this->useExistingCache(); // Use existing cache else re-generate.
@@ -23,28 +23,12 @@
 
     // Creates a new object in the store.
     // The object is a plaintext JSON document.
-    public function createStore( $storeData = false ) {
+    public function inert( $storeData = false ) {
       // Handle invalid data
       if ( ! $storeData OR empty( $storeData ) ) throw new Exception( 'No data found to store' );
       // Make sure that the data is an array
       if ( ! is_array( $storeData ) ) throw new Exception( 'Storable data must an array' );
-      // Cast to array
-      $storeData = (array) $storeData;
-      // Check if it has _id key
-      if ( isset( $storeData[ '_id' ] ) ) throw new Exception( 'The _id index is reserved by SleekDB, please delete 
-        the _id key and try again' );
-      $id = $this->getStoreId();
-      // Add the system ID with the store data array.
-      $storeData[ '_id' ] = $id;
-      // Prepare storable data
-      $storableJSON = json_encode( $storeData );
-      if ( $storableJSON === false ) throw new Exception( 'Unable to encode the data array, 
-        please provide a valid PHP associative array' );
-      // Define the store path
-      $storePath = $this->storeName . '/' . $id . '.json';
-      if ( ! file_put_contents( $storePath, $storableJSON ) ) {
-        throw new Exception( "Unable to write the object file! Please check if PHP has write permission." );
-      }
+      $storeData = $this->writeInStore( $storeData );
       // Check do we need to wipe the cache for this store.
       if ( $this->deleteCacheOnCreate === true ) {
         $this->_emptyAllCache();
@@ -52,8 +36,22 @@
       return $storeData;
     }
 
+    // Creates multiple objects in the store.
+    public function insertMany( $storeData = false ) {
+      // Handle invalid data
+      if ( ! $storeData OR empty( $storeData ) ) throw new Exception( 'No data found to store' );
+      // Make sure that the data is an array
+      if ( ! is_array( $storeData ) ) throw new Exception( 'Storable data must an array' );
+      // All results.
+      $results = [];
+      foreach ( $storeData as $key => $node ) {
+        $results[] = $this->writeInStore( $node );
+      }
+      return $results;
+    }
+
     // Updates matched store objects.
-    public function updateStore( $updateable ) {
+    public function update( $updateable ) {
       // Find all store objects.
       $storeObjects = $this->findStore();
       // If no store object found then return an empty array.
@@ -74,7 +72,7 @@
     }
 
     // Deletes matched store objects.
-    public function deleteStore() {
+    public function delete() {
       // Find all store objects.
       $storeObjects = $this->findStore();
       if ( ! empty( $storeObjects ) ) {
