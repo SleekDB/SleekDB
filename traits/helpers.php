@@ -176,6 +176,27 @@
       return $found;
     }
 
+    // Writes an object in a store.
+    private function writeInStore( $storeData ) {
+      // Cast to array
+      $storeData = (array) $storeData;
+      // Check if it has _id key
+      if ( isset( $storeData[ '_id' ] ) ) throw new Exception( 'The _id index is reserved by SleekDB, please delete the _id key and try again' );
+      $id = $this->getStoreId();
+      // Add the system ID with the store data array.
+      $storeData[ '_id' ] = $id;
+      // Prepare storable data
+      $storableJSON = json_encode( $storeData );
+      if ( $storableJSON === false ) throw new Exception( 'Unable to encode the data array, 
+        please provide a valid PHP associative array' );
+      // Define the store path
+      $storePath = $this->storeName . '/' . $id . '.json';
+      if ( ! file_put_contents( $storePath, $storableJSON ) ) {
+        throw new Exception( "Unable to write the object file! Please check if PHP has write permission." );
+      }
+      return $storeData;
+    }
+
     // Sort store objects.
     private function sortArray( $field, $data, $order = 'ASC' ) {
       $dryData = [];
