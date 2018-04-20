@@ -20,9 +20,13 @@
       if ( $config[ 'storeLocation' ] === '.' ) {
         $this->storeName = $this->root . '/store/data_store/' . $storeName;
       } else {
+        // Validate the directory path.
+        $customStorePath = trim( $config[ 'storeLocation' ] );
+        // Handle the directory path ending.
+        if ( substr( $customStorePath, -1 ) !== '/' ) $customStorePath += '/';
         // Check if custom store location exists or not.
         if ( file_exists( $config[ 'storeLocation' ] ) ) {
-          $this->storeName = $config[ 'storeLocation' ] . '/' . $storeName;
+          $this->storeName = $config[ 'storeLocation' ] . $storeName;
         } else {
           throw new Exception( 'Unable to create the directories at: ' . $config[ 'storeLocation' ] . ' 
            Please create this directory manually and then try again.' );
