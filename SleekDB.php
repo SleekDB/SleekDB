@@ -23,7 +23,7 @@
 
     // Creates a new object in the store.
     // The object is a plaintext JSON document.
-    public function inert( $storeData = false ) {
+    public function insert( $storeData = false ) {
       // Handle invalid data
       if ( ! $storeData OR empty( $storeData ) ) throw new Exception( 'No data found to store' );
       // Make sure that the data is an array
