@@ -34,6 +34,9 @@
 
     // Set the sort order.
     public function orderBy( $order = false, $orderBy = '_id' ) {
+      // Validate order.
+      $order = strtolower( $order );
+      if ( ! in_array( $order, [ 'asc', 'desc' ] ) ) throw new Exception( 'Invalid order found, please use "asc" or "desc" only.' );
       $this->orderBy = [
         'order' => $order,
         'field' => $orderBy
