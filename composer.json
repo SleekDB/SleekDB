@@ -1,5 +1,5 @@
 {
-  "name": "rakibtg/SleekDB",
+  "name": "rakibtg/sleekdb",
   "description": "SleekDB - A 30Kb NoSQL Database made using PHP",
   "keywords": ["framework", "nosql", "database", "flatfile", "php", "rest", "api", "micro", "SleekDB"],
   "type": "project",
