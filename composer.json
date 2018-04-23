@@ -1,0 +1,16 @@
+{
+  "name": "rakibtg/SleekDB",
+  "description": "SleekDB - A 30Kb NoSQL Database made using PHP",
+  "keywords": ["framework", "nosql", "database", "flatfile", "php", "rest", "api", "micro", "SleekDB"],
+  "type": "project",
+  "license": "MIT",
+  "authors": [
+      {
+          "name": "rakibtg",
+          "email": "rakibtg@gmail.com"
+      }
+  ],
+  "require": {
+    "php": ">=5.5"
+  }
+}
