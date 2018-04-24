@@ -10,11 +10,6 @@
       "email": "rakibtg@gmail.com"
     }
   ],
-  "autoload": {
-    "psr-0": {
-      "rakibtg": "rakibtg/"
-    }
-  },
   "require": {
     "php": ">=5.4"
   }
