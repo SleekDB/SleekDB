@@ -5,12 +5,17 @@
   "type": "library",
   "license": "MIT",
   "authors": [
-      {
-          "name": "rakibtg",
-          "email": "rakibtg@gmail.com"
-      }
+    {
+      "name": "rakibtg",
+      "email": "rakibtg@gmail.com"
+    }
   ],
+  "autoload": {
+    "psr-0": {
+      "rakibtg": "rakibtg/"
+    }
+  },
   "require": {
-    "php": ">=5.5"
+    "php": ">=5.4"
   }
 }
