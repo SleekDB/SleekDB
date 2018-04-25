@@ -73,19 +73,19 @@
     // Returns a new and unique store object ID, by calling this method it would also
     // increment the ID system-wide only for the store.
     private function getStoreId() {
-      if ( file_exists( './store/system_index/counter.sdb' ) ) {
-        $counter = (int) file_get_contents( './store/system_index/counter.sdb' );
+      if ( file_exists( __DIR__ . '/../store/system_index/counter.sdb' ) ) {
+        $counter = (int) file_get_contents( __DIR__ . '/../store/system_index/counter.sdb' );
       } else {
         $counter = 0;
       }
       $counter++;
-      file_put_contents( './store/system_index/counter.sdb', $counter );
+      file_put_contents( __DIR__ . '/../store/system_index/counter.sdb', $counter );
       return $counter;
     }
 
     // Return the last created store object ID.
     private function getLastStoreId() {
-      if ( file_exists( './store/system_index/counter.sdb' ) ) {
+      if ( file_exists( __DIR__ . '/../store/system_index/counter.sdb' ) ) {
         return (int) file_get_contents( './store/system_index/counter.sdb' );
       } else {
         return 0;
