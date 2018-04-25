@@ -86,7 +86,7 @@
     // Return the last created store object ID.
     private function getLastStoreId() {
       if ( file_exists( __DIR__ . '/../store/system_index/counter.sdb' ) ) {
-        return (int) file_get_contents( './store/system_index/counter.sdb' );
+        return (int) file_get_contents( __DIR__ . '/store/system_index/counter.sdb' );
       } else {
         return 0;
       }
