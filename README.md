@@ -1,3 +1,6 @@
+[<img src="https://sleekdb.github.io/assets/SleekDB_Thumbnail.png">](https://sleekdb.github.io/)
+*Visit our website for documentation and getting started guide*
+
 # SleekDB - A NoSQL Database made using PHP
 
 https://sleekdb.github.io/
