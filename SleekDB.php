@@ -1,8 +1,8 @@
 <?php
 
-  require_once './traits/helpers.php';
-  require_once './traits/conditions.php';
-  require_once './traits/caching.php';
+  require_once __DIR__ . '/traits/helpers.php';
+  require_once __DIR__ . '/traits/conditions.php';
+  require_once __DIR__ . '/traits/caching.php';
 
   class SleekDB {
 
