@@ -1,12 +1,14 @@
 <?php
 
+  namespace SleekDB;
+
   require_once __DIR__ . '/../traits/helpers.php';
   require_once __DIR__ . '/../traits/conditions.php';
   require_once __DIR__ . '/../traits/caching.php';
 
   class SleekDB {
 
-    use HelpersTrait, ConditionsTrait, CacheTraits;
+    use \HelpersTrait, \ConditionsTrait, \CacheTraits;
 
     // Initialize the store.
     function __construct( $storeName = false ) {
