@@ -86,6 +86,7 @@
 
     // Return the last created store object ID.
     private function getLastStoreId() {
+      $counterPath = __DIR__ . '/../store/system_index/counter.sdb';
       if ( file_exists( $counterPath ) ) {
         return (int) file_get_contents( $counterPath );
       } else {
