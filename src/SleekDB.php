@@ -2,9 +2,9 @@
 
   namespace SleekDB;
 
-  require_once __DIR__ . '/../traits/helpers.php';
-  require_once __DIR__ . '/../traits/conditions.php';
-  require_once __DIR__ . '/../traits/caching.php';
+  require_once __DIR__ . '/traits/helpers.php';
+  require_once __DIR__ . '/traits/conditions.php';
+  require_once __DIR__ . '/traits/caching.php';
 
   class SleekDB {
 
@@ -41,9 +41,9 @@
     // Creates multiple objects in the store.
     public function insertMany( $storeData = false ) {
       // Handle invalid data
-      if ( ! $storeData OR empty( $storeData ) ) throw new Exception( 'No data found to store' );
+      if ( ! $storeData OR empty( $storeData ) ) throw new Exception( 'No data found to insert in the store' );
       // Make sure that the data is an array
-      if ( ! is_array( $storeData ) ) throw new Exception( 'Storable data must an array' );
+      if ( ! is_array( $storeData ) ) throw new Exception( 'Data must be an array in order to insert in the store' );
       // All results.
       $results = [];
       foreach ( $storeData as $key => $node ) {
