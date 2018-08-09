@@ -18,7 +18,7 @@
       set_time_limit( $config[ 'timeOut' ] );
       // Define the store path
       if ( $config[ 'storeLocation' ] === '.' ) {
-        $this->storeName = $this->root . '/store/data_store/' . $storeName;
+        $this->storeName = $this->root . 'store/data_store/' . $storeName;
       } else {
         // Validate the directory path.
         $customStorePath = trim( $config[ 'storeLocation' ] );
@@ -86,10 +86,12 @@
 
     // Return the last created store object ID.
     private function getLastStoreId() {
-      $counterPath = __DIR__ . '/../store/system_index/counter.sdb';
+      $counterPath = __DIR__ . '/../../store/system_index/counter.sdb';
+      echo "\n$counterPath\n";
       if ( file_exists( $counterPath ) ) {
         return (int) file_get_contents( $counterPath );
       } else {
+        echo "\ncounter file was not found\n";
         return 0;
       }
     }
@@ -103,7 +105,6 @@
       }
       return [];
     }
-
 
     // Find store objects with conditions, sorting order, skip and limits.
     private function findStore() {
