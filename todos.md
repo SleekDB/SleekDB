@@ -1,0 +1,2 @@
+- `helpers.php` file, method: getLastStoreId()
+  - Move the system_index `/store/system_index` to a different directory.
