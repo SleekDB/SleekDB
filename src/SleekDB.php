@@ -11,8 +11,8 @@
     use \HelpersTrait, \ConditionsTrait, \CacheTraits;
 
     // Initialize the store.
-    function __construct( $storeName = false ) {
-      $this->init( $storeName );
+    function __construct( $configurations = false ) {
+      $this->init( $configurations );
     }
 
     // Read store objects.
