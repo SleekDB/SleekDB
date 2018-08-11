@@ -3,12 +3,34 @@
   /**
    * Collections of method that helps to manage the data.
    * All methods in this trait should be private.
-   * 
+   *
    */
   trait HelpersTrait {
 
+    private function init( $conf = false ) {
+      // Check for valid configurations.
+      if( empty( $conf ) OR !is_array( $conf ) ) throw new Exception( 'Invalid configurations was found.' );
+      // Check if the 'data_directory' was provided.
+      if ( !isset( $conf[ 'data_directory' ] ) ) throw new Exception( '"data_directory" was not provided in the configurations.' );
+      // Check if data_directory is empty.
+      if ( empty( $conf[ 'data_directory' ] ) ) throw new Exception( '"data_directory" cant be empty in the configurations.' );
+      // Prepare the data directory.
+      $dataDir = trim( $conf[ 'data_directory' ] );
+      // Handle directory path ending.
+      if ( substr( $dataDir, -1 ) !== '/' ) $dataDir += '/';
+      // Check if the data_directory exists.
+      if ( !file_exists( $dataDir ) ) {
+        // The directory was not found, create one.
+        if ( !mkdir( $dataDir, 0777, true ) ) throw new Exception( 'Unable to create the data directory at ' . $dataDir );
+      }
+      // Check if PHP has write permission in that directory.
+      if( !is_writable( $dataDir ) ) throw new Exception( 'Data directory is not writable at "' . $dataDir . '." Please change data directory permission.' );
+      // Finally check if the directory is readable by PHP.
+      if( !is_readable( $dataDir ) ) throw new Exception( 'Data directory is not readable at "' . $dataDir . '." Please change data directory permission.' );
+    }
+
     // Initialize data that SleekDB required to operate.
-    private function init( $storeName ) {
+    private function old_init( $storeName ) {
       if ( ! $storeName OR empty( $storeName ) ) throw new Exception( 'Invalid store name provided' );
       // Define the root path of SleekDB.
       $this->root = __DIR__ . '/../../';
@@ -28,8 +50,11 @@
         if ( file_exists( $config[ 'storeLocation' ] ) ) {
           $this->storeName = $config[ 'storeLocation' ] . $storeName;
         } else {
-          throw new Exception( 'Unable to create the directories at: ' . $config[ 'storeLocation' ] . ' 
-           Please create this directory manually and then try again.' );
+          throw new Exception(
+            'Unable to create the directories at: ' 
+              . $config[ 'storeLocation' ] 
+              . 'Please create this directory manually and then try again.' 
+          );
         }
       }
       // Create the store if it is no already created.
@@ -67,9 +92,9 @@
         // A flag that is used to check if cache should be empty 
         // while create a new object in a store.
         $this->deleteCacheOnCreate = false; 
-      }      
+      }
     }
-    
+
     // Returns a new and unique store object ID, by calling this method it would also
     // increment the ID system-wide only for the store.
     private function getStoreId() {
