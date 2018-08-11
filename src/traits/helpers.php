@@ -269,7 +269,7 @@
       }
     }
 
-    // Do a sesrch in store objects. This is like a doing a fulltext search.
+    // Do a search in store objects. This is like a doing a full-text search.
     private function performSerach( $data = [] ) {
       if ( empty( $data ) ) return $data;
       $nodesRank = [];
