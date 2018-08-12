@@ -17,7 +17,7 @@
       // Prepare the data directory.
       $dataDir = trim( $conf[ 'data_directory' ] );
       // Handle directory path ending.
-      if ( substr( $dataDir, -1 ) !== '/' ) $dataDir += '/';
+      if ( substr( $dataDir, -1 ) !== '/' ) $dataDir = $dataDir . '/';
       // Check if the data_directory exists.
       if ( !file_exists( $dataDir ) ) {
         // The directory was not found, create one.
