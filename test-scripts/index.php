@@ -21,11 +21,29 @@
   */
 
   // Create a new instance with required information's.
-  $database = new \SleekDB\SleekDB( [
-    'data_directory' => '.',
-    'auto_cache' => true,
+  $database = new \SleekDB\SleekDB( '/Users/rakibtg/Dropbox/rakibtg-chobihut-kazi.j.n/SleekDB/test-scripts/mysite', [
+    'auto_cache' => false,
     'timeout' => 120
   ] );
+
+  // $database->store( 'comments' );
+  
+  // insert data.
+  // $posts = [
+  //   [
+  //     "title" => "Google Pixel 2",
+  //     "about" => "The unlocked Pixel 2 provides..."  
+  //   ],
+  //   [
+  //     "title" => "Google Pixel XL",
+  //     "about" => "The unlocked biggest Pixel 2..."  
+  //   ]
+  // ];
+  // $newPosts = $database->store( 'posts' )->insertMany( $posts );
+  // print_r( $newPosts );
+  $allPosts = $database->store( 'posts' )->fetch();
+  print_r($allPosts);
+  /*
 
   // Connect to a store. EX: store === SQL Table
   $users = $database->store( 'users' );
@@ -50,3 +68,5 @@
 
   // Get the post.
   $newPost = $posts->join([ 'users', 'comments' ])->fetch();
+
+  */
