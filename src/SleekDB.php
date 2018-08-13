@@ -10,9 +10,27 @@
 
     use \HelpersTrait, \ConditionsTrait, \CacheTraits;
 
-    // Initialize the store.
-    function __construct( $configurations = false ) {
+    // Initialize the database.
+    function __construct( $dataDir = '', $configurations = false ) {
+      // Define the root path of SleekDB.
+      $this->root = __DIR__;
+      // Add data dir.
+      $configurations[ 'data_directory' ] = $dataDir;
+      // Initialize SleekDB
       $this->init( $configurations );
+    }
+
+    // Initialize the store.
+    public function store( $storeName = false, $autoCache = true ) {
+      if ( !$storeName OR empty( $storeName ) ) throw new Exception( 'Store name was not valid' );
+      $this->storeName = $storeName;
+      // Boot store.
+      $this->bootStore();
+      // Initialize variables for the store.
+      $this->initVariables();
+      // Set auto cache settings.
+      $this->initAutoCache( $autoCache );
+      return $this;
     }
 
     // Read store objects.
@@ -20,7 +38,7 @@
       // Check if data should be provided from the cache.
       if ( $this->makeCache === true ) return $this->reGenerateCache(); // Re-generate cache.
       else if ( $this->useCache === true ) return $this->useExistingCache(); // Use existing cache else re-generate.
-      else return $this->findStore(); // Returns data without looking for cached data.
+      else return $this->findStoreDocuments(); // Returns data without looking for cached data.
     }
 
     // Creates a new object in the store.
@@ -32,9 +50,7 @@
       if ( ! is_array( $storeData ) ) throw new Exception( 'Storable data must an array' );
       $storeData = $this->writeInStore( $storeData );
       // Check do we need to wipe the cache for this store.
-      if ( $this->deleteCacheOnCreate === true ) {
-        $this->_emptyAllCache();
-      }
+      if ( $this->deleteCacheOnCreate === true ) $this->_emptyAllCache();
       return $storeData;
     }
 
@@ -49,13 +65,15 @@
       foreach ( $storeData as $key => $node ) {
         $results[] = $this->writeInStore( $node );
       }
+      // Check do we need to wipe the cache for this store.
+      if ( $this->deleteCacheOnCreate === true ) $this->_emptyAllCache();
       return $results;
     }
 
     // Updates matched store objects.
     public function update( $updateable ) {
       // Find all store objects.
-      $storeObjects = $this->findStore();
+      $storeObjects = $this->findStoreDocuments();
       // If no store object found then return an empty array.
       if ( empty( $storeObjects ) ) return false;
       foreach ( $storeObjects as $data ) {
@@ -65,27 +83,31 @@
             $data[ $key ] = $value;
           }
         }
-        $storePath = $this->storeName . '/' . $data[ '_id' ] . '.json';
+        $storePath = $this->storePath . '/' . $data[ '_id' ] . '.json';
         if ( file_exists( $storePath ) ) {
           file_put_contents( $storePath, json_encode( $data ) );
         }
       }
+      // Check do we need to wipe the cache for this store.
+      if ( $this->deleteCacheOnCreate === true ) $this->_emptyAllCache();
       return true;
     }
 
     // Deletes matched store objects.
     public function delete() {
       // Find all store objects.
-      $storeObjects = $this->findStore();
+      $storeObjects = $this->findStoreDocuments();
       if ( ! empty( $storeObjects ) ) {
         foreach ( $storeObjects as $data ) {
-          if ( ! unlink( $this->storeName . '/' . $data[ '_id' ] . '.json' ) ) {
+          if ( ! unlink( $this->storePath . '/' . $data[ '_id' ] . '.json' ) ) {
             throw new Exception( 
               'Unable to delete storage file! 
-              Location: "'.$this->storeName . '/' . $data[ '_id' ] . '.json'.'"' 
+              Location: "'.$this->storePath . '/' . $data[ '_id' ] . '.json'.'"' 
             );
           }
         }
+        // Check do we need to wipe the cache for this store.
+        if ( $this->deleteCacheOnCreate === true ) $this->_emptyAllCache();
         return true;
       } else {
         // Nothing found to delete

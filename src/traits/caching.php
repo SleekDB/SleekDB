@@ -9,7 +9,7 @@
     // returns the data.
     private function reGenerateCache() {
       $token  = $this->getCacheToken();
-      $result = $this->findStore();
+      $result = $this->findStoreDocuments();
       // Write the cache file.
       file_put_contents( $this->getCachePath( $token ), json_encode( $result ) );
       // Reset cache flags to avoid future queries on the same object of the store.
@@ -38,7 +38,7 @@
     // We would use this hash token as the id/name of the cache file.
     private function getCacheToken() {
       $query = json_encode( [
-        'store' => $this->storeName,
+        'store' => $this->storePath,
         'limit' => $this->limit,
         'skip' => $this->skip,
         'condition' => $this->conditions,
@@ -56,21 +56,18 @@
 
     // Returns the cache directory absolute path for the current store.
     private function getCachePath( $token ) {
-      return $this->storeName . '/cache/' . $token . '.json';
+      return $this->storePath . 'cache/' . $token . '.json';
     }
 
     // Delete a single cache file for current query.
     private function _deleteCache() {
-      echo "Deleteing a cache\n";
-      echo $this->getCachePath( $token );
-      echo "\n";
       $token = $this->getCacheToken();
       unlink( $this->getCachePath( $token ) );
     }
 
     // Delete all cache for current store.
     private function _emptyAllCache() {
-      array_map( 'unlink', glob( $this->storeName . "/cache/*" ) );
+      array_map( 'unlink', glob( $this->storePath . "cache/*" ) );
     }
 
   }
