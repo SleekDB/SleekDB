@@ -46,7 +46,7 @@
 
     // Do a fulltext like search against more than one field.
     public function search( $field = '', $keyword = '' ) {
-      if ( empty( $field ) ) throw new Exception( 'Field name cant be empty while search' );
+      if ( empty( $field ) ) throw new Exception( 'Cant perform search doe to no field name was provided' );
       if ( ! empty( $keyword ) ) $this->searchKeyword = [
         'field'   => (array) $field,
         'keyword' => $keyword

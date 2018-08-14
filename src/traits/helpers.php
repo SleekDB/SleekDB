@@ -103,6 +103,7 @@
       if ( !is_writable( $this->storePath ) ) throw new Exception( 'Store path is not writable at "' . $this->storePath . '." Please change store path permission.' );
       // Finally check if the directory is readable by PHP.
       if ( !is_readable( $this->storePath ) ) throw new Exception( 'Store path is not readable at "' . $this->storePath . '." Please change store path permission.' );
+      echo $this->storePath . "\n";
     }
 
     // Returns a new and unique store object ID, by calling this method it would also
@@ -286,7 +287,7 @@
           try {
             $nodeValue = $this->getNestedProperty( $field, $value );
             // The searchable field was found, do comparison against search keyword.
-            similar_text( $nodeValue, $this->searchKeyword['keyword'], $perc );
+            similar_text( strtolower($nodeValue), strtolower($this->searchKeyword['keyword']), $perc );
             if ( $perc > 50 ) {
               // Check if current store object already has a value, if so then add the new value.
               if ( isset( $nodesRank[ $key ] ) ) $nodesRank[ $key ] += $perc;
