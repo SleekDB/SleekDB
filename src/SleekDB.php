@@ -21,15 +21,13 @@
     }
 
     // Initialize the store.
-    public function store( $storeName = false, $autoCache = true ) {
+    public function store( $storeName = false ) {
       if ( !$storeName OR empty( $storeName ) ) throw new \Exception( 'Store name was not valid' );
       $this->storeName = $storeName;
       // Boot store.
       $this->bootStore();
       // Initialize variables for the store.
       $this->initVariables();
-      // Set auto cache settings.
-      // $this->initAutoCache( $autoCache );
       return $this;
     }
 
@@ -91,7 +89,8 @@
         }
         $storePath = $this->storePath . 'data/' . $data[ '_id' ] . '.json';
         if ( file_exists( $storePath ) ) {
-          file_put_contents( $storePath, json_encode( $data ) );
+          // Wait until it's unlocked, then update data.
+          file_put_contents( $storePath, json_encode( $data ), LOCK_EX );
         }
       }
       // Check do we need to wipe the cache for this store.

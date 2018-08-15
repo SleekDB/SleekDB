@@ -32,7 +32,6 @@
       // Set auto cache settings.
       $autoCache = true;
       if ( isset( $conf[ 'auto_cache' ] ) ) $autoCache = $conf[ 'auto_cache' ];
-      // echo $autoCache ? "Auto cache enabled\n" : "Auto cache disabled\n";
       $this->initAutoCache( $autoCache );
       // Set timeout.
       $timeout = 120;
@@ -103,7 +102,6 @@
       if ( !is_writable( $this->storePath ) ) throw new Exception( 'Store path is not writable at "' . $this->storePath . '." Please change store path permission.' );
       // Finally check if the directory is readable by PHP.
       if ( !is_readable( $this->storePath ) ) throw new Exception( 'Store path is not readable at "' . $this->storePath . '." Please change store path permission.' );
-      echo $this->storePath . "\n";
     }
 
     // Returns a new and unique store object ID, by calling this method it would also

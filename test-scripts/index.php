@@ -45,11 +45,11 @@
   */
 
   // insert single post.
-  // $database->store('posts')->insert(['song' => 'i dont like it']);
+  // $database->store('posts')->insert(['song' => 'tearing me apart with words you wanna say']);
 
   // update data.
-  // $updatedPosts = $database->store('posts')->where( 'song', '=', 'i dont like it' )->update([ 'song' => 'Ok cool' ]);
-  // print_r($updatedPosts);
+  $updatedPosts = $database->store('posts')->where( 'song', '=', 'tearing me apart with words you wanna say' )->update([ 'song' => 'Song by Chester' ]);
+  print_r($updatedPosts);
 
   // Delete data.
   // $database->store('posts')->where('song', '=', 'Ok cool')->delete();
@@ -61,7 +61,7 @@
   // $searchResults = $database->store('posts')->search('title', 'google xl')->fetch();
   // print_r($searchResults);
 
-  
+
 
 
   /*
