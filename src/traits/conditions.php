@@ -7,8 +7,8 @@
 
     // Add conditions to filter data.
     public function where( $fieldName = '', $condition = '', $value ) {
-      if ( empty( $fieldName ) ) throw new Exception( 'Field name in conditional comparision can not be empty.' );
-      if ( empty( $condition ) ) throw new Exception( 'The comparison operator can not be empty.' );
+      if ( empty( $fieldName ) ) throw new \Exception( 'Field name in conditional comparision can not be empty.' );
+      if ( empty( $condition ) ) throw new \Exception( 'The comparison operator can not be empty.' );
       // Append the condition into the conditions variable.
       $this->conditions[] = [
         'fieldName' => $fieldName,
@@ -36,7 +36,7 @@
     public function orderBy( $order = false, $orderBy = '_id' ) {
       // Validate order.
       $order = strtolower( $order );
-      if ( ! in_array( $order, [ 'asc', 'desc' ] ) ) throw new Exception( 'Invalid order found, please use "asc" or "desc" only.' );
+      if ( ! in_array( $order, [ 'asc', 'desc' ] ) ) throw new \Exception( 'Invalid order found, please use "asc" or "desc" only.' );
       $this->orderBy = [
         'order' => $order,
         'field' => $orderBy
@@ -46,7 +46,7 @@
 
     // Do a fulltext like search against more than one field.
     public function search( $field = '', $keyword = '' ) {
-      if ( empty( $field ) ) throw new Exception( 'Cant perform search doe to no field name was provided' );
+      if ( empty( $field ) ) throw new \Exception( 'Cant perform search doe to no field name was provided' );
       if ( ! empty( $keyword ) ) $this->searchKeyword = [
         'field'   => (array) $field,
         'keyword' => $keyword
