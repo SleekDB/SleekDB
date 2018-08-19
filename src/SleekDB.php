@@ -121,4 +121,15 @@
       }
     }
 
+    // Deletes a store and wipes all the data and cache it contains.
+    public function deleteStore() {
+      $it = new RecursiveDirectoryIterator( $this->storePath, RecursiveDirectoryIterator::SKIP_DOTS );
+      $files = new RecursiveIteratorIterator( $it, RecursiveIteratorIterator::CHILD_FIRST );
+      foreach( $files as $file ) {
+        if ( $file->isDir() ) rmdir( $file->getRealPath() );
+        else unlink( $file->getRealPath() );
+      }
+      return rmdir( $this->storePath );
+    }
+
   }

@@ -1,7 +1,7 @@
 <?php
 
-  $title = 'Connect to a store';
+  $title = 'Trying to connect to the store "mysite"';
 
-  function connect_to_store() {
-    return "Hello from connect to store test case";
+  function connect_to_store( $database ) {
+    $database->store( "mysite" );
   }
