@@ -7,9 +7,9 @@
    * @author RakibTG <rakibtg - at - gmail>
    * Copyright - SleekDB
    */
-
+  require_once __DIR__ . '/nest.utils.php';
   class Nest {
-
+    use NestUtils;
     function __construct($root) {
       $this->root = $root . '/';
       $this->testCase = $this->root . 'nest/test-case/';
@@ -27,8 +27,8 @@
     public function runTest() {
       foreach ($this->getAllTestCases() as $key => $testCase) {
         require_once $this->testCase . $testCase;
-        echo $title . "\n";
-        $this->translateFileNameToFunctionName($testCase)();
+        $this->print_default( $title );
+        $this->print_success( $this->translateFileNameToFunctionName($testCase)() );
       }
     }
 
