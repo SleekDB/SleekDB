@@ -16,7 +16,7 @@
       $this->root = $root . '/';
       $this->testCase = $this->root . 'nest/test-case/';
       $this->dbStorage = $this->root . 'nest/test-db-storage/';
-      $this->testStore = $this->dbStorage . 'mysite/';
+      $this->testStore = $this->dbStorage;
     }
 
     function getAllTestCases() {
@@ -51,15 +51,33 @@
         'timeout' => 120
       ] );
 
+      $total = [
+        'success' => 0,
+        'failed' => 0,
+        'tests' => 0
+      ];
+
       // Empty the test store.
       if ( file_exists( $this->testStore ) ) $this->emptyTestStore();
       foreach ($this->getAllTestCases() as $key => $testCase) {
+        $total[ 'tests' ] = $total[ 'tests' ] + 1;
         require_once $this->testCase . $testCase;
-        $this->print_default( $title );
-        $this->print_success( 
-          $this->translateFileNameToFunctionName( $testCase )( $database ) 
-        );
+        $this->print_warning( $test['title'] );
+        if( $test['result'] === true ) {
+          $this->print_success( '✔ Test passed.' );
+          $total[ 'success' ] = $total[ 'success' ] + 1;
+        } else {
+          $total[ 'failed' ] = $total[ 'failed' ] + 1;
+          $this->print_danger( '✘ Test failed.' );
+          $this->print_default( $test[ 'message' ] );
+        }
       }
+      echo ". . . . . . . . . . . . . . . .\n";
+      // Test stat
+      $this->print_default( "↳ Total tests\t: " . $total[ 'tests' ] );
+      if( $total[ 'success' ] > 0 ) $this->print_success( "✔ Total passed\t: " . $total[ 'success' ] );
+      if( $total[ 'failed' ] > 0 ) $this->print_danger( "✘ Total failed:\t: " . $total[ 'failed' ] );
+
     }
 
   }

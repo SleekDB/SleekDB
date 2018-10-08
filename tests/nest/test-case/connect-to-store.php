@@ -1,7 +1,15 @@
 <?php
 
-  $title = 'Trying to connect to the store "mysite"';
+  $test = [
+    'title'   => 'Connecting to the store "mysite"',
+    'result'  => false,
+    'message' => ''
+  ];
 
-  function connect_to_store( $database ) {
+  try {
     $database->store( "mysite" );
+    $test['result'] = true;
+  } catch( Exception $e ) {
+    $test['result'] = false;
+    $test['message'] = $e->getMessage();
   }
