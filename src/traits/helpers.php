@@ -2,12 +2,12 @@
 
   /**
    * Collections of method that helps to manage the data.
-   * All methods in this trait should be private.
+   * All methods in this trait should be protected.
    *
    */
   trait HelpersTrait {
 
-    private function init( $conf = false ) {
+    protected function init( $conf = false ) {
       // Check for valid configurations.
       if( empty( $conf ) OR !is_array( $conf ) ) throw new \Exception( 'Invalid configurations was found.' );
       // Check if the 'data_directory' was provided.
@@ -42,7 +42,7 @@
     } // End of init()
 
     // Init data that SleekDB required to operate.
-    private function initVariables() {
+    protected function initVariables() {
       // Set empty results
       $this->results = [];
       // Set a default limit
@@ -63,7 +63,7 @@
     } // End of initVariables()
 
     // Initialize the auto cache settings.
-    private function initAutoCache ( $autoCache = true ) {
+    protected function initAutoCache ( $autoCache = true ) {
       // Decide the cache status.
       if ( $autoCache === true ) {
         $this->useCache = true;
@@ -79,7 +79,7 @@
     }
 
     // Method to boot a store.
-    private function bootStore() {
+    protected function bootStore() {
       $store = trim( $this->storeName );
       // Validate the store name.
       if ( !$store || empty( $store ) ) throw new \Exception( 'Invalid store name was found' );
@@ -106,7 +106,7 @@
 
     // Returns a new and unique store object ID, by calling this method it would also
     // increment the ID system-wide only for the store.
-    private function getStoreId() {
+    protected function getStoreId() {
       $counterPath = $this->storePath . '_cnt.sdb';
       if ( file_exists( $counterPath ) ) {
         $counter = (int) file_get_contents( $counterPath );
@@ -119,7 +119,7 @@
     }
 
     // Return the last created store object ID.
-    private function getLastStoreId() {
+    protected function getLastStoreId() {
       $counterPath = $this->storePath . '_cnt.sdb';
       if ( file_exists( $counterPath ) ) {
         return (int) file_get_contents( $counterPath );
@@ -127,7 +127,7 @@
     }
 
     // Get a store by its system id. "_id"
-    private function getStoreDocumentById( $id ) {
+    protected function getStoreDocumentById( $id ) {
       $store = $this->storePath . 'data/' . $id . '.json';
       if ( file_exists( $store ) ) {
         $data = json_decode( file_get_contents( $store ), true );
@@ -137,7 +137,7 @@
     }
 
     // Find store objects with conditions, sorting order, skip and limits.
-    private function findStoreDocuments() {
+    protected function findStoreDocuments() {
       $found          = [];
       $lastStoreId    = $this->getLastStoreId();
       $searchRank     = [];
@@ -214,7 +214,7 @@
     }
 
     // Writes an object in a store.
-    private function writeInStore( $storeData ) {
+    protected function writeInStore( $storeData ) {
       // Cast to array
       $storeData = (array) $storeData;
       // Check if it has _id key
@@ -235,7 +235,7 @@
     }
 
     // Sort store objects.
-    private function sortArray( $field, $data, $order = 'ASC' ) {
+    protected function sortArray( $field, $data, $order = 'ASC' ) {
       $dryData = [];
       // Check if data is an array.
       if( is_array( $data ) ) {
@@ -256,7 +256,7 @@
     }
 
     // Get nested properties of a store object.
-    private function getNestedProperty( $field = '', $data ) {
+    protected function getNestedProperty( $field = '', $data ) {
       if( is_array( $data ) AND ! empty( $field ) ) {
         // Dive deep step by step.
         foreach( explode( '.', $field ) as $i ) {
@@ -275,7 +275,7 @@
     }
 
     // Do a search in store objects. This is like a doing a full-text search.
-    private function performSerach( $data = [] ) {
+    protected function performSerach( $data = [] ) {
       if ( empty( $data ) ) return $data;
       $nodesRank = [];
       // Looping on each store data.
