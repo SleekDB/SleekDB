@@ -45,7 +45,7 @@
       else {
         $fetchedData = $this->findStoreDocuments(); // Returns data without looking for cached data.
       }
-      $this->initVariables();
+      $this->initVariables(); // Reset state.
       return $fetchedData;
     }
 
@@ -83,7 +83,10 @@
       // Find all store objects.
       $storeObjects = $this->findStoreDocuments();
       // If no store object found then return an empty array.
-      if ( empty( $storeObjects ) ) return false;
+      if ( empty( $storeObjects ) ) {
+        $this->initVariables(); // Reset state.
+        return false;
+      }
       foreach ( $storeObjects as $data ) {
         foreach ( $updateable as $key => $value ) {
           // Do not update the _id reserved index of a store.
@@ -99,6 +102,7 @@
       }
       // Check do we need to wipe the cache for this store.
       if ( $this->deleteCacheOnCreate === true ) $this->_emptyAllCache();
+      $this->initVariables(); // Reset state.
       return true;
     }
 
@@ -127,8 +131,8 @@
 
     // Deletes a store and wipes all the data and cache it contains.
     public function deleteStore() {
-      $it = new RecursiveDirectoryIterator( $this->storePath, RecursiveDirectoryIterator::SKIP_DOTS );
-      $files = new RecursiveIteratorIterator( $it, RecursiveIteratorIterator::CHILD_FIRST );
+      $it = new \RecursiveDirectoryIterator( $this->storePath, \RecursiveDirectoryIterator::SKIP_DOTS );
+      $files = new \RecursiveIteratorIterator( $it, \RecursiveIteratorIterator::CHILD_FIRST );
       foreach( $files as $file ) {
         if ( $file->isDir() ) rmdir( $file->getRealPath() );
         else unlink( $file->getRealPath() );
