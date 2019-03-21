@@ -113,6 +113,7 @@
       if ( ! empty( $storeObjects ) ) {
         foreach ( $storeObjects as $data ) {
           if ( ! unlink( $this->storePath . 'data/' . $data[ '_id' ] . '.json' ) ) {
+            $this->initVariables(); // Reset state.
             throw new \Exception( 
               'Unable to delete storage file! 
               Location: "'.$this->storePath . 'data/' . $data[ '_id' ] . '.json'.'"' 
@@ -121,9 +122,11 @@
         }
         // Check do we need to wipe the cache for this store.
         if ( $this->deleteCacheOnCreate === true ) $this->_emptyAllCache();
+        $this->initVariables(); // Reset state.
         return true;
       } else {
         // Nothing found to delete
+        $this->initVariables(); // Reset state.
         return true;
         // throw new \Exception( 'Invalid store object found, nothing to delete.' );
       }
