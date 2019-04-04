@@ -1,4 +1,4 @@
-# Please give it a Star if you like the project 🎉 <img width="100" src="https://i.imgur.com/YaY5arh.gif">
+## Please give it a Star if you like the project 🎉 <img width="100" src="https://i.imgur.com/YaY5arh.gif">
 
 [<img src="https://sleekdb.github.io/assets/SleekDB_Thumbnail.png">](https://sleekdb.github.io/)
 *Visit our website for documentation and getting started guide*
