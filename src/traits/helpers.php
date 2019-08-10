@@ -51,6 +51,8 @@
       $this->skip = 0;
       // Set default conditions
       $this->conditions = [];
+      // Or conditions
+      $this->orConditions = [];
       // Set default group by value
       $this->orderBy = [
         'order' => false,
@@ -136,6 +138,30 @@
       return [];
     }
 
+    private function verifyWhereConditions ( $condition, $fieldValue, $value ) {
+      // Check the type of rule.
+      if ( $condition === '=' ) {
+        // Check equal.
+        if ( $fieldValue != $value ) return false;
+      } else if ( $condition === '!=' ) {
+        // Check not equal.
+        if ( $fieldValue == $value ) return false;
+      } else if ( $condition === '>' ) {
+        // Check greater than.
+        if ( $fieldValue <= $value ) return false;
+      } else if ( $condition === '>=' ) {
+        // Check greater equal.
+        if ( $fieldValue < $value ) return false;
+      } else if ( $condition === '<' ) {
+        // Check less than.
+        if ( $fieldValue >= $value ) return false;
+      } else if ( $condition === '<=' ) {
+        // Check less equal.
+        if ( $fieldValue > $value ) return false;
+      }
+      return true;
+    }
+
     // Find store objects with conditions, sorting order, skip and limits.
     private function findStoreDocuments() {
       $found          = [];
@@ -165,32 +191,34 @@
                 $storePassed = false;
               }
               if( $validData === true ) {
-                // Check the type of rule.
-                if ( $condition[ 'condition' ] === '=' ) {
-                  // Check equal.
-                  if ( $fieldValue != $condition[ 'value' ] ) $storePassed = false;
-                } else if ( $condition[ 'condition' ] === '!=' ) {
-                  // Check not equal.
-                  if ( $fieldValue == $condition[ 'value' ] ) $storePassed = false;
-                } else if ( $condition[ 'condition' ] === '>' ) {
-                  // Check greater than.
-                  if ( $fieldValue <= $condition[ 'value' ] ) $storePassed = false;
-                } else if ( $condition[ 'condition' ] === '>=' ) {
-                  // Check greater equal.
-                  if ( $fieldValue < $condition[ 'value' ] ) $storePassed = false;
-                } else if ( $condition[ 'condition' ] === '<' ) {
-                  // Check less than.
-                  if ( $fieldValue >= $condition[ 'value' ] ) $storePassed = false;
-                } else if ( $condition[ 'condition' ] === '<=' ) {
-                  // Check less equal.
-                  if ( $fieldValue > $condition[ 'value' ] ) $storePassed = false;
-                }
+                $storePassed = $this->verifyWhereConditions( $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] );
               }
             }
             // Check if current store is updatable or not.
             if ( $storePassed === true ) {
               // Append data to the found array.
               $found[] = $data;
+            } else {
+              // Check if a or-where condition will allow this document.
+              foreach ( $this->orConditions as $condition ) {
+                // Check for valid data from data source.
+                $validData = true;
+                $fieldValue = '';
+                try {
+                  $fieldValue = $this->getNestedProperty( $condition[ 'fieldName' ], $data );
+                } catch( \Exception $e ) {
+                  $validData   = false;
+                  $storePassed = false;
+                }
+                if( $validData === true ) {
+                  $storePassed = $this->verifyWhereConditions( $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] );
+                  if( $storePassed ) {
+                    // Append data to the found array.
+                    $found[] = $data;
+                    break;
+                  }
+                }
+              }
             }
           }
         }
