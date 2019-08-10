@@ -49,6 +49,22 @@
       return $fetchedData;
     }
 
+    // Read store objects.
+    public function shallowFetch() {
+      $fetchedData = null;
+      // Check if data should be provided from the cache.
+      if ( $this->makeCache === true ) {
+        $fetchedData = $this->reGenerateCache(); // Re-generate cache.
+      }
+      else if ( $this->useCache === true ) {
+        $fetchedData = $this->useExistingCache(); // Use existing cache else re-generate.
+      }
+      else {
+        $fetchedData = $this->findStoreDocuments(); // Returns data without looking for cached data.
+      }
+      return $fetchedData;
+    }
+
     // Creates a new object in the store.
     // The object is a plaintext JSON document.
     public function insert( $storeData = false ) {
