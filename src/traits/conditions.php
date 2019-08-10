@@ -7,10 +7,23 @@
 
     // Add conditions to filter data.
     public function where( $fieldName = '', $condition = '', $value ) {
-      if ( empty( $fieldName ) ) throw new \Exception( 'Field name in conditional comparision can not be empty.' );
+      if ( empty( $fieldName ) ) throw new \Exception( 'Field name in where condition can not be empty.' );
       if ( empty( $condition ) ) throw new \Exception( 'The comparison operator can not be empty.' );
       // Append the condition into the conditions variable.
       $this->conditions[] = [
+        'fieldName' => $fieldName,
+        'condition' => trim( $condition ),
+        'value'     => $value
+      ];
+      return $this;
+    }
+
+    // Add or-where conditions to filter data.
+    public function orWhere( $fieldName = '', $condition = '', $value ) {
+      if ( empty( $fieldName ) ) throw new \Exception( 'Field name in orWhere condition can not be empty.' );
+      if ( empty( $condition ) ) throw new \Exception( 'The comparison operator can not be empty.' );
+      // Append the condition into the orConditions variable.
+      $this->orConditions[] = [
         'fieldName' => $fieldName,
         'condition' => trim( $condition ),
         'value'     => $value
