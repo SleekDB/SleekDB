@@ -41,7 +41,8 @@
         'store' => $this->storePath,
         'limit' => $this->limit,
         'skip' => $this->skip,
-        'condition' => $this->conditions,
+        'conditions' => $this->conditions,
+        'orConditions' => $this->orConditions,
         'order' => $this->orderBy,
         'search' => $this->searchKeyword
       ] );
