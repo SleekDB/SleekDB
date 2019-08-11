@@ -43,6 +43,7 @@
         'skip' => $this->skip,
         'conditions' => $this->conditions,
         'orConditions' => $this->orConditions,
+        'in' => $this->in,
         'order' => $this->orderBy,
         'search' => $this->searchKeyword
       ] );
