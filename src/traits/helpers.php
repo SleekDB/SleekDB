@@ -53,8 +53,10 @@
       $this->conditions = [];
       // Or conditions
       $this->orConditions = [];
-      // In clause
+      // In clause conditions
       $this->in = [];
+      // notIn clause conditions 
+      $this->notIn = [];
       // Set default group by value
       $this->orderBy = [
         'order' => false,
@@ -233,12 +235,32 @@
               try {
                 $fieldValue = $this->getNestedProperty( $inClause[ 'fieldName' ], $data );
               } catch( \Exception $e ) {
-                $validData   = false;
+                $validData = false;
                 $document = false;
                 break;
               }
               if( $validData === true ) {
                 if( !in_array( $fieldValue, $inClause[ 'value' ] ) ) {
+                  $document = false;
+                  break;
+                }
+              }
+            }
+          }
+
+          // notIn clause.
+          if ( $document && !empty($this->notIn) ) {
+            foreach ( $this->notIn as $notInClause) {
+              $validData = true;
+              $fieldValue = '';
+              try {
+                $fieldValue = $this->getNestedProperty( $notInClause[ 'fieldName' ], $data );
+              } catch( \Exception $e ) {
+                $validData = false;
+                break;
+              }
+              if( $validData === true ) {
+                if( in_array( $fieldValue, $notInClause[ 'value' ] ) ) {
                   $document = false;
                   break;
                 }
