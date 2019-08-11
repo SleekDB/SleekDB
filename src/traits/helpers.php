@@ -173,9 +173,7 @@
 
     // Find store objects with conditions, sorting order, skip and limits.
     private function findStoreDocuments() {
-      $found          = [];
-      $lastStoreId    = $this->getLastStoreId();
-      $searchRank     = [];
+      $found = [];
       // Start collecting and filtering data.
       $storeDataPath = $this->storePath . 'data/';
       if( $handle = opendir($storeDataPath) ) {
