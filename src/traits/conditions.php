@@ -28,14 +28,15 @@
       return $this;
     }
 
-    /*public function whereNotIn ( $fieldName = '', $values = [] ) {
-      if ( empty( $fieldName ) ) throw new \Exception( 'Field name in whereIn condition can not be empty.' );
+    public function notIn ( $fieldName = '', $values = [] ) {
+      if ( empty( $fieldName ) ) throw new \Exception( 'Field name for notIn clause can not be empty.' );
       $values = (array) $values;
-      foreach ($values as $value) {
-        $this->where( $fieldName, '!=', $value );
-      }
+      $this->notIn[] = [
+        'fieldName' => $fieldName,
+        'value'     => $values
+      ];
       return $this;
-    }*/
+    }
 
     // Add or-where conditions to filter data.
     public function orWhere( $fieldName = '', $condition = '', $value ) {
