@@ -44,6 +44,7 @@
         'conditions' => $this->conditions,
         'orConditions' => $this->orConditions,
         'in' => $this->in,
+        'notIn' => $this->notIn,
         'order' => $this->orderBy,
         'search' => $this->searchKeyword
       ] );
