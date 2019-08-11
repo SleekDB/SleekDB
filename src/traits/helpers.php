@@ -142,6 +142,11 @@
       return [];
     }
 
+    private function getDocumentByPath ( $file ) {
+      $data = @json_decode( @file_get_contents( $file ), true );
+      if ( $data !== false ) return $data;
+    }
+
     private function verifyWhereConditions ( $condition, $fieldValue, $value ) {
       // Check the type of rule.
       if ( $condition === '=' ) {
@@ -172,108 +177,115 @@
       $lastStoreId    = $this->getLastStoreId();
       $searchRank     = [];
       // Start collecting and filtering data.
-      for ( $i = 0; $i <= $lastStoreId; $i++ ) {
-        // Collect data of current iteration.
-        $data = $this->getStoreDocumentById( $i );
-        $document = false;
-        if ( ! empty( $data ) ) {
-          // Filter data found.
-          if ( empty( $this->conditions ) ) {
-            // Append all data of this store.
-            $document = $data;
-          } else {
-            // Append only passed data from this store.
-            $storePassed = true;
-            // Iterate each conditions.
-            foreach ( $this->conditions as $condition ) {
-              // Check for valid data from data source.
-              $validData = true;
-              $fieldValue = '';
-              try {
-                $fieldValue = $this->getNestedProperty( $condition[ 'fieldName' ], $data );
-              } catch( \Exception $e ) {
-                $validData   = false;
-                $storePassed = false;
-              }
-              if( $validData === true ) {
-                $storePassed = $this->verifyWhereConditions( $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] );
-              }
-            }
-            // Check if current store is updatable or not.
-            if ( $storePassed === true ) {
-              // Append data to the found array.
-              $document = $data;
-            } else {
-              // Check if a or-where condition will allow this document.
-              foreach ( $this->orConditions as $condition ) {
-                // Check for valid data from data source.
-                $validData = true;
-                $fieldValue = '';
-                try {
-                  $fieldValue = $this->getNestedProperty( $condition[ 'fieldName' ], $data );
-                } catch( \Exception $e ) {
-                  $validData   = false;
-                  $storePassed = false;
+      $storeDataPath = $this->storePath . 'data/';
+      if( $handle = opendir($storeDataPath) ) {
+        while ( false !== ($entry = readdir($handle)) ) {
+          if ($entry != "." && $entry != "..") {
+            $file = $storeDataPath . $entry;
+            $data = $this->getDocumentByPath( $file );
+            $document = false;
+            if ( ! empty( $data ) ) {
+              // Filter data found.
+              if ( empty( $this->conditions ) ) {
+                // Append all data of this store.
+                $document = $data;
+              } else {
+                // Append only passed data from this store.
+                $storePassed = true;
+                // Iterate each conditions.
+                foreach ( $this->conditions as $condition ) {
+                  // Check for valid data from data source.
+                  $validData = true;
+                  $fieldValue = '';
+                  try {
+                    $fieldValue = $this->getNestedProperty( $condition[ 'fieldName' ], $data );
+                  } catch( \Exception $e ) {
+                    $validData   = false;
+                    $storePassed = false;
+                  }
+                  if( $validData === true ) {
+                    $storePassed = $this->verifyWhereConditions( $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] );
+                  }
                 }
-                if( $validData === true ) {
-                  $storePassed = $this->verifyWhereConditions( $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] );
-                  if( $storePassed ) {
-                    // Append data to the found array.
-                    $document = $data;
+                // Check if current store is updatable or not.
+                if ( $storePassed === true ) {
+                  // Append data to the found array.
+                  $document = $data;
+                } else {
+                  // Check if a or-where condition will allow this document.
+                  foreach ( $this->orConditions as $condition ) {
+                    // Check for valid data from data source.
+                    $validData = true;
+                    $fieldValue = '';
+                    try {
+                      $fieldValue = $this->getNestedProperty( $condition[ 'fieldName' ], $data );
+                    } catch( \Exception $e ) {
+                      $validData   = false;
+                      $storePassed = false;
+                    }
+                    if( $validData === true ) {
+                      $storePassed = $this->verifyWhereConditions( $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] );
+                      if( $storePassed ) {
+                        // Append data to the found array.
+                        $document = $data;
+                        break;
+                      }
+                    }
+                  }
+                }
+              } // Completed condition checks.
+    
+              // IN clause.
+              if( $document && !empty($this->in) ) {
+                foreach ( $this->in as $inClause) {
+                  $validData = true;
+                  $fieldValue = '';
+                  try {
+                    $fieldValue = $this->getNestedProperty( $inClause[ 'fieldName' ], $data );
+                  } catch( \Exception $e ) {
+                    $validData = false;
+                    $document = false;
                     break;
+                  }
+                  if( $validData === true ) {
+                    if( !in_array( $fieldValue, $inClause[ 'value' ] ) ) {
+                      $document = false;
+                      break;
+                    }
                   }
                 }
               }
-            }
-          } // Completed condition checks.
-
-          // IN clause.
-          if( $document && !empty($this->in) ) {
-            foreach ( $this->in as $inClause) {
-              $validData = true;
-              $fieldValue = '';
-              try {
-                $fieldValue = $this->getNestedProperty( $inClause[ 'fieldName' ], $data );
-              } catch( \Exception $e ) {
-                $validData = false;
-                $document = false;
-                break;
-              }
-              if( $validData === true ) {
-                if( !in_array( $fieldValue, $inClause[ 'value' ] ) ) {
-                  $document = false;
-                  break;
+    
+              // notIn clause.
+              if ( $document && !empty($this->notIn) ) {
+                foreach ( $this->notIn as $notInClause) {
+                  $validData = true;
+                  $fieldValue = '';
+                  try {
+                    $fieldValue = $this->getNestedProperty( $notInClause[ 'fieldName' ], $data );
+                  } catch( \Exception $e ) {
+                    $validData = false;
+                    break;
+                  }
+                  if( $validData === true ) {
+                    if( in_array( $fieldValue, $notInClause[ 'value' ] ) ) {
+                      $document = false;
+                      break;
+                    }
+                  }
                 }
               }
-            }
-          }
-
-          // notIn clause.
-          if ( $document && !empty($this->notIn) ) {
-            foreach ( $this->notIn as $notInClause) {
-              $validData = true;
-              $fieldValue = '';
-              try {
-                $fieldValue = $this->getNestedProperty( $notInClause[ 'fieldName' ], $data );
-              } catch( \Exception $e ) {
-                $validData = false;
-                break;
-              }
-              if( $validData === true ) {
-                if( in_array( $fieldValue, $notInClause[ 'value' ] ) ) {
-                  $document = false;
-                  break;
-                }
+    
+              // Check if there is any document appendable.
+              if( $document ) {
+                $found[] = $document;
               }
             }
-          }
-
-          // Check if there is any document appendable.
-          if( $document ) {
-            $found[] = $document;
           }
         }
+        closedir( $handle );
       }
+
       if ( count( $found ) > 0 ) {
         // Check do we need to sort the data.
         if ( $this->orderBy[ 'order' ] !== false ) {
