@@ -18,6 +18,25 @@
       return $this;
     }
 
+    public function in ( $fieldName = '', $values = [] ) {
+      if ( empty( $fieldName ) ) throw new \Exception( 'Field name for in clause can not be empty.' );
+      $values = (array) $values;
+      $this->in[] = [
+        'fieldName' => $fieldName,
+        'value'     => $values
+      ];
+      return $this;
+    }
+
+    /*public function whereNotIn ( $fieldName = '', $values = [] ) {
+      if ( empty( $fieldName ) ) throw new \Exception( 'Field name in whereIn condition can not be empty.' );
+      $values = (array) $values;
+      foreach ($values as $value) {
+        $this->where( $fieldName, '!=', $value );
+      }
+      return $this;
+    }*/
+
     // Add or-where conditions to filter data.
     public function orWhere( $fieldName = '', $condition = '', $value ) {
       if ( empty( $fieldName ) ) throw new \Exception( 'Field name in orWhere condition can not be empty.' );
