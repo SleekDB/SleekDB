@@ -53,6 +53,8 @@
       $this->conditions = [];
       // Or conditions
       $this->orConditions = [];
+      // In clause
+      $this->in = [];
       // Set default group by value
       $this->orderBy = [
         'order' => false,
@@ -171,11 +173,12 @@
       for ( $i = 0; $i <= $lastStoreId; $i++ ) {
         // Collect data of current iteration.
         $data = $this->getStoreDocumentById( $i );
+        $document = false;
         if ( ! empty( $data ) ) {
           // Filter data found.
           if ( empty( $this->conditions ) ) {
             // Append all data of this store.
-            $found[] = $data;
+            $document = $data;
           } else {
             // Append only passed data from this store.
             $storePassed = true;
@@ -197,7 +200,7 @@
             // Check if current store is updatable or not.
             if ( $storePassed === true ) {
               // Append data to the found array.
-              $found[] = $data;
+              $document = $data;
             } else {
               // Check if a or-where condition will allow this document.
               foreach ( $this->orConditions as $condition ) {
@@ -214,12 +217,38 @@
                   $storePassed = $this->verifyWhereConditions( $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] );
                   if( $storePassed ) {
                     // Append data to the found array.
-                    $found[] = $data;
+                    $document = $data;
                     break;
                   }
                 }
               }
             }
+          } // Completed condition checks.
+
+          // IN clause.
+          if( $document && !empty($this->in) ) {
+            foreach ( $this->in as $inClause) {
+              $validData = true;
+              $fieldValue = '';
+              try {
+                $fieldValue = $this->getNestedProperty( $inClause[ 'fieldName' ], $data );
+              } catch( \Exception $e ) {
+                $validData   = false;
+                $document = false;
+                break;
+              }
+              if( $validData === true ) {
+                if( !in_array( $fieldValue, $inClause[ 'value' ] ) ) {
+                  $document = false;
+                  break;
+                }
+              }
+            }
+          }
+
+          // Check if there is any document appendable.
+          if( $document ) {
+            $found[] = $document;
           }
         }
       }
