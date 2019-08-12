@@ -39,33 +39,39 @@
         if ( !empty( $conf[ 'timeout' ] ) ) $timeout = (int) $conf[ 'timeout' ];
       }
       set_time_limit( $timeout );
+      // Control when to keep or delete the active query conditions. Delete conditions by default.
+      $this->shouldKeepConditions = false; 
     } // End of init()
 
     // Init data that SleekDB required to operate.
     private function initVariables() {
-      // Set empty results
-      $this->results = [];
-      // Set a default limit
-      $this->limit = 0;
-      // Set a default skip
-      $this->skip = 0;
-      // Set default conditions
-      $this->conditions = [];
-      // Or conditions
-      $this->orConditions = [];
-      // In clause conditions
-      $this->in = [];
-      // notIn clause conditions 
-      $this->notIn = [];
-      // Set default group by value
-      $this->orderBy = [
-        'order' => false,
-        'field' => '_id'
-      ];
-      // Set the default search keyword as an empty string.
-      $this->searchKeyword = '';
-      // Disable make cache by default.
-      $this->makeCache = false;
+      if(!$this->shouldKeepConditions) {
+        // Set empty results
+        $this->results = [];
+        // Set a default limit
+        $this->limit = 0;
+        // Set a default skip
+        $this->skip = 0;
+        // Set default conditions
+        $this->conditions = [];
+        // Or conditions
+        $this->orConditions = [];
+        // In clause conditions
+        $this->in = [];
+        // notIn clause conditions 
+        $this->notIn = [];
+        // Set default group by value
+        $this->orderBy = [
+          'order' => false,
+          'field' => '_id'
+        ];
+        // Set the default search keyword as an empty string.
+        $this->searchKeyword = '';
+        // Disable make cache by default.
+        $this->makeCache = false;
+        // Control when to keep or delete the active query conditions. Delete conditions by default.
+        $this->shouldKeepConditions = false;
+      }
     } // End of initVariables()
 
     // Initialize the auto cache settings.
