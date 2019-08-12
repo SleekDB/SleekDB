@@ -114,5 +114,11 @@
       return $this;
     }
 
+    // Keep the active query conditions.
+    public function keepConditions () {
+      $this->shouldKeepConditions = true;
+      return $this;
+    }
+
   }
   
