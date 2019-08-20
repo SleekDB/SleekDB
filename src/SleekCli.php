@@ -90,30 +90,29 @@ class SleekCli extends League\CLImate\CLImate {
         return $ini_array;
     }
 
-
     public function check_args() {
         $this->arguments->parse();
         foreach($this->args as $arg => $values) {
-            if($this->arguments->get($arg)) {
-                echo "$arg : {$this->arguments->get($arg)} \n";
+            if($arg_value = $this->arguments->get($arg)) {
+                echo "$arg : $arg_value \n";
                 switch($arg){
                     case 'delete-store':
-                        $this->sdb->store($this->arguments->get($arg), $this->data_dir)->deleteStore();
+                        $this->sdb->store($arg_value, $this->data_dir)->deleteStore();
                         break;
                     case 'create-store':
-                        $this->sdb->store($this->arguments->get($arg), $this->data_dir);
+                        $this->sdb->store($arg_value, $this->data_dir);
                         break;
                     case 'fetch':
-                        $store = $this->sdb->store($this->arguments->get($arg), $this->data_dir)->fetch();
-                        print_r('Store: ' . $store);
+                        $store = $this->sdb->store($arg_value, $this->data_dir)->fetch();
+                        $this->json($store);
                         break;  
                     case 'insert':
-                        $store = $this->sdb->store($this->arguments->get($arg), $this->data_dir);
+                        $store = $this->sdb->store($arg_value, $this->data_dir);
                         $data = json_decode( preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $this->arguments->get('data')), true );
                         $res = $store->insert($data);
                         break;
                     case 'delete-record':
-                        $store = $this->sdb->store($this->arguments->get($arg), $this->data_dir);
+                        $store = $this->sdb->store($arg_value, $this->data_dir);
                         $data = json_decode( preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $this->arguments->get('data')), true );
                         $res = $store->where($data['fieldName'], $data['condition'], $data['value'])->delete();
                         break;    
