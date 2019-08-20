@@ -19,7 +19,6 @@ class SleekCli extends League\CLImate\CLImate {
                 'prefix'       => 'c',
                 'longPrefix'   => 'create-store',
                 'description'  => 'Create a new store',
-                'defaultValue' => 'me_myself_i',
             ],
             'delete-store' => [
                 'prefix'      => 'd',
@@ -48,7 +47,7 @@ class SleekCli extends League\CLImate\CLImate {
             ],
             'data' => [
                 'longPrefix'  => 'data',
-                'description' => 'JSON object '
+                'description' => 'JSON object to insert a record'
             ],
             'list-stores' => [
                 'prefix'      => 'l',
@@ -57,12 +56,15 @@ class SleekCli extends League\CLImate\CLImate {
                 'noValue' => true
             ],
             'help' => [
+                'prefix'      => 'h',
                 'longPrefix'  => 'help',
                 'description' => 'Prints a usage statement',
-            ]
-            ];
-        $this->arguments->add($this->args);
+                'noValue' => true
 
+            ]
+        ];
+        
+        $this->arguments->add($this->args);
     }
 
     // create config.ini file
@@ -115,11 +117,12 @@ class SleekCli extends League\CLImate\CLImate {
                         $data = json_decode( preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $this->arguments->get('data')), true );
                         $res = $store->where($data['fieldName'], $data['condition'], $data['value'])->delete();
                         break;    
-
+                    case 'help':
+                        $this->usage();
+                        break;
                 }
             }
         }
     }
-
 }
 ?>

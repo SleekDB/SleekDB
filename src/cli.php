@@ -2,11 +2,10 @@
 <?php
 
 if ('cli' !== php_sapi_name()) {
-    return;
+    die('cli only.');
 } else {
     require_once('SleekCli.php');
-    $ini_array = parse_ini_file("config.ini");
-    $cli = new SleekCli($ini_array);
+    $cli = new SleekCli(parse_ini_file("config.ini"));
     $cli->check_args();
-    exit;
+    exit(0);
 }
