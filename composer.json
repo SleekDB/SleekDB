@@ -11,9 +11,11 @@
     }
   ],
   "require": {
-    "php": ">=5.4",
-    "league/climate": "^3.5"
+    "php": ">=5.4"
   },
+  "require-dev": {
+    "league/climate": "^3.5"
+    },
   "autoload": {
     "psr-4": {
       "SleekDB\\": "src/"
