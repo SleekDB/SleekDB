@@ -55,6 +55,11 @@ class SleekCli extends League\CLImate\CLImate {
                 'description' => 'List all stores in the data directory.',
                 'noValue' => true
             ],
+            'terminal' => [
+                'longPrefix'  => 'terminal',
+                'description' => 'Run CLI as terminal',
+                'noValue' => true
+            ],
             'help' => [
                 'prefix'      => 'h',
                 'longPrefix'  => 'help',
@@ -90,38 +95,62 @@ class SleekCli extends League\CLImate\CLImate {
         return $ini_array;
     }
 
-    public function check_args() {
-        $this->arguments->parse();
-        foreach($this->args as $arg => $values) {
-            if($arg_value = $this->arguments->get($arg)) {
-                echo "$arg : $arg_value \n";
-                switch($arg){
-                    case 'delete-store':
-                        $this->sdb->store($arg_value, $this->data_dir)->deleteStore();
-                        break;
-                    case 'create-store':
-                        $this->sdb->store($arg_value, $this->data_dir);
-                        break;
-                    case 'fetch':
-                        $store = $this->sdb->store($arg_value, $this->data_dir)->fetch();
-                        $this->json($store);
-                        break;  
-                    case 'insert':
-                        $store = $this->sdb->store($arg_value, $this->data_dir);
-                        $data = json_decode( preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $this->arguments->get('data')), true );
-                        $res = $store->insert($data);
-                        break;
-                    case 'delete-record':
-                        $store = $this->sdb->store($arg_value, $this->data_dir);
-                        $data = json_decode( preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $this->arguments->get('data')), true );
-                        $res = $store->where($data['fieldName'], $data['condition'], $data['value'])->delete();
-                        break;    
-                    case 'help':
-                        $this->usage();
-                        break;
-                }
+    public function terminal(){
+        $this->clear();
+        $input = $this->input('>>>');
+        $quit = false;
+
+        while( !$quit ) {
+            $input_val = $input->prompt();
+            if( $input_val == 'quit' ) {
+                $quit = true;
+            } else {
+                $i = explode(' ', $input_val);
+                $args = array_combine([$i[0]], [$i[1]]);
+                $this->check_args($args, true);
+            }
+        }
+        return;
+    }
+
+    public function check_args($args, $terminal = false) {
+        foreach($args as $arg => $value) {
+            
+            if( $terminal ) {
+                $arg_value = $value;
+            } elseif( !($arg_value = $this->arguments->get($arg)) ) {
+                break;
+            }
+
+            echo "$arg : $arg_value \n";
+            switch($arg){
+                case 'delete-store':
+                    $this->sdb->store($arg_value, $this->data_dir)->deleteStore();
+                    break;
+                case 'create-store':
+                    $this->sdb->store($arg_value, $this->data_dir);
+                    break;
+                case 'fetch':
+                    $store = $this->sdb->store($arg_value, $this->data_dir)->fetch();
+                    $this->json($store);
+                    break;  
+                case 'insert':
+                    $store = $this->sdb->store($arg_value, $this->data_dir);
+                    $data = json_decode( preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $this->arguments->get('data')), true );
+                    $res = $store->insert($data);
+                    break;
+                case 'delete-record':
+                    $store = $this->sdb->store($arg_value, $this->data_dir);
+                    $data = json_decode( preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $this->arguments->get('data')), true );
+                    $res = $store->where($data['fieldName'], $data['condition'], $data['value'])->delete();
+                    break;    
+                case 'help':
+                    $this->usage();
+                    break;
             }
         }
     }
 }
+
+
 ?>
