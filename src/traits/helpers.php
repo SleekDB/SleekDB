@@ -322,7 +322,11 @@
       if ( $storableJSON === false ) throw new \Exception( 'Unable to encode the data array, 
         please provide a valid PHP associative array' );
       // Define the store path
-      $storePath = $this->storePath . 'data/' . $id . '.json';
+        $dataDirectory = $this->storePath . 'data/';
+        $storePath = $dataDirectory . $id . '.json';
+      if (!is_dir($dataDirectory)){
+          mkdir($dataDirectory);
+      }
       if ( ! file_put_contents( $storePath, $storableJSON ) ) {
         throw new \Exception( "Unable to write the object file! Please check if PHP has write permission." );
       }
