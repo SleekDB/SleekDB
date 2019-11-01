@@ -40,7 +40,7 @@
       }
       set_time_limit( $timeout );
       // Control when to keep or delete the active query conditions. Delete conditions by default.
-      $this->shouldKeepConditions = false; 
+      $this->shouldKeepConditions = false;
     } // End of init()
 
     // Init data that SleekDB required to operate.
@@ -58,7 +58,7 @@
         $this->orConditions = [];
         // In clause conditions
         $this->in = [];
-        // notIn clause conditions 
+        // notIn clause conditions
         $this->notIn = [];
         // Set default group by value
         $this->orderBy = [
@@ -84,7 +84,7 @@
         $this->deleteCacheOnCreate = true;
       } else {
         $this->useCache = false;
-        // A flag that is used to check if cache should be empty 
+        // A flag that is used to check if cache should be empty
         // while create a new object in a store.
         $this->deleteCacheOnCreate = false;
       }
@@ -208,7 +208,7 @@
                     $storePassed = false;
                   }
                   if( $validData === true ) {
-                    $storePassed = $this->verifyWhereConditions( $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] );
+                    $storePassed = $storePassed && $this->verifyWhereConditions( $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] );
                   }
                 }
                 // Check if current store is updatable or not.
@@ -238,7 +238,7 @@
                   }
                 }
               } // Completed condition checks.
-    
+
               // IN clause.
               if( $document && !empty($this->in) ) {
                 foreach ( $this->in as $inClause) {
@@ -259,7 +259,7 @@
                   }
                 }
               }
-    
+
               // notIn clause.
               if ( $document && !empty($this->notIn) ) {
                 foreach ( $this->notIn as $notInClause) {
@@ -279,7 +279,7 @@
                   }
                 }
               }
-    
+
               // Check if there is any document appendable.
               if( $document ) {
                 $found[] = $document;
@@ -404,6 +404,5 @@
       }
       return $nodes;
     }
-    
+
   }
-  
