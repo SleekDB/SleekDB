@@ -36,6 +36,6 @@ Intentionally SleekDB is not desgined for heavy-load IO operations, it is desgin
 - **Easy to learn and implement**
   - SleekDB provides a very simple elegant 
     API to handle all of your data.
-- **Easily import/expert or backup data**
+- **Easily import/export or backup data**
 
 ## Visit our website https://sleekdb.github.io/ for documentation and getting started guide.
