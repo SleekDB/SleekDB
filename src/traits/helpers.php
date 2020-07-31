@@ -198,17 +198,19 @@
                 $storePassed = true;
                 // Iterate each conditions.
                 foreach ( $this->conditions as $condition ) {
-                  // Check for valid data from data source.
-                  $validData = true;
-                  $fieldValue = '';
-                  try {
-                    $fieldValue = $this->getNestedProperty( $condition[ 'fieldName' ], $data );
-                  } catch( \Exception $e ) {
-                    $validData   = false;
-                    $storePassed = false;
-                  }
-                  if( $validData === true ) {
-                    $storePassed = $this->verifyWhereConditions( $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] );
+                  if ( $storePassed === true ) {
+                    // Check for valid data from data source.
+                    $validData = true;
+                    $fieldValue = '';
+                    try {
+                      $fieldValue = $this->getNestedProperty( $condition[ 'fieldName' ], $data );
+                    } catch( \Exception $e ) {
+                      $validData   = false;
+                      $storePassed = false;
+                    }
+                    if( $validData === true ) {
+                      $storePassed = !!$this->verifyWhereConditions( $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] );
+                    }
                   }
                 }
                 // Check if current store is updatable or not.
