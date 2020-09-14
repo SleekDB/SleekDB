@@ -300,7 +300,7 @@
         }
         // If there was text search then we would also sort the result by search ranking.
         if ( ! empty( $this->searchKeyword ) ) {
-          $found = $this->performSerach( $found );
+          $found = $this->performSearch( $found );
         }
         // Skip data
         if ( $this->skip > 0 ) $found = array_slice( $found, $this->skip );
@@ -372,7 +372,7 @@
     }
 
     // Do a search in store objects. This is like a doing a full-text search.
-    private function performSerach( $data = [] ) {
+    private function performSearch($data = [] ) {
       if ( empty( $data ) ) return $data;
       $nodesRank = [];
       // Looping on each store data.

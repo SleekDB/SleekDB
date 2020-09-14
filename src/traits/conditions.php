@@ -79,7 +79,7 @@
 
     // Do a fulltext like search against more than one field.
     public function search( $field = '', $keyword = '' ) {
-      if ( empty( $field ) ) throw new \Exception( 'Cant perform search doe to no field name was provided' );
+      if ( empty( $field ) ) throw new \Exception( 'Cant perform search due to no field name was provided' );
       if ( ! empty( $keyword ) ) $this->searchKeyword = [
         'field'   => (array) $field,
         'keyword' => $keyword
@@ -94,7 +94,7 @@
       return $this;
     }
 
-    // Re-use existing cache of the query, if dosent exists 
+    // Re-use existing cache of the query, if doesnt exists
     // then would make new cache.
     public function useCache() {
       $this->useCache  = true;
