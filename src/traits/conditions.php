@@ -14,7 +14,7 @@
      * @throws EmptyConditionException
      * @throws EmptyFieldNameException
      */
-    public function where( $fieldName = '', $condition = '', $value ) {
+    public function where( $fieldName, $condition, $value ) {
       if ( empty( $fieldName ) ) throw new EmptyFieldNameException( 'Field name in where condition can not be empty.' );
       if ( empty( $condition ) ) throw new EmptyConditionException( 'The comparison operator can not be empty.' );
       // Append the condition into the conditions variable.
@@ -32,7 +32,7 @@
      * @return $this
      * @throws EmptyFieldNameException
      */
-    public function in ( $fieldName = '', $values = [] ) {
+    public function in ( $fieldName, $values = [] ) {
       if ( empty( $fieldName ) ) throw new EmptyFieldNameException( 'Field name for in clause can not be empty.' );
       $values = (array) $values;
       $this->in[] = [
@@ -48,7 +48,7 @@
      * @return $this
      * @throws EmptyFieldNameException
      */
-    public function notIn ( $fieldName = '', $values = [] ) {
+    public function notIn ( $fieldName, $values = [] ) {
       if ( empty( $fieldName ) ) throw new EmptyFieldNameException( 'Field name for notIn clause can not be empty.' );
       $values = (array) $values;
       $this->notIn[] = [
@@ -67,7 +67,7 @@
      * @throws EmptyConditionException
      * @throws EmptyFieldNameException
      */
-    public function orWhere( $fieldName = '', $condition = '', $value ) {
+    public function orWhere( $fieldName, $condition, $value ) {
       if ( empty( $fieldName ) ) throw new EmptyFieldNameException( 'Field name in orWhere condition can not be empty.' );
       if ( empty( $condition ) ) throw new EmptyConditionException( 'The comparison operator can not be empty.' );
       // Append the condition into the orConditions variable.
@@ -103,12 +103,12 @@
 
     /**
      * Set the sort order.
-     * @param false $order
+     * @param string $order "asc" or "desc"
      * @param string $orderBy
      * @return $this
      * @throws InvalidOrderException
      */
-    public function orderBy( $order = false, $orderBy = '_id' ) {
+    public function orderBy( $order, $orderBy = '_id' ) {
       // Validate order.
       $order = strtolower( $order );
       if ( ! in_array( $order, [ 'asc', 'desc' ] ) ) throw new InvalidOrderException( 'Invalid order found, please use "asc" or "desc" only.' );
@@ -126,7 +126,7 @@
      * @return $this
      * @throws EmptyFieldNameException
      */
-    public function search( $field = '', $keyword = '' ) {
+    public function search( $field, $keyword) {
       if ( empty( $field ) ) throw new EmptyFieldNameException( 'Cant perform search due to no field name was provided' );
       if ( ! empty( $keyword ) ) $this->searchKeyword = [
         'field'   => (array) $field,

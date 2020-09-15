@@ -15,11 +15,11 @@
      * SleekDB constructor.
      * Initialize the database.
      * @param string $dataDir
-     * @param bool $configurations
+     * @param array $configurations
      * @throws \IOException
      * @throws \InvalidConfigurationException
      */
-    function __construct( $dataDir = '', $configurations = false ) {
+    function __construct( $dataDir = '', $configurations = [] ) {
       // Define the root path of SleekDB.
       $this->root = __DIR__;
       // Add data dir.
@@ -30,16 +30,16 @@
 
     /**
      * Initialize the store.
-     * @param bool $storeName
+     * @param string $storeName
      * @param string $dataDir
-     * @param bool $options
+     * @param array $options
      * @return SleekDB
      * @throws \EmptyStoreNameException
      * @throws \IOException
      * @throws \InvalidConfigurationException
      */
-    public static function store( $storeName = false, $dataDir, $options = false ) {
-      if ( !$storeName OR empty( $storeName ) ) throw new \Exception( 'Store name was not valid' );
+    public static function store( $storeName, $dataDir, $options = [] ) {
+      if ( empty( $storeName ) ) throw new \EmptyStoreNameException( 'Store name was not valid' );
       $_dbInstance = new \SleekDB\SleekDB( $dataDir, $options );
       $_dbInstance->storeName = $storeName;
       // Boot store.
@@ -52,6 +52,7 @@
     /**
      * Read store objects.
      * @return array
+     * @throws \IndexNotFoundException
      */
     public function fetch() {
       $fetchedData = null;
@@ -74,14 +75,16 @@
      * The object is a plaintext JSON document.
      * @param array $storeData
      * @return array
+     * @throws \EmptyStoreDataException
      * @throws \IOException
+     * @throws \InvalidStoreDataException
      * @throws \JsonException
      */
-    public function insert( $storeData = false ) {
+    public function insert( $storeData ) {
       // Handle invalid data
-      if ( ! $storeData OR empty( $storeData ) ) throw new \Exception( 'No data found to store' );
+      if ( empty( $storeData ) ) throw new \EmptyStoreDataException( 'No data found to store' );
       // Make sure that the data is an array
-      if ( ! is_array( $storeData ) ) throw new \Exception( 'Storable data must an array' );
+      if ( ! is_array( $storeData ) ) throw new \InvalidStoreDataException( 'Storable data must an array' );
       $storeData = $this->writeInStore( $storeData );
       // Check do we need to wipe the cache for this store.
       if ( $this->deleteCacheOnCreate === true ) $this->_emptyAllCache();
@@ -90,16 +93,18 @@
 
     /**
      * Creates multiple objects in the store.
-     * @param array $storeData
+     * @param $storeData
      * @return array
+     * @throws \EmptyStoreDataException
      * @throws \IOException
+     * @throws \InvalidStoreDataException
      * @throws \JsonException
      */
-    public function insertMany( $storeData = false ) {
+    public function insertMany( $storeData ) {
       // Handle invalid data
-      if ( ! $storeData OR empty( $storeData ) ) throw new \Exception( 'No data found to insert in the store' );
+      if ( empty( $storeData ) ) throw new \EmptyStoreDataException( 'No data found to insert in the store' );
       // Make sure that the data is an array
-      if ( ! is_array( $storeData ) ) throw new \Exception( 'Data must be an array in order to insert in the store' );
+      if ( ! is_array( $storeData ) ) throw new \InvalidStoreDataException( 'Data must be an array in order to insert in the store' );
       // All results.
       $results = [];
       foreach ( $storeData as $key => $node ) {
@@ -111,11 +116,11 @@
     }
 
     /**
-     * Updates matched store objects.
-     * @param array $updateable
+     * @param $updatable
      * @return bool
+     * @throws \IndexNotFoundException
      */
-    public function update( $updateable ) {
+    public function update($updatable ) {
       // Find all store objects.
       $storeObjects = $this->findStoreDocuments();
       // If no store object found then return an empty array.
@@ -124,7 +129,7 @@
         return false;
       }
       foreach ( $storeObjects as $data ) {
-        foreach ( $updateable as $key => $value ) {
+        foreach ($updatable as $key => $value ) {
           // Do not update the _id reserved index of a store.
           if( $key != '_id' ) {
             $data[ $key ] = $value;
@@ -154,7 +159,7 @@
         foreach ( $storeObjects as $data ) {
           if ( ! unlink( $this->storePath . 'data/' . $data[ '_id' ] . '.json' ) ) {
             $this->initVariables(); // Reset state.
-            throw new \Exception( 
+            throw new \IOException(
               'Unable to delete storage file! 
               Location: "'.$this->storePath . 'data/' . $data[ '_id' ] . '.json'.'"' 
             );

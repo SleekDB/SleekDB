@@ -12,7 +12,7 @@
      * @throws IOException
      * @throws InvalidConfigurationException
      */
-    private function init( $conf = false ) {
+    private function init( $conf ) {
       // Check for valid configurations.
       if( empty( $conf ) OR !is_array( $conf ) ) throw new InvalidConfigurationException( 'Invalid configurations was found.' );
       // Check if the 'data_directory' was provided.
@@ -401,25 +401,26 @@
 
     /**
      * Get nested properties of a store object.
-     * @param string $field
+     * @param string $fieldName
      * @param array $data
-     * @return array
+     * @return array|mixed
+     * @throws EmptyFieldNameException
      * @throws IndexNotFoundException
+     * @throws InvalidDataException
      */
-    private function getNestedProperty( $field = '', $data ) {
-      if( is_array( $data ) AND ! empty( $field ) ) {
-        // Dive deep step by step.
-        foreach( explode( '.', $field ) as $i ) {
-          // If the field do not exists then insert an empty string.
-          if ( ! isset( $data[ $i ] ) ) {
-            $data = '';
-            throw new IndexNotFoundException( '"'.$i.'" index was not found in the provided data array' );
-            break;
-          } else {
-            // The index is valid, collect the data.
-            $data = $data[ $i ];
-          }
+    private function getNestedProperty($fieldName, $data ) {
+      if( !is_array( $data ) ) throw new InvalidDataException('data has to be an array');
+      if(empty( $fieldName )) throw new EmptyFieldNameException('fieldName is not allowed to be empty');
+
+      // Dive deep step by step.
+      foreach(explode( '.', $fieldName ) as $i ) {
+        // If the field do not exists then insert an empty string.
+        if ( ! isset( $data[ $i ] ) ) {
+          $data = '';
+          throw new IndexNotFoundException( '"'.$i.'" index was not found in the provided data array' );
         }
+        // The index is valid, collect the data.
+        $data = $data[ $i ];
       }
       return $data;
     }

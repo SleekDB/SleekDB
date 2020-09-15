@@ -18,3 +18,10 @@ if(!class_exists('JsonException')){
 
 class IndexNotFoundException extends \Exception {}
 
+class EmptyStoreName extends \Exception {}
+
+class EmptyStoreDataException extends \Exception {}
+
+class InvalidStoreDataException extends \Exception {}
+class InvalidDataException extends \Exception {}
+
