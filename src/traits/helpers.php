@@ -9,11 +9,11 @@
 
     private function init( $conf = false ) {
       // Check for valid configurations.
-      if( empty( $conf ) OR !is_array( $conf ) ) throw new \Exception( 'Invalid configurations was found.' );
+      if( empty( $conf ) OR !is_array( $conf ) ) throw new InvalidConfigurationException( 'Invalid configurations was found.' );
       // Check if the 'data_directory' was provided.
-      if ( !isset( $conf[ 'data_directory' ] ) ) throw new \Exception( '"data_directory" was not provided in the configurations.' );
+      if ( !isset( $conf[ 'data_directory' ] ) ) throw new InvalidConfigurationException( '"data_directory" was not provided in the configurations.' );
       // Check if data_directory is empty.
-      if ( empty( $conf[ 'data_directory' ] ) ) throw new \Exception( '"data_directory" cant be empty in the configurations.' );
+      if ( empty( $conf[ 'data_directory' ] ) ) throw new InvalidConfigurationException( '"data_directory" cant be empty in the configurations.' );
       // Prepare the data directory.
       $dataDir = trim( $conf[ 'data_directory' ] );
       // Handle directory path ending.
@@ -21,12 +21,12 @@
       // Check if the data_directory exists.
       if ( !file_exists( $dataDir ) ) {
         // The directory was not found, create one.
-        if ( !mkdir( $dataDir, 0777, true ) ) throw new \Exception( 'Unable to create the data directory at ' . $dataDir );
+        if ( !mkdir( $dataDir, 0777, true ) ) throw new IOException( 'Unable to create the data directory at ' . $dataDir );
       }
       // Check if PHP has write permission in that directory.
-      if ( !is_writable( $dataDir ) ) throw new \Exception( 'Data directory is not writable at "' . $dataDir . '." Please change data directory permission.' );
+      if ( !is_writable( $dataDir ) ) throw new IOException( 'Data directory is not writable at "' . $dataDir . '." Please change data directory permission.' );
       // Finally check if the directory is readable by PHP.
-      if ( !is_readable( $dataDir ) ) throw new \Exception( 'Data directory is not readable at "' . $dataDir . '." Please change data directory permission.' );
+      if ( !is_readable( $dataDir ) ) throw new IOException( 'Data directory is not readable at "' . $dataDir . '." Please change data directory permission.' );
       // Set the data directory.
       $this->dataDirectory = $dataDir;
       // Set auto cache settings.
@@ -94,7 +94,7 @@
     private function bootStore() {
       $store = trim( $this->storeName );
       // Validate the store name.
-      if ( !$store || empty( $store ) ) throw new \Exception( 'Invalid store name was found' );
+      if ( !$store || empty( $store ) ) throw new EmptyStoreNameException( 'Invalid store name was found' );
       // Prepare store name.
       if ( substr( $store, -1 ) !== '/' ) $store = $store . '/';
       // Store directory path.
@@ -102,18 +102,18 @@
       // Check if the store exists.
       if ( !file_exists( $this->storePath ) ) {
         // The directory was not found, create one with cache directory.
-        if ( !mkdir( $this->storePath, 0777, true ) ) throw new \Exception( 'Unable to create the store path at ' . $this->storePath );
+        if ( !mkdir( $this->storePath, 0777, true ) ) throw new IOException( 'Unable to create the store path at ' . $this->storePath );
         // Create the cache directory.
-        if ( !mkdir( $this->storePath . 'cache', 0777, true ) ) throw new \Exception( 'Unable to create the store\'s cache directory at ' . $this->storePath . 'cache' );
+        if ( !mkdir( $this->storePath . 'cache', 0777, true ) ) throw new IOException( 'Unable to create the store\'s cache directory at ' . $this->storePath . 'cache' );
         // Create the data directory.
-        if ( !mkdir( $this->storePath . 'data', 0777, true ) ) throw new \Exception( 'Unable to create the store\'s data directory at ' . $this->storePath . 'data' );
+        if ( !mkdir( $this->storePath . 'data', 0777, true ) ) throw new IOException( 'Unable to create the store\'s data directory at ' . $this->storePath . 'data' );
         // Create the store counter file.
-        if ( !file_put_contents( $this->storePath . '_cnt.sdb', '0' ) ) throw new \Exception( 'Unable to create the system counter for the store! Please check write permission' );
+        if ( !file_put_contents( $this->storePath . '_cnt.sdb', '0' ) ) throw new IOException( 'Unable to create the system counter for the store! Please check write permission' );
       }
       // Check if PHP has write permission in that directory.
-      if ( !is_writable( $this->storePath ) ) throw new \Exception( 'Store path is not writable at "' . $this->storePath . '." Please change store path permission.' );
+      if ( !is_writable( $this->storePath ) ) throw new IOException( 'Store path is not writable at "' . $this->storePath . '." Please change store path permission.' );
       // Finally check if the directory is readable by PHP.
-      if ( !is_readable( $this->storePath ) ) throw new \Exception( 'Store path is not readable at "' . $this->storePath . '." Please change store path permission.' );
+      if ( !is_readable( $this->storePath ) ) throw new IOException( 'Store path is not readable at "' . $this->storePath . '." Please change store path permission.' );
     }
 
     // Returns a new and unique store object ID, by calling this method it would also
@@ -315,18 +315,18 @@
       // Cast to array
       $storeData = (array) $storeData;
       // Check if it has _id key
-      if ( isset( $storeData[ '_id' ] ) ) throw new \Exception( 'The _id index is reserved by SleekDB, please delete the _id key and try again' );
+      if ( isset( $storeData[ '_id' ] ) ) throw new IdNotAllowedException( 'The _id index is reserved by SleekDB, please delete the _id key and try again' );
       $id = $this->getStoreId();
       // Add the system ID with the store data array.
       $storeData[ '_id' ] = $id;
       // Prepare storable data
       $storableJSON = json_encode( $storeData );
-      if ( $storableJSON === false ) throw new \Exception( 'Unable to encode the data array, 
+      if ( $storableJSON === false ) throw new JsonException( 'Unable to encode the data array, 
         please provide a valid PHP associative array' );
       // Define the store path
       $storePath = $this->storePath . 'data/' . $id . '.json';
       if ( ! file_put_contents( $storePath, $storableJSON ) ) {
-        throw new \Exception( "Unable to write the object file! Please check if PHP has write permission." );
+        throw new IOException( "Unable to write the object file! Please check if PHP has write permission." );
       }
       return $storeData;
     }
@@ -360,7 +360,7 @@
           // If the field do not exists then insert an empty string.
           if ( ! isset( $data[ $i ] ) ) {
             $data = '';
-            throw new \Exception( '"'.$i.'" index was not found in the provided data array' );
+            throw new IndexNotFoundException( '"'.$i.'" index was not found in the provided data array' );
             break;
           } else {
             // The index is valid, collect the data.

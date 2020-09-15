@@ -2,6 +2,7 @@
 
   namespace SleekDB;
 
+  require_once __DIR__ . '/classes/exceptions.php';
   require_once __DIR__ . '/traits/helpers.php';
   require_once __DIR__ . '/traits/conditions.php';
   require_once __DIR__ . '/traits/caching.php';

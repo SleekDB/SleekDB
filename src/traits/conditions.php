@@ -7,8 +7,8 @@
 
     // Add conditions to filter data.
     public function where( $fieldName = '', $condition = '', $value ) {
-      if ( empty( $fieldName ) ) throw new \Exception( 'Field name in where condition can not be empty.' );
-      if ( empty( $condition ) ) throw new \Exception( 'The comparison operator can not be empty.' );
+      if ( empty( $fieldName ) ) throw new EmptyFieldNameException( 'Field name in where condition can not be empty.' );
+      if ( empty( $condition ) ) throw new EmptyConditionException( 'The comparison operator can not be empty.' );
       // Append the condition into the conditions variable.
       $this->conditions[] = [
         'fieldName' => $fieldName,
@@ -19,7 +19,7 @@
     }
 
     public function in ( $fieldName = '', $values = [] ) {
-      if ( empty( $fieldName ) ) throw new \Exception( 'Field name for in clause can not be empty.' );
+      if ( empty( $fieldName ) ) throw new EmptyFieldNameException( 'Field name for in clause can not be empty.' );
       $values = (array) $values;
       $this->in[] = [
         'fieldName' => $fieldName,
@@ -29,7 +29,7 @@
     }
 
     public function notIn ( $fieldName = '', $values = [] ) {
-      if ( empty( $fieldName ) ) throw new \Exception( 'Field name for notIn clause can not be empty.' );
+      if ( empty( $fieldName ) ) throw new EmptyFieldNameException( 'Field name for notIn clause can not be empty.' );
       $values = (array) $values;
       $this->notIn[] = [
         'fieldName' => $fieldName,
@@ -40,8 +40,8 @@
 
     // Add or-where conditions to filter data.
     public function orWhere( $fieldName = '', $condition = '', $value ) {
-      if ( empty( $fieldName ) ) throw new \Exception( 'Field name in orWhere condition can not be empty.' );
-      if ( empty( $condition ) ) throw new \Exception( 'The comparison operator can not be empty.' );
+      if ( empty( $fieldName ) ) throw new EmptyFieldNameException( 'Field name in orWhere condition can not be empty.' );
+      if ( empty( $condition ) ) throw new EmptyConditionException( 'The comparison operator can not be empty.' );
       // Append the condition into the orConditions variable.
       $this->orConditions[] = [
         'fieldName' => $fieldName,
@@ -69,7 +69,7 @@
     public function orderBy( $order = false, $orderBy = '_id' ) {
       // Validate order.
       $order = strtolower( $order );
-      if ( ! in_array( $order, [ 'asc', 'desc' ] ) ) throw new \Exception( 'Invalid order found, please use "asc" or "desc" only.' );
+      if ( ! in_array( $order, [ 'asc', 'desc' ] ) ) throw new InvalidOrderException( 'Invalid order found, please use "asc" or "desc" only.' );
       $this->orderBy = [
         'order' => $order,
         'field' => $orderBy
@@ -79,7 +79,7 @@
 
     // Do a fulltext like search against more than one field.
     public function search( $field = '', $keyword = '' ) {
-      if ( empty( $field ) ) throw new \Exception( 'Cant perform search due to no field name was provided' );
+      if ( empty( $field ) ) throw new EmptyFieldNameException( 'Cant perform search due to no field name was provided' );
       if ( ! empty( $keyword ) ) $this->searchKeyword = [
         'field'   => (array) $field,
         'keyword' => $keyword
