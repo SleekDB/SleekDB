@@ -121,7 +121,7 @@
 
     /**
      * Do a fulltext like search against more than one field.
-     * @param string $field
+     * @param string|array $field one fieldName or multiple fieldNames as an array
      * @param string $keyword
      * @return $this
      * @throws EmptyFieldNameException
