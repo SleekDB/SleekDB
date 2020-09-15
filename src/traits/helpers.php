@@ -153,6 +153,7 @@
       if ( file_exists( $counterPath ) ) {
         return (int) file_get_contents( $counterPath );
       }
+      return 0;
     }
 
     /**
@@ -174,8 +175,7 @@
      * @return mixed
      */
     private function getDocumentByPath ( $file ) {
-      $data = @json_decode( @file_get_contents( $file ), true );
-      if ( $data !== false ) return $data;
+      return @json_decode( @file_get_contents( $file ), true );
     }
 
     /**
@@ -209,8 +209,8 @@
     }
 
     /**
-     * Find store objects with conditions, sorting order, skip and limits.
      * @return array
+     * @throws IndexNotFoundException
      */
     private function findStoreDocuments() {
       $found = [];
@@ -403,7 +403,7 @@
      * Get nested properties of a store object.
      * @param string $field
      * @param array $data
-     * @return array|mixed
+     * @return array
      * @throws IndexNotFoundException
      */
     private function getNestedProperty( $field = '', $data ) {
@@ -420,14 +420,14 @@
             $data = $data[ $i ];
           }
         }
-        return $data;
       }
+      return $data;
     }
 
     /**
      * Do a search in store objects. This is like a doing a full-text search.
      * @param array $data
-     * @return array|mixed
+     * @return array
      */
     private function performSearch($data = [] ) {
       if ( empty( $data ) ) return $data;
