@@ -5,7 +5,15 @@
    */
   trait ConditionsTrait {
 
-    // Add conditions to filter data.
+    /**
+     * Add conditions to filter data.
+     * @param string $fieldName
+     * @param string $condition
+     * @param mixed $value
+     * @return $this
+     * @throws EmptyConditionException
+     * @throws EmptyFieldNameException
+     */
     public function where( $fieldName = '', $condition = '', $value ) {
       if ( empty( $fieldName ) ) throw new EmptyFieldNameException( 'Field name in where condition can not be empty.' );
       if ( empty( $condition ) ) throw new EmptyConditionException( 'The comparison operator can not be empty.' );
@@ -18,6 +26,12 @@
       return $this;
     }
 
+    /**
+     * @param string $fieldName
+     * @param array $values
+     * @return $this
+     * @throws EmptyFieldNameException
+     */
     public function in ( $fieldName = '', $values = [] ) {
       if ( empty( $fieldName ) ) throw new EmptyFieldNameException( 'Field name for in clause can not be empty.' );
       $values = (array) $values;
@@ -28,6 +42,12 @@
       return $this;
     }
 
+    /**
+     * @param string $fieldName
+     * @param array $values
+     * @return $this
+     * @throws EmptyFieldNameException
+     */
     public function notIn ( $fieldName = '', $values = [] ) {
       if ( empty( $fieldName ) ) throw new EmptyFieldNameException( 'Field name for notIn clause can not be empty.' );
       $values = (array) $values;
@@ -38,7 +58,15 @@
       return $this;
     }
 
-    // Add or-where conditions to filter data.
+    /**
+     * Add or-where conditions to filter data.
+     * @param string $fieldName
+     * @param string $condition
+     * @param mixed $value
+     * @return $this
+     * @throws EmptyConditionException
+     * @throws EmptyFieldNameException
+     */
     public function orWhere( $fieldName = '', $condition = '', $value ) {
       if ( empty( $fieldName ) ) throw new EmptyFieldNameException( 'Field name in orWhere condition can not be empty.' );
       if ( empty( $condition ) ) throw new EmptyConditionException( 'The comparison operator can not be empty.' );
@@ -51,21 +79,35 @@
       return $this;
     }
 
-    // Set the amount of data record to skip.
+    /**
+     * Set the amount of data record to skip.
+     * @param int $skip
+     * @return $this
+     */
     public function skip( $skip = 0 ) {
       if ( $skip === false ) $skip = 0;
       $this->skip = (int) $skip;
       return $this;
     }
 
-    // Set the amount of data record to limit.
+    /**
+     * Set the amount of data record to limit.
+     * @param int $limit
+     * @return $this
+     */
     public function limit( $limit = 0 ) {
       if ( $limit === false ) $limit = 0;
       $this->limit = (int) $limit;
       return $this;
     }
 
-    // Set the sort order.
+    /**
+     * Set the sort order.
+     * @param false $order
+     * @param string $orderBy
+     * @return $this
+     * @throws InvalidOrderException
+     */
     public function orderBy( $order = false, $orderBy = '_id' ) {
       // Validate order.
       $order = strtolower( $order );
@@ -77,7 +119,13 @@
       return $this;
     }
 
-    // Do a fulltext like search against more than one field.
+    /**
+     * Do a fulltext like search against more than one field.
+     * @param string $field
+     * @param string $keyword
+     * @return $this
+     * @throws EmptyFieldNameException
+     */
     public function search( $field = '', $keyword = '' ) {
       if ( empty( $field ) ) throw new EmptyFieldNameException( 'Cant perform search due to no field name was provided' );
       if ( ! empty( $keyword ) ) $this->searchKeyword = [
@@ -87,34 +135,49 @@
       return $this;
     }
 
-    // Re-generate the cache for the query.
+    /**
+     * Re-generate the cache for the query.
+     * @return $this
+     */
     public function makeCache() {
       $this->makeCache = true;
       $this->useCache  = false;
       return $this;
     }
 
-    // Re-use existing cache of the query, if doesnt exists
-    // then would make new cache.
+    /**
+     * Re-use existing cache of the query, if doesnt exists
+     * then would make new cache.
+     * @return $this
+     */
     public function useCache() {
       $this->useCache  = true;
       $this->makeCache = false;
       return $this;
     }
 
-    // Delete cache for the current query.
+    /**
+     * Delete cache for the current query.
+     * @return $this
+     */
     public function deleteCache() {
       $this->_deleteCache();
       return $this;
     }
 
-    // Delete all cache of the current store.
+    /**
+     * Delete all cache of the current store.
+     * @return $this
+     */
     public function deleteAllCache() {
       $this->_emptyAllCache();
       return $this;
     }
 
-    // Keep the active query conditions.
+    /**
+     * Keep the active query conditions.
+     * @return $this
+     */
     public function keepConditions () {
       $this->shouldKeepConditions = true;
       return $this;

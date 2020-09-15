@@ -7,6 +7,11 @@
    */
   trait HelpersTrait {
 
+    /**
+     * @param array $conf
+     * @throws IOException
+     * @throws InvalidConfigurationException
+     */
     private function init( $conf = false ) {
       // Check for valid configurations.
       if( empty( $conf ) OR !is_array( $conf ) ) throw new InvalidConfigurationException( 'Invalid configurations was found.' );
@@ -43,7 +48,9 @@
       $this->shouldKeepConditions = false; 
     } // End of init()
 
-    // Init data that SleekDB required to operate.
+    /**
+     * Init data that SleekDB required to operate.
+     */
     private function initVariables() {
       if(!$this->shouldKeepConditions) {
         // Set empty results
@@ -74,7 +81,10 @@
       }
     } // End of initVariables()
 
-    // Initialize the auto cache settings.
+    /**
+     * Initialize the auto cache settings.
+     * @param bool $autoCache
+     */
     private function initAutoCache ( $autoCache = true ) {
       // Decide the cache status.
       if ( $autoCache === true ) {
@@ -90,7 +100,11 @@
       }
     }
 
-    // Method to boot a store.
+    /**
+     * Method to boot a store.
+     * @throws EmptyStoreNameException
+     * @throws IOException
+     */
     private function bootStore() {
       $store = trim( $this->storeName );
       // Validate the store name.
@@ -130,7 +144,10 @@
       return $counter;
     }
 
-    // Return the last created store object ID.
+    /**
+     * Return the last created store object ID.
+     * @return int
+     */
     private function getLastStoreId() {
       $counterPath = $this->storePath . '_cnt.sdb';
       if ( file_exists( $counterPath ) ) {
@@ -138,7 +155,11 @@
       }
     }
 
-    // Get a store by its system id. "_id"
+    /**
+     * Get a store by its system id. "_id"
+     * @param $id
+     * @return array|mixed
+     */
     private function getStoreDocumentById( $id ) {
       $store = $this->storePath . 'data/' . $id . '.json';
       if ( file_exists( $store ) ) {
@@ -148,11 +169,21 @@
       return [];
     }
 
+    /**
+     * @param string $file
+     * @return mixed
+     */
     private function getDocumentByPath ( $file ) {
       $data = @json_decode( @file_get_contents( $file ), true );
       if ( $data !== false ) return $data;
     }
 
+    /**
+     * @param string $condition
+     * @param mixed $fieldValue
+     * @param mixed $value
+     * @return bool
+     */
     private function verifyWhereConditions ( $condition, $fieldValue, $value ) {
       // Check the type of rule.
       if ( $condition === '=' ) {
@@ -177,7 +208,10 @@
       return true;
     }
 
-    // Find store objects with conditions, sorting order, skip and limits.
+    /**
+     * Find store objects with conditions, sorting order, skip and limits.
+     * @return array
+     */
     private function findStoreDocuments() {
       $found = [];
       // Start collecting and filtering data.
@@ -310,7 +344,13 @@
       return $found;
     }
 
-    // Writes an object in a store.
+    /**
+     * Writes an object in a store.
+     * @param $storeData
+     * @return array
+     * @throws IOException
+     * @throws JsonException
+     */
     private function writeInStore( $storeData ) {
       // Cast to array
       $storeData = (array) $storeData;
@@ -331,7 +371,14 @@
       return $storeData;
     }
 
-    // Sort store objects.
+    /**
+     * Sort store objects.
+     * @param $field
+     * @param $data
+     * @param string $order
+     * @return array
+     * @throws IndexNotFoundException
+     */
     private function sortArray( $field, $data, $order = 'ASC' ) {
       $dryData = [];
       // Check if data is an array.
@@ -352,7 +399,13 @@
       return $finalArray;
     }
 
-    // Get nested properties of a store object.
+    /**
+     * Get nested properties of a store object.
+     * @param string $field
+     * @param array $data
+     * @return array|mixed
+     * @throws IndexNotFoundException
+     */
     private function getNestedProperty( $field = '', $data ) {
       if( is_array( $data ) AND ! empty( $field ) ) {
         // Dive deep step by step.
@@ -371,7 +424,11 @@
       }
     }
 
-    // Do a search in store objects. This is like a doing a full-text search.
+    /**
+     * Do a search in store objects. This is like a doing a full-text search.
+     * @param array $data
+     * @return array|mixed
+     */
     private function performSearch($data = [] ) {
       if ( empty( $data ) ) return $data;
       $nodesRank = [];

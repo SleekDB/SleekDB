@@ -11,7 +11,14 @@
 
     use \HelpersTrait, \ConditionsTrait, \CacheTraits;
 
-    // Initialize the database.
+    /**
+     * SleekDB constructor.
+     * Initialize the database.
+     * @param string $dataDir
+     * @param bool $configurations
+     * @throws \IOException
+     * @throws \InvalidConfigurationException
+     */
     function __construct( $dataDir = '', $configurations = false ) {
       // Define the root path of SleekDB.
       $this->root = __DIR__;
@@ -21,7 +28,16 @@
       $this->init( $configurations );
     }
 
-    // Initialize the store.
+    /**
+     * Initialize the store.
+     * @param bool $storeName
+     * @param string $dataDir
+     * @param bool $options
+     * @return SleekDB
+     * @throws \EmptyStoreNameException
+     * @throws \IOException
+     * @throws \InvalidConfigurationException
+     */
     public static function store( $storeName = false, $dataDir, $options = false ) {
       if ( !$storeName OR empty( $storeName ) ) throw new \Exception( 'Store name was not valid' );
       $_dbInstance = new \SleekDB\SleekDB( $dataDir, $options );
@@ -33,7 +49,10 @@
       return $_dbInstance;
     }
 
-    // Read store objects.
+    /**
+     * Read store objects.
+     * @return array
+     */
     public function fetch() {
       $fetchedData = null;
       // Check if data should be provided from the cache.
@@ -50,8 +69,14 @@
       return $fetchedData;
     }
 
-    // Creates a new object in the store.
-    // The object is a plaintext JSON document.
+    /**
+     * Creates a new object in the store.
+     * The object is a plaintext JSON document.
+     * @param array $storeData
+     * @return array
+     * @throws \IOException
+     * @throws \JsonException
+     */
     public function insert( $storeData = false ) {
       // Handle invalid data
       if ( ! $storeData OR empty( $storeData ) ) throw new \Exception( 'No data found to store' );
@@ -63,7 +88,13 @@
       return $storeData;
     }
 
-    // Creates multiple objects in the store.
+    /**
+     * Creates multiple objects in the store.
+     * @param array $storeData
+     * @return array
+     * @throws \IOException
+     * @throws \JsonException
+     */
     public function insertMany( $storeData = false ) {
       // Handle invalid data
       if ( ! $storeData OR empty( $storeData ) ) throw new \Exception( 'No data found to insert in the store' );
@@ -79,7 +110,11 @@
       return $results;
     }
 
-    // Updates matched store objects.
+    /**
+     * Updates matched store objects.
+     * @param array $updateable
+     * @return bool
+     */
     public function update( $updateable ) {
       // Find all store objects.
       $storeObjects = $this->findStoreDocuments();
@@ -107,7 +142,11 @@
       return true;
     }
 
-    // Deletes matched store objects.
+    /**
+     * Deletes matched store objects.
+     * @return bool
+     * @throws \Exception
+     */
     public function delete() {
       // Find all store objects.
       $storeObjects = $this->findStoreDocuments();
@@ -133,7 +172,10 @@
       }
     }
 
-    // Deletes a store and wipes all the data and cache it contains.
+    /**
+     * Deletes a store and wipes all the data and cache it contains.
+     * @return bool
+     */
     public function deleteStore() {
       $it = new \RecursiveDirectoryIterator( $this->storePath, \RecursiveDirectoryIterator::SKIP_DOTS );
       $files = new \RecursiveIteratorIterator( $it, \RecursiveIteratorIterator::CHILD_FIRST );
