@@ -2,6 +2,7 @@
 
   namespace SleekDB;
 
+  require_once __DIR__ . '/classes/exceptions.php';
   require_once __DIR__ . '/traits/helpers.php';
   require_once __DIR__ . '/traits/conditions.php';
   require_once __DIR__ . '/traits/caching.php';
@@ -10,8 +11,15 @@
 
     use \HelpersTrait, \ConditionsTrait, \CacheTraits;
 
-    // Initialize the database.
-    function __construct( $dataDir = '', $configurations = false ) {
+    /**
+     * SleekDB constructor.
+     * Initialize the database.
+     * @param string $dataDir
+     * @param array $configurations
+     * @throws \IOException
+     * @throws \InvalidConfigurationException
+     */
+    function __construct( $dataDir = '', $configurations = [] ) {
       // Define the root path of SleekDB.
       $this->root = __DIR__;
       // Add data dir.
@@ -20,9 +28,18 @@
       $this->init( $configurations );
     }
 
-    // Initialize the store.
-    public static function store( $storeName = false, $dataDir, $options = false ) {
-      if ( !$storeName OR empty( $storeName ) ) throw new \Exception( 'Store name was not valid' );
+    /**
+     * Initialize the store.
+     * @param string $storeName
+     * @param string $dataDir
+     * @param array $options
+     * @return SleekDB
+     * @throws \EmptyStoreNameException
+     * @throws \IOException
+     * @throws \InvalidConfigurationException
+     */
+    public static function store( $storeName, $dataDir, $options = [] ) {
+      if ( empty( $storeName ) ) throw new \EmptyStoreNameException( 'Store name was not valid' );
       $_dbInstance = new \SleekDB\SleekDB( $dataDir, $options );
       $_dbInstance->storeName = $storeName;
       // Boot store.
@@ -32,7 +49,11 @@
       return $_dbInstance;
     }
 
-    // Read store objects.
+    /**
+     * Read store objects.
+     * @return array
+     * @throws \IndexNotFoundException
+     */
     public function fetch() {
       $fetchedData = null;
       // Check if data should be provided from the cache.
@@ -49,25 +70,41 @@
       return $fetchedData;
     }
 
-    // Creates a new object in the store.
-    // The object is a plaintext JSON document.
-    public function insert( $storeData = false ) {
+    /**
+     * Creates a new object in the store.
+     * The object is a plaintext JSON document.
+     * @param array $storeData
+     * @return array
+     * @throws \EmptyStoreDataException
+     * @throws \IOException
+     * @throws \InvalidStoreDataException
+     * @throws \JsonException
+     */
+    public function insert( $storeData ) {
       // Handle invalid data
-      if ( ! $storeData OR empty( $storeData ) ) throw new \Exception( 'No data found to store' );
+      if ( empty( $storeData ) ) throw new \EmptyStoreDataException( 'No data found to store' );
       // Make sure that the data is an array
-      if ( ! is_array( $storeData ) ) throw new \Exception( 'Storable data must an array' );
+      if ( ! is_array( $storeData ) ) throw new \InvalidStoreDataException( 'Storable data must an array' );
       $storeData = $this->writeInStore( $storeData );
       // Check do we need to wipe the cache for this store.
       if ( $this->deleteCacheOnCreate === true ) $this->_emptyAllCache();
       return $storeData;
     }
 
-    // Creates multiple objects in the store.
-    public function insertMany( $storeData = false ) {
+    /**
+     * Creates multiple objects in the store.
+     * @param $storeData
+     * @return array
+     * @throws \EmptyStoreDataException
+     * @throws \IOException
+     * @throws \InvalidStoreDataException
+     * @throws \JsonException
+     */
+    public function insertMany( $storeData ) {
       // Handle invalid data
-      if ( ! $storeData OR empty( $storeData ) ) throw new \Exception( 'No data found to insert in the store' );
+      if ( empty( $storeData ) ) throw new \EmptyStoreDataException( 'No data found to insert in the store' );
       // Make sure that the data is an array
-      if ( ! is_array( $storeData ) ) throw new \Exception( 'Data must be an array in order to insert in the store' );
+      if ( ! is_array( $storeData ) ) throw new \InvalidStoreDataException( 'Data must be an array in order to insert in the store' );
       // All results.
       $results = [];
       foreach ( $storeData as $key => $node ) {
@@ -78,8 +115,12 @@
       return $results;
     }
 
-    // Updates matched store objects.
-    public function update( $updateable ) {
+    /**
+     * @param $updatable
+     * @return bool
+     * @throws \IndexNotFoundException
+     */
+    public function update($updatable ) {
       // Find all store objects.
       $storeObjects = $this->findStoreDocuments();
       // If no store object found then return an empty array.
@@ -88,7 +129,7 @@
         return false;
       }
       foreach ( $storeObjects as $data ) {
-        foreach ( $updateable as $key => $value ) {
+        foreach ($updatable as $key => $value ) {
           // Do not update the _id reserved index of a store.
           if( $key != '_id' ) {
             $data[ $key ] = $value;
@@ -106,7 +147,11 @@
       return true;
     }
 
-    // Deletes matched store objects.
+    /**
+     * Deletes matched store objects.
+     * @return bool
+     * @throws \Exception
+     */
     public function delete() {
       // Find all store objects.
       $storeObjects = $this->findStoreDocuments();
@@ -114,7 +159,7 @@
         foreach ( $storeObjects as $data ) {
           if ( ! unlink( $this->storePath . 'data/' . $data[ '_id' ] . '.json' ) ) {
             $this->initVariables(); // Reset state.
-            throw new \Exception( 
+            throw new \IOException(
               'Unable to delete storage file! 
               Location: "'.$this->storePath . 'data/' . $data[ '_id' ] . '.json'.'"' 
             );
@@ -132,7 +177,10 @@
       }
     }
 
-    // Deletes a store and wipes all the data and cache it contains.
+    /**
+     * Deletes a store and wipes all the data and cache it contains.
+     * @return bool
+     */
     public function deleteStore() {
       $it = new \RecursiveDirectoryIterator( $this->storePath, \RecursiveDirectoryIterator::SKIP_DOTS );
       $files = new \RecursiveIteratorIterator( $it, \RecursiveIteratorIterator::CHILD_FIRST );

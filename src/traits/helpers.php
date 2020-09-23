@@ -7,13 +7,18 @@
    */
   trait HelpersTrait {
 
-    private function init( $conf = false ) {
+    /**
+     * @param array $conf
+     * @throws IOException
+     * @throws InvalidConfigurationException
+     */
+    private function init( $conf ) {
       // Check for valid configurations.
-      if( empty( $conf ) OR !is_array( $conf ) ) throw new \Exception( 'Invalid configurations was found.' );
+      if( empty( $conf ) OR !is_array( $conf ) ) throw new InvalidConfigurationException( 'Invalid configurations was found.' );
       // Check if the 'data_directory' was provided.
-      if ( !isset( $conf[ 'data_directory' ] ) ) throw new \Exception( '"data_directory" was not provided in the configurations.' );
+      if ( !isset( $conf[ 'data_directory' ] ) ) throw new InvalidConfigurationException( '"data_directory" was not provided in the configurations.' );
       // Check if data_directory is empty.
-      if ( empty( $conf[ 'data_directory' ] ) ) throw new \Exception( '"data_directory" cant be empty in the configurations.' );
+      if ( empty( $conf[ 'data_directory' ] ) ) throw new InvalidConfigurationException( '"data_directory" cant be empty in the configurations.' );
       // Prepare the data directory.
       $dataDir = trim( $conf[ 'data_directory' ] );
       // Handle directory path ending.
@@ -21,12 +26,12 @@
       // Check if the data_directory exists.
       if ( !file_exists( $dataDir ) ) {
         // The directory was not found, create one.
-        if ( !mkdir( $dataDir, 0777, true ) ) throw new \Exception( 'Unable to create the data directory at ' . $dataDir );
+        if ( !mkdir( $dataDir, 0777, true ) ) throw new IOException( 'Unable to create the data directory at ' . $dataDir );
       }
       // Check if PHP has write permission in that directory.
-      if ( !is_writable( $dataDir ) ) throw new \Exception( 'Data directory is not writable at "' . $dataDir . '." Please change data directory permission.' );
+      if ( !is_writable( $dataDir ) ) throw new IOException( 'Data directory is not writable at "' . $dataDir . '." Please change data directory permission.' );
       // Finally check if the directory is readable by PHP.
-      if ( !is_readable( $dataDir ) ) throw new \Exception( 'Data directory is not readable at "' . $dataDir . '." Please change data directory permission.' );
+      if ( !is_readable( $dataDir ) ) throw new IOException( 'Data directory is not readable at "' . $dataDir . '." Please change data directory permission.' );
       // Set the data directory.
       $this->dataDirectory = $dataDir;
       // Set auto cache settings.
@@ -43,7 +48,9 @@
       $this->shouldKeepConditions = false; 
     } // End of init()
 
-    // Init data that SleekDB required to operate.
+    /**
+     * Init data that SleekDB required to operate.
+     */
     private function initVariables() {
       if(!$this->shouldKeepConditions) {
         // Set empty results
@@ -74,7 +81,10 @@
       }
     } // End of initVariables()
 
-    // Initialize the auto cache settings.
+    /**
+     * Initialize the auto cache settings.
+     * @param bool $autoCache
+     */
     private function initAutoCache ( $autoCache = true ) {
       // Decide the cache status.
       if ( $autoCache === true ) {
@@ -90,11 +100,15 @@
       }
     }
 
-    // Method to boot a store.
+    /**
+     * Method to boot a store.
+     * @throws EmptyStoreNameException
+     * @throws IOException
+     */
     private function bootStore() {
       $store = trim( $this->storeName );
       // Validate the store name.
-      if ( !$store || empty( $store ) ) throw new \Exception( 'Invalid store name was found' );
+      if ( !$store || empty( $store ) ) throw new EmptyStoreNameException( 'Invalid store name was found' );
       // Prepare store name.
       if ( substr( $store, -1 ) !== '/' ) $store = $store . '/';
       // Store directory path.
@@ -102,18 +116,18 @@
       // Check if the store exists.
       if ( !file_exists( $this->storePath ) ) {
         // The directory was not found, create one with cache directory.
-        if ( !mkdir( $this->storePath, 0777, true ) ) throw new \Exception( 'Unable to create the store path at ' . $this->storePath );
+        if ( !mkdir( $this->storePath, 0777, true ) ) throw new IOException( 'Unable to create the store path at ' . $this->storePath );
         // Create the cache directory.
-        if ( !mkdir( $this->storePath . 'cache', 0777, true ) ) throw new \Exception( 'Unable to create the store\'s cache directory at ' . $this->storePath . 'cache' );
+        if ( !mkdir( $this->storePath . 'cache', 0777, true ) ) throw new IOException( 'Unable to create the store\'s cache directory at ' . $this->storePath . 'cache' );
         // Create the data directory.
-        if ( !mkdir( $this->storePath . 'data', 0777, true ) ) throw new \Exception( 'Unable to create the store\'s data directory at ' . $this->storePath . 'data' );
+        if ( !mkdir( $this->storePath . 'data', 0777, true ) ) throw new IOException( 'Unable to create the store\'s data directory at ' . $this->storePath . 'data' );
         // Create the store counter file.
-        if ( !file_put_contents( $this->storePath . '_cnt.sdb', '0' ) ) throw new \Exception( 'Unable to create the system counter for the store! Please check write permission' );
+        if ( !file_put_contents( $this->storePath . '_cnt.sdb', '0' ) ) throw new IOException( 'Unable to create the system counter for the store! Please check write permission' );
       }
       // Check if PHP has write permission in that directory.
-      if ( !is_writable( $this->storePath ) ) throw new \Exception( 'Store path is not writable at "' . $this->storePath . '." Please change store path permission.' );
+      if ( !is_writable( $this->storePath ) ) throw new IOException( 'Store path is not writable at "' . $this->storePath . '." Please change store path permission.' );
       // Finally check if the directory is readable by PHP.
-      if ( !is_readable( $this->storePath ) ) throw new \Exception( 'Store path is not readable at "' . $this->storePath . '." Please change store path permission.' );
+      if ( !is_readable( $this->storePath ) ) throw new IOException( 'Store path is not readable at "' . $this->storePath . '." Please change store path permission.' );
     }
 
     // Returns a new and unique store object ID, by calling this method it would also
@@ -130,15 +144,23 @@
       return $counter;
     }
 
-    // Return the last created store object ID.
+    /**
+     * Return the last created store object ID.
+     * @return int
+     */
     private function getLastStoreId() {
       $counterPath = $this->storePath . '_cnt.sdb';
       if ( file_exists( $counterPath ) ) {
         return (int) file_get_contents( $counterPath );
       }
+      return 0;
     }
 
-    // Get a store by its system id. "_id"
+    /**
+     * Get a store by its system id. "_id"
+     * @param $id
+     * @return array|mixed
+     */
     private function getStoreDocumentById( $id ) {
       $store = $this->storePath . 'data/' . $id . '.json';
       if ( file_exists( $store ) ) {
@@ -148,11 +170,20 @@
       return [];
     }
 
+    /**
+     * @param string $file
+     * @return mixed
+     */
     private function getDocumentByPath ( $file ) {
-      $data = @json_decode( @file_get_contents( $file ), true );
-      if ( $data !== false ) return $data;
+      return @json_decode( @file_get_contents( $file ), true );
     }
 
+    /**
+     * @param string $condition
+     * @param mixed $fieldValue
+     * @param mixed $value
+     * @return bool
+     */
     private function verifyWhereConditions ( $condition, $fieldValue, $value ) {
       // Check the type of rule.
       if ( $condition === '=' ) {
@@ -177,7 +208,10 @@
       return true;
     }
 
-    // Find store objects with conditions, sorting order, skip and limits.
+    /**
+     * @return array
+     * @throws IndexNotFoundException
+     */
     private function findStoreDocuments() {
       $found = [];
       // Start collecting and filtering data.
@@ -300,7 +334,7 @@
         }
         // If there was text search then we would also sort the result by search ranking.
         if ( ! empty( $this->searchKeyword ) ) {
-          $found = $this->performSerach( $found );
+          $found = $this->performSearch( $found );
         }
         // Skip data
         if ( $this->skip > 0 ) $found = array_slice( $found, $this->skip );
@@ -310,28 +344,41 @@
       return $found;
     }
 
-    // Writes an object in a store.
+    /**
+     * Writes an object in a store.
+     * @param $storeData
+     * @return array
+     * @throws IOException
+     * @throws JsonException
+     */
     private function writeInStore( $storeData ) {
       // Cast to array
       $storeData = (array) $storeData;
       // Check if it has _id key
-      if ( isset( $storeData[ '_id' ] ) ) throw new \Exception( 'The _id index is reserved by SleekDB, please delete the _id key and try again' );
+      if ( isset( $storeData[ '_id' ] ) ) throw new IdNotAllowedException( 'The _id index is reserved by SleekDB, please delete the _id key and try again' );
       $id = $this->getStoreId();
       // Add the system ID with the store data array.
       $storeData[ '_id' ] = $id;
       // Prepare storable data
       $storableJSON = json_encode( $storeData );
-      if ( $storableJSON === false ) throw new \Exception( 'Unable to encode the data array, 
+      if ( $storableJSON === false ) throw new JsonException( 'Unable to encode the data array, 
         please provide a valid PHP associative array' );
       // Define the store path
       $storePath = $this->storePath . 'data/' . $id . '.json';
       if ( ! file_put_contents( $storePath, $storableJSON ) ) {
-        throw new \Exception( "Unable to write the object file! Please check if PHP has write permission." );
+        throw new IOException( "Unable to write the object file! Please check if PHP has write permission." );
       }
       return $storeData;
     }
 
-    // Sort store objects.
+    /**
+     * Sort store objects.
+     * @param $field
+     * @param $data
+     * @param string $order
+     * @return array
+     * @throws IndexNotFoundException
+     */
     private function sortArray( $field, $data, $order = 'ASC' ) {
       $dryData = [];
       // Check if data is an array.
@@ -352,27 +399,38 @@
       return $finalArray;
     }
 
-    // Get nested properties of a store object.
-    private function getNestedProperty( $field = '', $data ) {
-      if( is_array( $data ) AND ! empty( $field ) ) {
-        // Dive deep step by step.
-        foreach( explode( '.', $field ) as $i ) {
-          // If the field do not exists then insert an empty string.
-          if ( ! isset( $data[ $i ] ) ) {
-            $data = '';
-            throw new \Exception( '"'.$i.'" index was not found in the provided data array' );
-            break;
-          } else {
-            // The index is valid, collect the data.
-            $data = $data[ $i ];
-          }
+    /**
+     * Get nested properties of a store object.
+     * @param string $fieldName
+     * @param array $data
+     * @return array|mixed
+     * @throws EmptyFieldNameException
+     * @throws IndexNotFoundException
+     * @throws InvalidDataException
+     */
+    private function getNestedProperty($fieldName, $data ) {
+      if( !is_array( $data ) ) throw new InvalidDataException('data has to be an array');
+      if(empty( $fieldName )) throw new EmptyFieldNameException('fieldName is not allowed to be empty');
+
+      // Dive deep step by step.
+      foreach(explode( '.', $fieldName ) as $i ) {
+        // If the field do not exists then insert an empty string.
+        if ( ! isset( $data[ $i ] ) ) {
+          $data = '';
+          throw new IndexNotFoundException( '"'.$i.'" index was not found in the provided data array' );
         }
-        return $data;
+        // The index is valid, collect the data.
+        $data = $data[ $i ];
       }
+      return $data;
     }
 
-    // Do a search in store objects. This is like a doing a full-text search.
-    private function performSerach( $data = [] ) {
+    /**
+     * Do a search in store objects. This is like a doing a full-text search.
+     * @param array $data
+     * @return array
+     */
+    private function performSearch($data = [] ) {
       if ( empty( $data ) ) return $data;
       $nodesRank = [];
       // Looping on each store data.
