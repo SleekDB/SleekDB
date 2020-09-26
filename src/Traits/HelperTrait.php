@@ -1,11 +1,24 @@
 <?php
 
+  namespace SleekDB\Traits;
+
+  use SleekDB\Exceptions\ConditionNotAllowedException;
+  use SleekDB\Exceptions\IdNotAllowedException;
+  use SleekDB\Exceptions\IOException;
+  use SleekDB\Exceptions\InvalidConfigurationException;
+  use SleekDB\Exceptions\EmptyStoreNameException;
+  use SleekDB\Exceptions\IndexNotFoundException;
+  use SleekDB\Exceptions\JsonException;
+  use SleekDB\Exceptions\EmptyFieldNameException;
+  use SleekDB\Exceptions\InvalidDataException;
+
+
   /**
    * Collections of method that helps to manage the data.
    * All methods in this trait should be private.
    *
    */
-  trait HelpersTrait {
+  trait HelperTrait {
 
     /**
      * @param array $conf
@@ -180,37 +193,45 @@
 
     /**
      * @param string $condition
-     * @param mixed $fieldValue
-     * @param mixed $value
+     * @param mixed $fieldValue value of current field
+     * @param mixed $value value to check
+     * @throws ConditionNotAllowedException
      * @return bool
      */
     private function verifyWhereConditions ( $condition, $fieldValue, $value ) {
       // Check the type of rule.
       if ( $condition === '=' ) {
         // Check equal.
-        if ( $fieldValue != $value ) return false;
+        return ( $fieldValue == $value );
       } else if ( $condition === '!=' ) {
         // Check not equal.
-        if ( $fieldValue == $value ) return false;
+        return ( $fieldValue != $value );
       } else if ( $condition === '>' ) {
         // Check greater than.
-        if ( $fieldValue <= $value ) return false;
+        return ( $fieldValue > $value );
       } else if ( $condition === '>=' ) {
         // Check greater equal.
-        if ( $fieldValue < $value ) return false;
+        return ( $fieldValue >= $value );
       } else if ( $condition === '<' ) {
         // Check less than.
-        if ( $fieldValue >= $value ) return false;
+        return ( $fieldValue < $value );
       } else if ( $condition === '<=' ) {
         // Check less equal.
-        if ( $fieldValue > $value ) return false;
+        return ( $fieldValue <= $value );
+      } else if (strtolower($condition) === 'like'){
+          $value = str_replace('%', '(.)*', $value);
+          $pattern = "/^".$value."$/i";
+          return (preg_match($pattern, $fieldValue) === 1);
       }
-      return true;
+      throw new ConditionNotAllowedException('condition '.$condition.' is not allowed');
     }
 
     /**
      * @return array
      * @throws IndexNotFoundException
+     * @throws ConditionNotAllowedException
+     * @throws EmptyFieldNameException
+     * @throws InvalidDataException
      */
     private function findStoreDocuments() {
       $found = [];
@@ -243,7 +264,7 @@
                       $storePassed = false;
                     }
                     if( $validData === true ) {
-                      $storePassed = !!$this->verifyWhereConditions( $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] );
+                      $storePassed = $this->verifyWhereConditions( $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] );
                     }
                   }
                 }
@@ -350,6 +371,7 @@
      * @return array
      * @throws IOException
      * @throws JsonException
+     * @throws IdNotAllowedException
      */
     private function writeInStore( $storeData ) {
       // Cast to array
@@ -378,6 +400,8 @@
      * @param string $order
      * @return array
      * @throws IndexNotFoundException
+     * @throws EmptyFieldNameException
+     * @throws InvalidDataException
      */
     private function sortArray( $field, $data, $order = 'ASC' ) {
       $dryData = [];

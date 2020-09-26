@@ -1,9 +1,15 @@
 <?php
 
-  /**
+namespace SleekDB\Traits;
+
+use SleekDB\Exceptions\EmptyConditionException;
+use SleekDB\Exceptions\EmptyFieldNameException;
+use SleekDB\Exceptions\InvalidOrderException;
+
+/**
    * Coditions trait.
    */
-  trait ConditionsTrait {
+  trait ConditionTrait {
 
     /**
      * Add conditions to filter data.

@@ -2,26 +2,78 @@
 
   namespace SleekDB;
 
-  require_once __DIR__ . '/classes/exceptions.php';
-  require_once __DIR__ . '/traits/helpers.php';
-  require_once __DIR__ . '/traits/conditions.php';
-  require_once __DIR__ . '/traits/caching.php';
+  use SleekDB\Exceptions\ConditionNotAllowedException;
+  use SleekDB\Exceptions\EmptyFieldNameException;
+  use SleekDB\Exceptions\EmptyStoreDataException;
+  use SleekDB\Exceptions\EmptyStoreNameException;
+  use SleekDB\Exceptions\IdNotAllowedException;
+  use SleekDB\Exceptions\IndexNotFoundException;
+  use SleekDB\Exceptions\InvalidConfigurationException;
+  use SleekDB\Exceptions\InvalidDataException;
+  use SleekDB\Exceptions\InvalidStoreDataException;
+  use SleekDB\Exceptions\IOException;
+  use SleekDB\Exceptions\JsonException;
 
-  class SleekDB {
+  use SleekDB\Traits\HelperTrait;
+  use SleekDB\Traits\CacheTrait;
+  use SleekDB\Traits\ConditionTrait;
 
-    use \HelpersTrait, \ConditionsTrait, \CacheTraits;
+  // to provide usage without composer, we need to require the files
+  require_once __DIR__ . "/Exceptions/ConditionNotAllowedException.php";
+  require_once __DIR__ . "/Exceptions/EmptyFieldNameException.php";
+  require_once __DIR__ . "/Exceptions/EmptyStoreNameException.php";
+  require_once __DIR__ . "/Exceptions/IdNotAllowedException.php";
+  require_once __DIR__ . "/Exceptions/IndexNotFoundException.php";
+  require_once __DIR__ . "/Exceptions/InvalidConfigurationException.php";
+  require_once __DIR__ . "/Exceptions/InvalidDataException.php";
+  require_once __DIR__ . "/Exceptions/InvalidStoreDataException.php";
+  require_once __DIR__ . "/Exceptions/IOException.php";
+  require_once __DIR__ . "/Exceptions/JsonException.php";
+
+  require_once __DIR__ . "/Traits/HelperTrait.php";
+  require_once __DIR__ . "/Traits/CacheTrait.php";
+  require_once __DIR__ . "/Traits/ConditionTrait.php";
+
+
+  class SleekDB{
+
+    use HelperTrait;
+    use ConditionTrait;
+    use CacheTrait;
+
+    private $root = __DIR__;
+
+    private $storeName;
+
+    private $makeCache;
+    private $useCache;
+
+    private $deleteCacheOnCreate;
+
+    private $storePath;
+
+    private $dataDirectory;
+    private $shouldKeepConditions;
+    private $results;
+    private $limit;
+    private $skip;
+    private $conditions;
+    private $orConditions;
+    private $in;
+    private $notIn;
+    private $orderBy;
+    private $searchKeyword;
+
 
     /**
      * SleekDB constructor.
      * Initialize the database.
      * @param string $dataDir
      * @param array $configurations
-     * @throws \IOException
-     * @throws \InvalidConfigurationException
+     * @throws IOException
+     * @throws InvalidConfigurationException
      */
     function __construct( $dataDir = '', $configurations = [] ) {
-      // Define the root path of SleekDB.
-      $this->root = __DIR__;
       // Add data dir.
       $configurations[ 'data_directory' ] = $dataDir;
       // Initialize SleekDB
@@ -34,13 +86,13 @@
      * @param string $dataDir
      * @param array $options
      * @return SleekDB
-     * @throws \EmptyStoreNameException
-     * @throws \IOException
-     * @throws \InvalidConfigurationException
+     * @throws EmptyStoreNameException
+     * @throws IOException
+     * @throws InvalidConfigurationException
      */
     public static function store( $storeName, $dataDir, $options = [] ) {
-      if ( empty( $storeName ) ) throw new \EmptyStoreNameException( 'Store name was not valid' );
-      $_dbInstance = new \SleekDB\SleekDB( $dataDir, $options );
+      if ( empty( $storeName ) ) throw new EmptyStoreNameException( 'Store name was not valid' );
+      $_dbInstance = new SleekDB( $dataDir, $options );
       $_dbInstance->storeName = $storeName;
       // Boot store.
       $_dbInstance->bootStore();
@@ -52,7 +104,10 @@
     /**
      * Read store objects.
      * @return array
-     * @throws \IndexNotFoundException
+     * @throws ConditionNotAllowedException
+     * @throws IndexNotFoundException
+     * @throws EmptyFieldNameException
+     * @throws InvalidDataException
      */
     public function fetch() {
       $fetchedData = null;
@@ -75,16 +130,17 @@
      * The object is a plaintext JSON document.
      * @param array $storeData
      * @return array
-     * @throws \EmptyStoreDataException
-     * @throws \IOException
-     * @throws \InvalidStoreDataException
-     * @throws \JsonException
+     * @throws EmptyStoreDataException
+     * @throws IOException
+     * @throws InvalidStoreDataException
+     * @throws JsonException
+     * @throws IdNotAllowedException
      */
     public function insert( $storeData ) {
       // Handle invalid data
-      if ( empty( $storeData ) ) throw new \EmptyStoreDataException( 'No data found to store' );
+      if ( empty( $storeData ) ) throw new EmptyStoreDataException( 'No data found to store' );
       // Make sure that the data is an array
-      if ( ! is_array( $storeData ) ) throw new \InvalidStoreDataException( 'Storable data must an array' );
+      if ( ! is_array( $storeData ) ) throw new InvalidStoreDataException( 'Storable data must an array' );
       $storeData = $this->writeInStore( $storeData );
       // Check do we need to wipe the cache for this store.
       if ( $this->deleteCacheOnCreate === true ) $this->_emptyAllCache();
@@ -95,16 +151,17 @@
      * Creates multiple objects in the store.
      * @param $storeData
      * @return array
-     * @throws \EmptyStoreDataException
-     * @throws \IOException
-     * @throws \InvalidStoreDataException
-     * @throws \JsonException
+     * @throws EmptyStoreDataException
+     * @throws IOException
+     * @throws InvalidStoreDataException
+     * @throws JsonException
+     * @throws IdNotAllowedException
      */
     public function insertMany( $storeData ) {
       // Handle invalid data
-      if ( empty( $storeData ) ) throw new \EmptyStoreDataException( 'No data found to insert in the store' );
+      if ( empty( $storeData ) ) throw new EmptyStoreDataException( 'No data found to insert in the store' );
       // Make sure that the data is an array
-      if ( ! is_array( $storeData ) ) throw new \InvalidStoreDataException( 'Data must be an array in order to insert in the store' );
+      if ( ! is_array( $storeData ) ) throw new InvalidStoreDataException( 'Data must be an array in order to insert in the store' );
       // All results.
       $results = [];
       foreach ( $storeData as $key => $node ) {
@@ -118,7 +175,10 @@
     /**
      * @param $updatable
      * @return bool
-     * @throws \IndexNotFoundException
+     * @throws IndexNotFoundException
+     * @throws ConditionNotAllowedException
+     * @throws EmptyFieldNameException
+     * @throws InvalidDataException
      */
     public function update($updatable ) {
       // Find all store objects.
@@ -150,7 +210,11 @@
     /**
      * Deletes matched store objects.
      * @return bool
-     * @throws \Exception
+     * @throws IOException
+     * @throws IndexNotFoundException
+     * @throws ConditionNotAllowedException
+     * @throws EmptyFieldNameException
+     * @throws InvalidDataException
      */
     public function delete() {
       // Find all store objects.
@@ -159,7 +223,7 @@
         foreach ( $storeObjects as $data ) {
           if ( ! unlink( $this->storePath . 'data/' . $data[ '_id' ] . '.json' ) ) {
             $this->initVariables(); // Reset state.
-            throw new \IOException(
+            throw new IOException(
               'Unable to delete storage file! 
               Location: "'.$this->storePath . 'data/' . $data[ '_id' ] . '.json'.'"' 
             );

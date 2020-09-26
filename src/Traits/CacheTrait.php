@@ -1,9 +1,11 @@
 <?php
 
+  namespace SleekDB\Traits;
+
   /**
    * Methods required to perform the cache mechanishm.
    */
-  trait CacheTraits {
+  trait CacheTrait {
     
     /**
      * Make cache deletes the old cache if exists then creates a new cache file.
