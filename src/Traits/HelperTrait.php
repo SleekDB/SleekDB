@@ -151,14 +151,25 @@
     // Returns a new and unique store object ID, by calling this method it would also
     // increment the ID system-wide only for the store.
     private function getStoreId() {
+      $counter = 1; // default (first) id
       $counterPath = $this->storePath . '_cnt.sdb';
       if ( file_exists( $counterPath ) ) {
-        $counter = (int) file_get_contents( $counterPath );
-      } else {
-        $counter = 0;
+        $fp = fopen($counterPath, 'r+');
+        for($retries = 10; $retries > 0; $retries--) {
+          flock($fp, LOCK_UN);
+          if (flock($fp, LOCK_EX) === false) {
+            sleep(1);
+          } else {
+            $counter = (int) fgets($fp);
+            $counter++;
+            rewind($fp);
+            fwrite($fp, (string) $counter);
+            break;
+          }
+        }
+        flock($fp, LOCK_UN);
+        fclose($fp);
       }
-      $counter++;
-      file_put_contents( $counterPath, $counter );
       return $counter;
     }
 
