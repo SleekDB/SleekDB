@@ -59,7 +59,8 @@
         'order' => $this->orderBy,
         'search' => $this->searchKeyword,
         'fieldsToSelect' => $this->fieldsToSelect,
-        'fieldsToExclude' => $this->fieldsToExclude
+        'fieldsToExclude' => $this->fieldsToExclude,
+        'orConditionsWithAnd' => $this->orConditionsWithAnd,
       ] );
       return md5( $query );
     }

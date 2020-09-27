@@ -94,6 +94,8 @@
         // specific fields to select
         $this->fieldsToSelect = [];
         $this->fieldsToExclude = [];
+
+        $this->orConditionsWithAnd = [];
       }
     } // End of initVariables()
 
@@ -295,6 +297,36 @@
                         break;
                       }
                     }
+                  }
+                }
+                // Check if current store is updatable or not.
+                if ( $storePassed === true ) {
+                  // Append data to the found array.
+                  $document = $data;
+                } else if(count($this->orConditionsWithAnd) > 0) {
+                  // Check if a all conditions will allow this document.
+                  $allConditionMatched = true;
+                  foreach ( $this->orConditionsWithAnd as $condition ) {
+                    // Check for valid data from data source.
+                    $validData = true;
+                    $fieldValue = '';
+                    try {
+                      $fieldValue = $this->getNestedProperty( $condition[ 'fieldName' ], $data );
+                    } catch( \Exception $e ) {
+                      $validData   = false;
+                    }
+                    if( $validData === true ) {
+                      $storePassed = $this->verifyWhereConditions( $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] );
+                      if($storePassed) continue;
+                    }
+
+                    // if data was invalid or store did not pass
+                    $allConditionMatched = false;
+                    break;
+                  }
+                  if( $allConditionMatched === true ) {
+                    // Append data to the found array.
+                    $document = $data;
                   }
                 }
               } // Completed condition checks.

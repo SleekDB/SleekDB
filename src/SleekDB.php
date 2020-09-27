@@ -66,6 +66,7 @@
 
     private $fieldsToSelect = [];
     private $fieldsToExclude = [];
+    private $orConditionsWithAnd = [];
 
 
     /**
