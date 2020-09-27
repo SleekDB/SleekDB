@@ -423,7 +423,6 @@
         $newItem['_id'] = $item['_id'];
         foreach ($this->fieldsToSelect as $fieldToSelect){
           if(array_key_exists($fieldToSelect, $item)){
-            echo $fieldToSelect;
             $newItem[$fieldToSelect] = $item[$fieldToSelect];
           }
         }
