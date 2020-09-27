@@ -4,12 +4,45 @@ namespace SleekDB\Traits;
 
 use SleekDB\Exceptions\EmptyConditionException;
 use SleekDB\Exceptions\EmptyFieldNameException;
+use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\InvalidOrderException;
 
 /**
    * Coditions trait.
    */
   trait ConditionTrait {
+
+    /**
+     * Select specific fields or exclude fields with - (minus) prepended
+     * @param string $fields
+     * @return $this
+     * @throws InvalidArgumentException
+     */
+    public function select($fields){
+      $error = false;
+      if(!is_string($fields)){
+        $error = true;
+      }
+      $fields = trim($fields);
+      if(empty($fields)){
+        $error = true;
+      }
+      // TODO fix exception
+      if($error) throw new InvalidArgumentException("if select is used a string with fieldNames has to be given");
+      $allSelectFields = explode(" ", $fields);
+      foreach ($allSelectFields as $selectField){
+
+        if(empty($selectField)) continue;
+
+        if($selectField[0] === "-"){
+          $this->fieldsToExclude[] = substr($selectField, 1);
+        } else {
+          $this->fieldsToSelect[] = $selectField;
+        }
+
+      }
+      return $this;
+    }
 
     /**
      * Add conditions to filter data.

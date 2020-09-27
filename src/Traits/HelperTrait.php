@@ -91,6 +91,9 @@
         $this->makeCache = false;
         // Control when to keep or delete the active query conditions. Delete conditions by default.
         $this->shouldKeepConditions = false;
+        // specific fields to select
+        $this->fieldsToSelect = [];
+        $this->fieldsToExclude = [];
       }
     } // End of initVariables()
 
@@ -362,8 +365,60 @@
         // Limit data.
         if ( $this->limit > 0 ) $found = array_slice( $found, 0, $this->limit );
       }
+
+      if(count($found) > 0){
+        if(count($this->fieldsToSelect) > 0){
+          $found = $this->applyFieldsToSelect($found);
+        }
+        if(count($this->fieldsToExclude) > 0){
+          $found = $this->applyFieldsToExclude($found);
+        }
+      }
+
       return $found;
     }
+
+    /**
+     * @param array $found
+     * @return array
+     */
+    private function applyFieldsToSelect($found){
+      if(!(count($found) > 0) || !(count($this->fieldsToSelect) > 0)){
+        return $found;
+      }
+      foreach ($found as $key => $item){
+        $newItem = [];
+        $newItem['_id'] = $item['_id'];
+        foreach ($this->fieldsToSelect as $fieldToSelect){
+          if(array_key_exists($fieldToSelect, $item)){
+            echo $fieldToSelect;
+            $newItem[$fieldToSelect] = $item[$fieldToSelect];
+          }
+        }
+        $found[$key] = $newItem;
+      }
+      return $found;
+    }
+
+    /**
+     * @param array $found
+     * @return array
+     */
+    private function applyFieldsToExclude($found){
+      if(!(count($found) > 0) || !(count($this->fieldsToExclude) > 0)){
+        return $found;
+      }
+      foreach ($found as $key => $item){
+        foreach ($this->fieldsToExclude as $fieldToExclude){
+          if(array_key_exists($fieldToExclude, $item)){
+            unset($item[$fieldToExclude]);
+          }
+        }
+        $found[$key] = $item;
+      }
+      return $found;
+    }
+
 
     /**
      * Writes an object in a store.

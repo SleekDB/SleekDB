@@ -64,6 +64,9 @@
     private $orderBy;
     private $searchKeyword;
 
+    private $fieldsToSelect = [];
+    private $fieldsToExclude = [];
+
 
     /**
      * SleekDB constructor.
