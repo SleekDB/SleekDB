@@ -57,7 +57,9 @@
         'in' => $this->in,
         'notIn' => $this->notIn,
         'order' => $this->orderBy,
-        'search' => $this->searchKeyword
+        'search' => $this->searchKeyword,
+        'fieldsToSelect' => $this->fieldsToSelect,
+        'fieldsToExclude' => $this->fieldsToExclude
       ] );
       return md5( $query );
     }
