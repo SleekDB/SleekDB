@@ -14,32 +14,33 @@ use SleekDB\Exceptions\InvalidOrderException;
 
     /**
      * Select specific fields or exclude fields with - (minus) prepended
-     * @param string $fields
+     * @param string[] $fieldNames
      * @return $this
      * @throws InvalidArgumentException
      */
-    public function select($fields){
-      $error = false;
-      if(!is_string($fields)){
-        $error = true;
+    public function select($fieldNames){
+      $errorMsg = "if select is used an array containing strings with fieldNames has to be given";
+      if(!is_array($fieldNames)) throw new InvalidArgumentException($errorMsg);
+      foreach ($fieldNames as $fieldName){
+        if(empty($fieldName)) continue;
+        if(!is_string($fieldName)) throw new InvalidArgumentException($errorMsg);
+        $this->fieldsToSelect[] = $fieldName;
       }
-      $fields = trim($fields);
-      if(empty($fields)){
-        $error = true;
-      }
-      // TODO fix exception
-      if($error) throw new InvalidArgumentException("if select is used a string with fieldNames has to be given");
-      $allSelectFields = explode(" ", $fields);
-      foreach ($allSelectFields as $selectField){
+      return $this;
+    }
 
-        if(empty($selectField)) continue;
-
-        if($selectField[0] === "-"){
-          $this->fieldsToExclude[] = substr($selectField, 1);
-        } else {
-          $this->fieldsToSelect[] = $selectField;
-        }
-
+    /**
+     * @param string[] $fieldNames
+     * @return $this
+     * @throws InvalidArgumentException
+     */
+    public function except($fieldNames){
+      $errorMsg = "if except is used an array containing strings with fieldNames has to be given";
+      if(!is_array($fieldNames)) throw new InvalidArgumentException($errorMsg);
+      foreach ($fieldNames as $fieldName){
+        if(empty($fieldName)) continue;
+        if(!is_string($fieldName)) throw new InvalidArgumentException($errorMsg);
+        $this->fieldsToExclude[] = $fieldName;
       }
       return $this;
     }
@@ -104,6 +105,7 @@ use SleekDB\Exceptions\InvalidOrderException;
      * @return $this
      * @throws EmptyConditionException
      * @throws EmptyFieldNameException
+     * @throws InvalidArgumentException
      */
     public function orWhere( $condition ) {
       $args = func_get_args();
@@ -115,7 +117,7 @@ use SleekDB\Exceptions\InvalidOrderException;
           break;
         }
         if(count($args) === 3 && is_string($arg) && is_string($args[1])){
-          // parameters given as (string fieldName, string condition, mixed value) for a normal "or where"
+          // parameters given as (string fieldName, string condition, mixed value) for a single "or where"
           $this->singleOrWhere($arg, $args[1], $args[2]);
           break;
         }
@@ -152,21 +154,25 @@ use SleekDB\Exceptions\InvalidOrderException;
      * @throws InvalidArgumentException
      */
     private function orWhereWithAnd($conditions){
+
       if(!(count($conditions) > 0)){
         throw new EmptyConditionException("You need to specify a where clause");
       }
 
       foreach ($conditions as $key => $condition){
+
         if(!is_array($condition)){
           throw new InvalidArgumentException("The where clause has to be an array");
         }
+
         // the user can pass the conditions as an array or a map
         if(count($condition) === 3 && array_key_exists(0, $condition) && array_key_exists(1, $condition)
           && array_key_exists(2, $condition)){
 
           // user passed the condition as an array
-          $args[$key] = [
-            "fieldName" => trim($condition[0]),
+
+          $this->orConditionsWithAnd[] = [
+            "fieldName" => $condition[0],
             "condition" => trim($condition[1]),
             "value" => $condition[2]
           ];
@@ -183,17 +189,18 @@ use SleekDB\Exceptions\InvalidOrderException;
           if(!array_key_exists("value", $condition)){
             throw new InvalidArgumentException("value is required in where clause");
           }
-          $args[$key] = [
-            "fieldName" => trim($condition["fieldName"]),
+
+          $this->orConditionsWithAnd[] = [
+            "fieldName" => $condition["fieldName"],
             "condition" => trim($condition["condition"]),
             "value" => $condition["value"]
           ];
+
         }
       }
 
-      $this->orConditionsWithAnd = $args;
-
       return $this;
+
     }
 
     /**
