@@ -1,11 +1,24 @@
 <?php
 
+  namespace SleekDB\Traits;
+
+  use SleekDB\Exceptions\ConditionNotAllowedException;
+  use SleekDB\Exceptions\IdNotAllowedException;
+  use SleekDB\Exceptions\IOException;
+  use SleekDB\Exceptions\InvalidConfigurationException;
+  use SleekDB\Exceptions\EmptyStoreNameException;
+  use SleekDB\Exceptions\IndexNotFoundException;
+  use SleekDB\Exceptions\JsonException;
+  use SleekDB\Exceptions\EmptyFieldNameException;
+  use SleekDB\Exceptions\InvalidDataException;
+
+
   /**
    * Collections of method that helps to manage the data.
    * All methods in this trait should be private.
    *
    */
-  trait HelpersTrait {
+  trait HelperTrait {
 
     /**
      * @param array $conf
@@ -78,6 +91,11 @@
         $this->makeCache = false;
         // Control when to keep or delete the active query conditions. Delete conditions by default.
         $this->shouldKeepConditions = false;
+        // specific fields to select
+        $this->fieldsToSelect = [];
+        $this->fieldsToExclude = [];
+
+        $this->orConditionsWithAnd = [];
       }
     } // End of initVariables()
 
@@ -133,14 +151,25 @@
     // Returns a new and unique store object ID, by calling this method it would also
     // increment the ID system-wide only for the store.
     private function getStoreId() {
+      $counter = 1; // default (first) id
       $counterPath = $this->storePath . '_cnt.sdb';
       if ( file_exists( $counterPath ) ) {
-        $counter = (int) file_get_contents( $counterPath );
-      } else {
-        $counter = 0;
+        $fp = fopen($counterPath, 'r+');
+        for($retries = 10; $retries > 0; $retries--) {
+          flock($fp, LOCK_UN);
+          if (flock($fp, LOCK_EX) === false) {
+            sleep(1);
+          } else {
+            $counter = (int) fgets($fp);
+            $counter++;
+            rewind($fp);
+            fwrite($fp, (string) $counter);
+            break;
+          }
+        }
+        flock($fp, LOCK_UN);
+        fclose($fp);
       }
-      $counter++;
-      file_put_contents( $counterPath, $counter );
       return $counter;
     }
 
@@ -180,37 +209,45 @@
 
     /**
      * @param string $condition
-     * @param mixed $fieldValue
-     * @param mixed $value
+     * @param mixed $fieldValue value of current field
+     * @param mixed $value value to check
+     * @throws ConditionNotAllowedException
      * @return bool
      */
     private function verifyWhereConditions ( $condition, $fieldValue, $value ) {
       // Check the type of rule.
       if ( $condition === '=' ) {
         // Check equal.
-        if ( $fieldValue != $value ) return false;
+        return ( $fieldValue == $value );
       } else if ( $condition === '!=' ) {
         // Check not equal.
-        if ( $fieldValue == $value ) return false;
+        return ( $fieldValue != $value );
       } else if ( $condition === '>' ) {
         // Check greater than.
-        if ( $fieldValue <= $value ) return false;
+        return ( $fieldValue > $value );
       } else if ( $condition === '>=' ) {
         // Check greater equal.
-        if ( $fieldValue < $value ) return false;
+        return ( $fieldValue >= $value );
       } else if ( $condition === '<' ) {
         // Check less than.
-        if ( $fieldValue >= $value ) return false;
+        return ( $fieldValue < $value );
       } else if ( $condition === '<=' ) {
         // Check less equal.
-        if ( $fieldValue > $value ) return false;
+        return ( $fieldValue <= $value );
+      } else if (strtolower($condition) === 'like'){
+          $value = str_replace('%', '(.)*', $value);
+          $pattern = "/^".$value."$/i";
+          return (preg_match($pattern, $fieldValue) === 1);
       }
-      return true;
+      throw new ConditionNotAllowedException('condition '.$condition.' is not allowed');
     }
 
     /**
      * @return array
      * @throws IndexNotFoundException
+     * @throws ConditionNotAllowedException
+     * @throws EmptyFieldNameException
+     * @throws InvalidDataException
      */
     private function findStoreDocuments() {
       $found = [];
@@ -243,7 +280,7 @@
                       $storePassed = false;
                     }
                     if( $validData === true ) {
-                      $storePassed = !!$this->verifyWhereConditions( $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] );
+                      $storePassed = $this->verifyWhereConditions( $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] );
                     }
                   }
                 }
@@ -271,6 +308,36 @@
                         break;
                       }
                     }
+                  }
+                }
+                // Check if current store is updatable or not.
+                if ( $storePassed === true ) {
+                  // Append data to the found array.
+                  $document = $data;
+                } else if(count($this->orConditionsWithAnd) > 0) {
+                  // Check if a all conditions will allow this document.
+                  $allConditionMatched = true;
+                  foreach ( $this->orConditionsWithAnd as $condition ) {
+                    // Check for valid data from data source.
+                    $validData = true;
+                    $fieldValue = '';
+                    try {
+                      $fieldValue = $this->getNestedProperty( $condition[ 'fieldName' ], $data );
+                    } catch( \Exception $e ) {
+                      $validData   = false;
+                    }
+                    if( $validData === true ) {
+                      $storePassed = $this->verifyWhereConditions( $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] );
+                      if($storePassed) continue;
+                    }
+
+                    // if data was invalid or store did not pass
+                    $allConditionMatched = false;
+                    break;
+                  }
+                  if( $allConditionMatched === true ) {
+                    // Append data to the found array.
+                    $document = $data;
                   }
                 }
               } // Completed condition checks.
@@ -341,8 +408,59 @@
         // Limit data.
         if ( $this->limit > 0 ) $found = array_slice( $found, 0, $this->limit );
       }
+
+      if(count($found) > 0){
+        if(count($this->fieldsToSelect) > 0){
+          $found = $this->applyFieldsToSelect($found);
+        }
+        if(count($this->fieldsToExclude) > 0){
+          $found = $this->applyFieldsToExclude($found);
+        }
+      }
+
       return $found;
     }
+
+    /**
+     * @param array $found
+     * @return array
+     */
+    private function applyFieldsToSelect($found){
+      if(!(count($found) > 0) || !(count($this->fieldsToSelect) > 0)){
+        return $found;
+      }
+      foreach ($found as $key => $item){
+        $newItem = [];
+        $newItem['_id'] = $item['_id'];
+        foreach ($this->fieldsToSelect as $fieldToSelect){
+          if(array_key_exists($fieldToSelect, $item)){
+            $newItem[$fieldToSelect] = $item[$fieldToSelect];
+          }
+        }
+        $found[$key] = $newItem;
+      }
+      return $found;
+    }
+
+    /**
+     * @param array $found
+     * @return array
+     */
+    private function applyFieldsToExclude($found){
+      if(!(count($found) > 0) || !(count($this->fieldsToExclude) > 0)){
+        return $found;
+      }
+      foreach ($found as $key => $item){
+        foreach ($this->fieldsToExclude as $fieldToExclude){
+          if(array_key_exists($fieldToExclude, $item)){
+            unset($item[$fieldToExclude]);
+          }
+        }
+        $found[$key] = $item;
+      }
+      return $found;
+    }
+
 
     /**
      * Writes an object in a store.
@@ -350,6 +468,7 @@
      * @return array
      * @throws IOException
      * @throws JsonException
+     * @throws IdNotAllowedException
      */
     private function writeInStore( $storeData ) {
       // Cast to array
@@ -378,6 +497,8 @@
      * @param string $order
      * @return array
      * @throws IndexNotFoundException
+     * @throws EmptyFieldNameException
+     * @throws InvalidDataException
      */
     private function sortArray( $field, $data, $order = 'ASC' ) {
       $dryData = [];

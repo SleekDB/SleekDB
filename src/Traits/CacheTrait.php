@@ -1,9 +1,11 @@
 <?php
 
+  namespace SleekDB\Traits;
+
   /**
    * Methods required to perform the cache mechanishm.
    */
-  trait CacheTraits {
+  trait CacheTrait {
     
     /**
      * Make cache deletes the old cache if exists then creates a new cache file.
@@ -55,7 +57,10 @@
         'in' => $this->in,
         'notIn' => $this->notIn,
         'order' => $this->orderBy,
-        'search' => $this->searchKeyword
+        'search' => $this->searchKeyword,
+        'fieldsToSelect' => $this->fieldsToSelect,
+        'fieldsToExclude' => $this->fieldsToExclude,
+        'orConditionsWithAnd' => $this->orConditionsWithAnd,
       ] );
       return md5( $query );
     }
