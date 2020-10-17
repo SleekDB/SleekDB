@@ -44,29 +44,29 @@
     private $root = __DIR__;
 
     private $storeName;
-
     private $makeCache;
     private $useCache;
-
     private $deleteCacheOnCreate;
-
     private $storePath;
 
-    private $dataDirectory;
-    private $shouldKeepConditions;
-    private $results;
-    private $limit;
+    private $in;
     private $skip;
+    private $notIn;
+    private $limit;
+    private $results;
+    private $orderBy;
     private $conditions;
     private $orConditions;
-    private $in;
-    private $notIn;
-    private $orderBy;
     private $searchKeyword;
-
+    private $dataDirectory;
+    private $shouldKeepConditions;
+    
     private $fieldsToSelect = [];
     private $fieldsToExclude = [];
     private $orConditionsWithAnd = [];
+    
+    private $join = null;
+    private $joinAs = null;
 
 
     /**
