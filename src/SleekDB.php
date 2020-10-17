@@ -118,11 +118,9 @@
       // Check if data should be provided from the cache.
       if ( $this->makeCache === true ) {
         $fetchedData = $this->reGenerateCache(); // Re-generate cache.
-      }
-      else if ( $this->useCache === true ) {
+      } else if ( $this->useCache === true ) {
         $fetchedData = $this->useExistingCache(); // Use existing cache else re-generate.
-      }
-      else {
+      } else {
         $fetchedData = $this->findStoreDocuments(); // Returns data without looking for cached data.
       }
       $this->initVariables(); // Reset state.
