@@ -94,8 +94,9 @@
         // specific fields to select
         $this->fieldsToSelect = [];
         $this->fieldsToExclude = [];
-
         $this->orConditionsWithAnd = [];
+        // Reset join relations.
+        $this->join = null;
       }
     } // End of initVariables()
 
@@ -280,7 +281,9 @@
                       $storePassed = false;
                     }
                     if( $validData === true ) {
-                      $storePassed = $this->verifyWhereConditions( $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] );
+                      $storePassed = $this->verifyWhereConditions( 
+                        $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] 
+                      );
                     }
                   }
                 }
@@ -301,7 +304,9 @@
                       $storePassed = false;
                     }
                     if( $validData === true ) {
-                      $storePassed = $this->verifyWhereConditions( $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] );
+                      $storePassed = $this->verifyWhereConditions( 
+                        $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] 
+                      );
                       if( $storePassed ) {
                         // Append data to the found array.
                         $document = $data;
@@ -385,6 +390,13 @@
     
               // Check if there is any document appendable.
               if( $document ) {
+                // TODO: Moving this to the end of the condition checks 
+                //       might reduce some extra cpu cost.
+                if ($this->join) {
+                  $joinQuery = ($this->join)($document);
+                  $keyName = $this->joinAs ? $this->joinAs : $joinQuery->storeName;
+                  $document[$keyName] = $joinQuery->fetch();
+                }
                 $found[] = $document;
               }
             }
