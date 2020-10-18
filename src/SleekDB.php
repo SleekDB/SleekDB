@@ -65,8 +65,7 @@
     private $fieldsToExclude = [];
     private $orConditionsWithAnd = [];
     
-    private $join = null;
-    private $joinAs = null;
+    private $listOfJoins = [];
 
 
     /**
