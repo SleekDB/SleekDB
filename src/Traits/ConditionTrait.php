@@ -261,13 +261,12 @@ use SleekDB\Exceptions\InvalidOrderException;
 
 
     // Add docs.
-    // Rename joinx to join.
-    public function joinx($joinedStore = null, $dataPropertyName = null) {
+    public function join($joinedStore = null, $dataPropertyName = null) {
       if ($joinedStore) {
-        $this->join = $joinedStore;
-      }
-      if ($dataPropertyName) {
-        $this->joinAs = $dataPropertyName;
+        $this->listOfJoins[] = [
+          'relaion' => $joinedStore,
+          'name' => $dataPropertyName
+        ];
       }
       return $this;
     }
