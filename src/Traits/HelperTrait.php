@@ -96,7 +96,7 @@
         $this->fieldsToExclude = [];
         $this->orConditionsWithAnd = [];
         // Reset join relations.
-        $this->join = null;
+        $this->listOfJoins = [];
       }
     } // End of initVariables()
 
@@ -390,13 +390,6 @@
     
               // Check if there is any document appendable.
               if( $document ) {
-                // TODO: Moving this to the end of the condition checks 
-                //       might reduce some extra cpu cost.
-                if ($this->join) {
-                  $joinQuery = ($this->join)($document);
-                  $keyName = $this->joinAs ? $this->joinAs : $joinQuery->storeName;
-                  $document[$keyName] = $joinQuery->fetch();
-                }
                 $found[] = $document;
               }
             }
@@ -419,18 +412,37 @@
         if ( $this->skip > 0 ) $found = array_slice( $found, $this->skip );
         // Limit data.
         if ( $this->limit > 0 ) $found = array_slice( $found, 0, $this->limit );
+        // Join Data.
+        $found = $this->joinData($found);
       }
 
-      if(count($found) > 0){
-        if(count($this->fieldsToSelect) > 0){
+      if(count($found) > 0) {
+        if(count($this->fieldsToSelect) > 0) {
           $found = $this->applyFieldsToSelect($found);
         }
-        if(count($this->fieldsToExclude) > 0){
+        if(count($this->fieldsToExclude) > 0) {
           $found = $this->applyFieldsToExclude($found);
         }
       }
 
       return $found;
+    }
+
+    /**
+     * Join store with their parent.
+     * 
+     */
+    private function joinData ($found) {
+      $_data = [];
+      foreach ( $found as $key => $doc ) {
+        foreach ($this->listOfJoins as $join) {
+          $joinQuery = ($join['relaion'])($doc);
+          $keyName = $join['name'] ? $join['name'] : $joinQuery->storeName;
+          $doc[$keyName] = $joinQuery->fetch();
+        }
+        $_data[] = $doc;
+      }
+      return $_data;
     }
 
     /**
