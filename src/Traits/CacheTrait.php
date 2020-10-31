@@ -47,22 +47,25 @@
      * We would use this hash token as the id/name of the cache file.
      * @return string
      */
-    private function getCacheToken() {
-      $query = json_encode( [
+    public function getCacheToken() {
+      $validConditins = [
         'store' => $this->storePath,
         'limit' => $this->limit,
         'skip' => $this->skip,
-        'conditions' => $this->conditions,
-        'orConditions' => $this->orConditions,
-        'in' => $this->in,
-        'notIn' => $this->notIn,
         'order' => $this->orderBy,
-        'search' => $this->searchKeyword,
-        'fieldsToSelect' => $this->fieldsToSelect,
-        'fieldsToExclude' => $this->fieldsToExclude,
-        'orConditionsWithAnd' => $this->orConditionsWithAnd,
-      ] );
-      return md5( $query );
+      ];
+
+      if (count($this->conditions)) $validConditins['conditions'] = $this->conditions;
+      if (count($this->orConditions)) $validConditins['orConditions'] = $this->orConditions;
+      if (count($this->in)) $validConditins['in'] = $this->in;
+      if (count($this->notIn)) $validConditins['notIn'] = $this->notIn;
+      if (count($this->notIn)) $validConditins['notIn'] = $this->notIn;
+      if (count($this->fieldsToSelect)) $validConditins['fieldsToSelect'] = $this->fieldsToSelect;
+      if (count($this->fieldsToExclude)) $validConditins['fieldsToExclude'] = $this->fieldsToExclude;
+      if (count($this->orConditionsWithAnd)) $validConditins['orConditionsWithAnd'] = $this->orConditionsWithAnd;
+      if ($this->searchKeyword !== "") $validConditins['search'] = $this->searchKeyword;
+
+      return md5( json_encode($validConditins) );
     }
 
     /**
@@ -93,7 +96,7 @@
     /**
      * Delete all cache for current store.
      */
-    private function _emptyAllCache() {
+    private function _deleteAllCache() {
       array_map( 'unlink', glob( $this->storePath . "cache/*" ) );
     }
 
