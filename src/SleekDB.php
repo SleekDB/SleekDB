@@ -18,7 +18,7 @@
   use SleekDB\Traits\CacheTrait;
   use SleekDB\Traits\ConditionTrait;
 
-  // to provide usage without composer, we need to require the files
+  // To provide usage without composer, we need to require the files
   require_once __DIR__ . "/Exceptions/ConditionNotAllowedException.php";
   require_once __DIR__ . "/Exceptions/EmptyFieldNameException.php";
   require_once __DIR__ . "/Exceptions/EmptyStoreNameException.php";
@@ -60,13 +60,12 @@
     private $searchKeyword;
     private $dataDirectory;
     private $shouldKeepConditions;
-    
+  
     private $fieldsToSelect = [];
     private $fieldsToExclude = [];
     private $orConditionsWithAnd = [];
-    
+  
     private $listOfJoins = [];
-
 
     /**
      * SleekDB constructor.
@@ -76,11 +75,8 @@
      * @throws IOException
      * @throws InvalidConfigurationException
      */
-    function __construct( $dataDir = '', $configurations = [] ) {
-      // Add data dir.
-      $configurations[ 'data_directory' ] = $dataDir;
-      // Initialize SleekDB
-      $this->init( $configurations );
+    function __construct( $storeName, $dataDir = false, $configurations = [] ) {
+      $this->init( $storeName, $dataDir, $configurations );
     }
 
     /**
@@ -93,15 +89,8 @@
      * @throws IOException
      * @throws InvalidConfigurationException
      */
-    public static function store( $storeName, $dataDir, $options = [] ) {
-      if ( empty( $storeName ) ) throw new EmptyStoreNameException( 'Store name was not valid' );
-      $_dbInstance = new SleekDB( $dataDir, $options );
-      $_dbInstance->storeName = $storeName;
-      // Boot store.
-      $_dbInstance->bootStore();
-      // Initialize variables for the store.
-      $_dbInstance->initVariables();
-      return $_dbInstance;
+    public static function store ( $storeName, $dataDir = false, $options = [] ) {
+      return new SleekDB( $storeName, $dataDir, $options );
     }
 
     /**
@@ -112,18 +101,19 @@
      * @throws EmptyFieldNameException
      * @throws InvalidDataException
      */
-    public function fetch() {
-      $fetchedData = null;
+    public function fetch () {
+      $this->verifyStore();
       // Check if data should be provided from the cache.
       if ( $this->makeCache === true ) {
-        $fetchedData = $this->reGenerateCache(); // Re-generate cache.
+        $this->results = $this->reGenerateCache(); // Re-generate cache.
       } else if ( $this->useCache === true ) {
-        $fetchedData = $this->useExistingCache(); // Use existing cache else re-generate.
+        $this->results = $this->useExistingCache(); // Use existing cache else re-generate.
       } else {
-        $fetchedData = $this->findStoreDocuments(); // Returns data without looking for cached data.
+        $this->results = $this->findStoreDocuments(); // Returns data without looking for cached data.
       }
-      $this->initVariables(); // Reset state.
-      return $fetchedData;
+      $this->resultsModifier();
+
+      return $this->results;
     }
 
     /**
@@ -137,14 +127,15 @@
      * @throws JsonException
      * @throws IdNotAllowedException
      */
-    public function insert( $storeData ) {
+    public function insert ($storeData) {
+      $this->verifyStore();
       // Handle invalid data
       if ( empty( $storeData ) ) throw new EmptyStoreDataException( 'No data found to store' );
       // Make sure that the data is an array
       if ( ! is_array( $storeData ) ) throw new InvalidStoreDataException( 'Storable data must an array' );
       $storeData = $this->writeInStore( $storeData );
       // Check do we need to wipe the cache for this store.
-      if ( $this->deleteCacheOnCreate === true ) $this->_emptyAllCache();
+      if ( $this->deleteCacheOnCreate === true ) $this->_deleteAllCache();
       return $storeData;
     }
 
@@ -158,7 +149,8 @@
      * @throws JsonException
      * @throws IdNotAllowedException
      */
-    public function insertMany( $storeData ) {
+    public function insertMany ($storeData) {
+      $this->verifyStore();
       // Handle invalid data
       if ( empty( $storeData ) ) throw new EmptyStoreDataException( 'No data found to insert in the store' );
       // Make sure that the data is an array
@@ -169,7 +161,7 @@
         $results[] = $this->writeInStore( $node );
       }
       // Check do we need to wipe the cache for this store.
-      if ( $this->deleteCacheOnCreate === true ) $this->_emptyAllCache();
+      if ( $this->deleteCacheOnCreate === true ) $this->_deleteAllCache();
       return $results;
     }
 
@@ -181,7 +173,8 @@
      * @throws EmptyFieldNameException
      * @throws InvalidDataException
      */
-    public function update($updatable ) {
+    public function update ($updatable) {
+      $this->verifyStore();
       // Find all store objects.
       $storeObjects = $this->findStoreDocuments();
       // If no store object found then return an empty array.
@@ -203,7 +196,7 @@
         }
       }
       // Check do we need to wipe the cache for this store.
-      if ( $this->deleteCacheOnCreate === true ) $this->_emptyAllCache();
+      if ( $this->deleteCacheOnCreate === true ) $this->_deleteAllCache();
       $this->initVariables(); // Reset state.
       return true;
     }
@@ -217,7 +210,8 @@
      * @throws EmptyFieldNameException
      * @throws InvalidDataException
      */
-    public function delete() {
+    public function delete () {
+      $this->verifyStore();
       // Find all store objects.
       $storeObjects = $this->findStoreDocuments();
       if ( ! empty( $storeObjects ) ) {
@@ -231,7 +225,7 @@
           }
         }
         // Check do we need to wipe the cache for this store.
-        if ( $this->deleteCacheOnCreate === true ) $this->_emptyAllCache();
+        if ( $this->deleteCacheOnCreate === true ) $this->_deleteAllCache();
         $this->initVariables(); // Reset state.
         return true;
       } else {
@@ -246,7 +240,8 @@
      * Deletes a store and wipes all the data and cache it contains.
      * @return bool
      */
-    public function deleteStore() {
+    public function deleteStore () {
+      $this->verifyStore();
       $it = new \RecursiveDirectoryIterator( $this->storePath, \RecursiveDirectoryIterator::SKIP_DOTS );
       $files = new \RecursiveIteratorIterator( $it, \RecursiveIteratorIterator::CHILD_FIRST );
       foreach( $files as $file ) {
