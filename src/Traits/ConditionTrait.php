@@ -6,11 +6,61 @@ use SleekDB\Exceptions\EmptyConditionException;
 use SleekDB\Exceptions\EmptyFieldNameException;
 use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\InvalidOrderException;
+use SleekDB\Exceptions\InvalidConfigurationException;
 
 /**
    * Coditions trait.
    */
   trait ConditionTrait {
+
+    /**
+     * Initialize the SleekDB instance.
+     * 
+     * @param array $conf
+     * @throws IOException
+     * @throws InvalidConfigurationException
+     */
+    public function init( $storeName, $dataDir, $conf ) {
+      // Check for valid configurations.
+      if (!is_array( $conf )) {
+        throw new InvalidConfigurationException( 'Invalid configurations was found.' );
+      }
+      
+      if (!!$storeName) {
+        $this->storeName = $storeName;
+      } else {
+        throw new InvalidConfigurationException( 'Invalid store name was found.' );
+      }
+
+      if (!!$dataDir) {
+        $this->setDataDirectory($dataDir);
+        $this->verifyStore();
+      }
+      // Set auto cache settings.
+      $autoCache = true;
+      if ( isset( $conf[ 'auto_cache' ] ) ) $autoCache = $conf[ 'auto_cache' ];
+      $this->initAutoCache( $autoCache );
+      // Set timeout.
+      $timeout = 120;
+      if ( isset( $conf[ 'timeout' ] ) ) {
+        if ( !empty( $conf[ 'timeout' ] ) ) $timeout = (int) $conf[ 'timeout' ];
+      }
+      set_time_limit( $timeout );
+      // Control when to keep or delete the active query conditions. Delete conditions by default.
+      $this->shouldKeepConditions = false; 
+      // Initialize variables for the store.
+      $this->initVariables();
+    } // End of init()
+
+    public function setDataDirectory ($directory) {
+      // Prepare the data directory.
+      $dataDir = trim($directory);
+      // Handle directory path ending.
+      if ( substr( $dataDir, -1 ) !== '/' ) $dataDir = $dataDir . '/';
+      // Set the data directory.
+      $this->dataDirectory = $dataDir;
+      return $this;
+    }
 
     /**
      * Select specific fields or exclude fields with - (minus) prepended
@@ -261,7 +311,7 @@ use SleekDB\Exceptions\InvalidOrderException;
 
 
     // Add docs.
-    public function join($joinedStore = null, $dataPropertyName = null) {
+    public function join ($joinedStore = null, $dataPropertyName = null) {
       if ($joinedStore) {
         $this->listOfJoins[] = [
           'relaion' => $joinedStore,
@@ -277,6 +327,16 @@ use SleekDB\Exceptions\InvalidOrderException;
      */
     public function makeCache() {
       $this->makeCache = true;
+      $this->useCache  = false;
+      return $this;
+    }
+
+    /**
+     * Disable cache for the query.
+     * @return $this
+     */
+    public function disableCache() {
+      $this->makeCache = false;
       $this->useCache  = false;
       return $this;
     }
@@ -306,7 +366,7 @@ use SleekDB\Exceptions\InvalidOrderException;
      * @return $this
      */
     public function deleteAllCache() {
-      $this->_emptyAllCache();
+      $this->_deleteAllCache();
       return $this;
     }
 
