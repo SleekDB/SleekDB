@@ -1,4 +1,4 @@
 <?php
   // Run the "Nest" testing utility.
-  require_once './nest/Nest.php';
+  require_once __DIR__ . '/nest/Nest.php';
   (new Nest(__DIR__))->runTest();

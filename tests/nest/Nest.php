@@ -4,7 +4,7 @@
    * Nest is a simple testing utility for SleekDB
    * SleekDB is a open-source NoSQL document database for PHP
    * @url https://sleekdb.github.io/
-   * @author RakibTG <rakibtg - at - gmail>
+   * @author RakibTG <rakibtg@gmail.com>
    * Copyright - SleekDB
    */
   require_once __DIR__ . '/nest.utils.php';
@@ -43,10 +43,10 @@
     public function runTest() {
 
       // Import SleekDB.
-      require_once $this->dir . '../src/SleekDB.php';
+      require_once __DIR__ . '/../../src/SleekDB.php';
 
       // Instantiate the object.
-      $database = new \SleekDB\SleekDB( $this->testStore, [
+      $database = new \SleekDB\SleekDB( 'mysite', $this->testStore, [
         'auto_cache' => true,
         'timeout' => 120
       ] );
