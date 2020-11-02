@@ -21,47 +21,6 @@
   trait HelperTrait {
 
     /**
-     * @param array $conf
-     * @throws IOException
-     * @throws InvalidConfigurationException
-     */
-    private function init( $conf ) {
-      // Check for valid configurations.
-      if( empty( $conf ) OR !is_array( $conf ) ) throw new InvalidConfigurationException( 'Invalid configurations was found.' );
-      // Check if the 'data_directory' was provided.
-      if ( !isset( $conf[ 'data_directory' ] ) ) throw new InvalidConfigurationException( '"data_directory" was not provided in the configurations.' );
-      // Check if data_directory is empty.
-      if ( empty( $conf[ 'data_directory' ] ) ) throw new InvalidConfigurationException( '"data_directory" cant be empty in the configurations.' );
-      // Prepare the data directory.
-      $dataDir = trim( $conf[ 'data_directory' ] );
-      // Handle directory path ending.
-      if ( substr( $dataDir, -1 ) !== '/' ) $dataDir = $dataDir . '/';
-      // Check if the data_directory exists.
-      if ( !file_exists( $dataDir ) ) {
-        // The directory was not found, create one.
-        if ( !mkdir( $dataDir, 0777, true ) ) throw new IOException( 'Unable to create the data directory at ' . $dataDir );
-      }
-      // Check if PHP has write permission in that directory.
-      if ( !is_writable( $dataDir ) ) throw new IOException( 'Data directory is not writable at "' . $dataDir . '." Please change data directory permission.' );
-      // Finally check if the directory is readable by PHP.
-      if ( !is_readable( $dataDir ) ) throw new IOException( 'Data directory is not readable at "' . $dataDir . '." Please change data directory permission.' );
-      // Set the data directory.
-      $this->dataDirectory = $dataDir;
-      // Set auto cache settings.
-      $autoCache = true;
-      if ( isset( $conf[ 'auto_cache' ] ) ) $autoCache = $conf[ 'auto_cache' ];
-      $this->initAutoCache( $autoCache );
-      // Set timeout.
-      $timeout = 120;
-      if ( isset( $conf[ 'timeout' ] ) ) {
-        if ( !empty( $conf[ 'timeout' ] ) ) $timeout = (int) $conf[ 'timeout' ];
-      }
-      set_time_limit( $timeout );
-      // Control when to keep or delete the active query conditions. Delete conditions by default.
-      $this->shouldKeepConditions = false; 
-    } // End of init()
-
-    /**
      * Init data that SleekDB required to operate.
      */
     private function initVariables() {
@@ -94,10 +53,53 @@
         // specific fields to select
         $this->fieldsToSelect = [];
         $this->fieldsToExclude = [];
-
         $this->orConditionsWithAnd = [];
+        // Reset join relations.
+        $this->listOfJoins = [];
       }
     } // End of initVariables()
+
+    private function verifyStore () {
+      // Check if the 'data_directory' was provided.
+      if ( !isset($this->dataDirectory) ) {
+        throw new InvalidConfigurationException( 
+          '"data_directory" was not provided in the configurations.' 
+        );
+      }
+      // Check if data_directory is empty.
+      if ( empty($this->dataDirectory) ) {
+        throw new InvalidConfigurationException(
+          '"data_directory" cant be empty in the configurations.'
+        );
+      }
+      // Check if the data_directory exists.
+      if ( !file_exists( $this->dataDirectory ) ) {
+        // The directory was not found, create one.
+        if ( !mkdir( $this->dataDirectory, 0777, true ) ) {
+          throw new IOException(
+            'Unable to create the data directory at ' . $this->dataDirectory
+          );
+        }
+      }
+      // Check if PHP has write permission in that directory.
+      if ( !is_writable( $this->dataDirectory ) ) {
+        throw new IOException(
+          'Data directory is not writable at "' 
+            . $this->dataDirectory 
+            . '." Please change data directory permission.'
+        );
+      }
+      // Finally check if the directory is readable by PHP.
+      if ( !is_readable( $this->dataDirectory ) ) {
+        throw new IOException(
+          'Data directory is not readable at "' 
+            . $this->dataDirectory 
+            . '." Please change data directory permission.'
+        );
+      }
+      // Boot store.
+      $this->bootStore();
+    }
 
     /**
      * Initialize the auto cache settings.
@@ -126,7 +128,9 @@
     private function bootStore() {
       $store = trim( $this->storeName );
       // Validate the store name.
-      if ( !$store || empty( $store ) ) throw new EmptyStoreNameException( 'Invalid store name was found' );
+      if ( !$store || empty( $store ) ) {
+        throw new EmptyStoreNameException( 'Invalid store name was found' );
+      }
       // Prepare store name.
       if ( substr( $store, -1 ) !== '/' ) $store = $store . '/';
       // Store directory path.
@@ -254,6 +258,7 @@
       // Start collecting and filtering data.
       $storeDataPath = $this->storePath . 'data/';
       if( $handle = opendir($storeDataPath) ) {
+
         while ( false !== ($entry = readdir($handle)) ) {
           if ($entry != "." && $entry != "..") {
             $file = $storeDataPath . $entry;
@@ -280,7 +285,9 @@
                       $storePassed = false;
                     }
                     if( $validData === true ) {
-                      $storePassed = $this->verifyWhereConditions( $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] );
+                      $storePassed = $this->verifyWhereConditions( 
+                        $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] 
+                      );
                     }
                   }
                 }
@@ -301,7 +308,9 @@
                       $storePassed = false;
                     }
                     if( $validData === true ) {
-                      $storePassed = $this->verifyWhereConditions( $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] );
+                      $storePassed = $this->verifyWhereConditions( 
+                        $condition[ 'condition' ], $fieldValue, $condition[ 'value' ] 
+                      );
                       if( $storePassed ) {
                         // Append data to the found array.
                         $document = $data;
@@ -407,18 +416,38 @@
         if ( $this->skip > 0 ) $found = array_slice( $found, $this->skip );
         // Limit data.
         if ( $this->limit > 0 ) $found = array_slice( $found, 0, $this->limit );
-      }
-
-      if(count($found) > 0){
-        if(count($this->fieldsToSelect) > 0){
+        if(count($this->fieldsToSelect) > 0) {
           $found = $this->applyFieldsToSelect($found);
         }
-        if(count($this->fieldsToExclude) > 0){
+        if(count($this->fieldsToExclude) > 0) {
           $found = $this->applyFieldsToExclude($found);
         }
       }
 
       return $found;
+    }
+
+    private function resultsModifier () {
+      $this->joinData();
+    }
+
+    /**
+     * Join store with their parent.
+     * 
+     */
+    private function joinData () {
+      foreach ( $this->results as $key => $doc ) {
+        foreach ($this->listOfJoins as $join) {
+          // Execute the child query.
+          $joinQuery = ($join['relaion'])($doc);
+          $keyName = $join['name'] ? $join['name'] : $joinQuery->storeName;
+          $joinQuery = $joinQuery
+            ->setDataDirectory($this->dataDirectory)
+            ->fetch();
+          // Add child documents with the current document.
+          $this->results[$key][$keyName] = $joinQuery;
+        }
+      }
     }
 
     /**
@@ -461,7 +490,6 @@
       return $found;
     }
 
-
     /**
      * Writes an object in a store.
      * @param $storeData
@@ -474,7 +502,11 @@
       // Cast to array
       $storeData = (array) $storeData;
       // Check if it has _id key
-      if ( isset( $storeData[ '_id' ] ) ) throw new IdNotAllowedException( 'The _id index is reserved by SleekDB, please delete the _id key and try again' );
+      if ( isset( $storeData[ '_id' ] ) ) {
+        throw new IdNotAllowedException( 
+          'The _id index is reserved by SleekDB, please delete the _id key and try again' 
+        );
+      }
       $id = $this->getStoreId();
       // Add the system ID with the store data array.
       $storeData[ '_id' ] = $id;
