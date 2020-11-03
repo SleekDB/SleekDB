@@ -15,12 +15,15 @@
     function __construct($root) {
       $this->root = $root . '/';
       $this->testCase = $this->root . 'nest/test-case/';
-      $this->dbStorage = $this->root . 'nest/test-db-storage/';
+      $this->dbStorage = $this->root . 'nest/nest-test-db-store/';
       $this->testStore = $this->dbStorage;
     }
 
     function getAllTestCases() {
-      return array_diff(scandir($this->testCase), array('..', '.'));
+      return array_diff(
+        scandir($this->testCase, SCANDIR_SORT_ASCENDING), 
+        array('..', '.')
+      );
     }
 
     function translateFileNameToFunctionName($fileName) {
@@ -46,10 +49,7 @@
       require_once __DIR__ . '/../../src/SleekDB.php';
 
       // Instantiate the object.
-      $database = new \SleekDB\SleekDB( 'mysite', $this->testStore, [
-        'auto_cache' => true,
-        'timeout' => 120
-      ] );
+      $database = null;
 
       $total = [
         'success' => 0,
@@ -70,9 +70,17 @@
           $total[ 'failed' ] = $total[ 'failed' ] + 1;
           $this->print_danger( '✘ Test failed.' );
           $this->print_default( $test[ 'message' ] );
+          if (isset($test['expected'])) {
+            $this->print_default("Expected:");
+            print_r($test['expected']);
+          }
+          if (isset($test['found'])) {
+            $this->print_default("Found:");
+            print_r($test['found']);
+          }
         }
       }
-      echo ". . . . . . . . . . . . . . . .\n";
+      echo "~~~~~~~~~~~~~~~~~~~~\n";
       // Test stat
       $this->print_default( "↳ Total tests\t: " . $total[ 'tests' ] );
       if( $total[ 'success' ] > 0 ) $this->print_success( "✔ Total passed\t: " . $total[ 'success' ] );
