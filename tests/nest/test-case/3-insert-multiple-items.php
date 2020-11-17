@@ -2,7 +2,7 @@
 
   $test = [
     'title'   => 'Insert multiple items',
-    'result'  => false,
+    'result'  => true,
     'message' => ''
   ];
 
@@ -134,14 +134,27 @@
 
     $data = $database->insertMany($sampleData);
 
-    // Add the _id propert with provided data.
-    $sampleData['_id'] = 1;
-    $test['result'] = !!($data == $sampleData);
-
-    if (!$test['result']) {
-      $test['expected'] = $sampleData;
-      $test['found'] = $data;
+    // Validate items count.
+    if (count($sampleData) !== count($data)) {
+      $test['result'] = false;
+      $test['message'] = "Different items has returned on multiple insert";
+    } else {
+      $validId = idExistsInEveryItem ($data);
+      if ($validId['result'] !== true) {
+        $test['result'] = $validId['result'];
+        $test['message'] = $validId['message'];
+      }
+      $isResultEqual = equalItems ($sampleData, $data);
+      if ($isResultEqual !== true) {
+        $test['result'] = $isResultEqual['result'];
+        $test['message'] = $isResultEqual['message'];
+      }
     }
+
+    // if (!$test['result']) {
+    //   $test['expected'] = $sampleData;
+    //   $test['found'] = $data;
+    // }
 
   } catch( Exception $e ) {
     $test['result'] = false;
