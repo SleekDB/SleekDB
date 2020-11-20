@@ -1,32 +1,31 @@
 <?php
 
-  $test = [
-    'title'   => 'Inserting a single data',
-    'result'  => false,
-    'message' => ''
+$test = [
+  'title'   => 'Inserting a single data',
+  'result'  => false,
+  'message' => ''
+];
+
+try {
+
+  $sampleData = [
+    'title' => 'Lorem ipsum dolor sit amet',
+    'count' => 2,
+    'price' => 43.23,
+    'rate' => 'BDT'
   ];
 
-  try {
+  $data = $database->insert($sampleData);
 
-    $sampleData = [
-      'title' => 'Lorem ipsum dolor sit amet',
-      'count' => 2,
-      'price' => 43.23,
-      'rate' => 'BDT'
-    ];
+  // Add the _id propert with provided data.
+  $sampleData['_id'] = 1;
+  $test['result'] = !!($data == $sampleData);
 
-    $data = $database->insert($sampleData);
-
-    // Add the _id propert with provided data.
-    $sampleData['_id'] = 1;
-    $test['result'] = !!($data == $sampleData);
-
-    if (!$test['result']) {
-      $test['expected'] = $sampleData;
-      $test['found'] = $data;
-    }
-
-  } catch( Exception $e ) {
-    $test['result'] = false;
-    $test['message'] = $e->getMessage();
+  if (!$test['result']) {
+    $test['expected'] = $sampleData;
+    $test['found'] = $data;
   }
+} catch (Exception $e) {
+  $test['result'] = false;
+  $test['message'] = $e->getMessage();
+}
