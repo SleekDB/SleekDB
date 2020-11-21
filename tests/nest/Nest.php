@@ -10,6 +10,8 @@
 require_once __DIR__ . '/nest.helpers.php';
 require_once __DIR__ . '/nest.utils.php';
 require_once __DIR__ . '/nest.data.php';
+require_once __DIR__ . '/Console.php';
+
 class Nest
 {
 
@@ -65,33 +67,41 @@ class Nest
       'tests' => 0
     ];
 
+    // Greeting
+    echo Console::yellow("\nSleekDB Test Runner\n\n");
+
     // Empty the test store.
     if (file_exists($this->testStore)) $this->emptyTestStore();
     foreach ($this->getAllTestCases() as $key => $testCase) {
       $total['tests'] = $total['tests'] + 1;
       require_once $this->testCase . $testCase;
-      $this->print_warning($test['title']);
+      echo Console::blue($test['title']) . "\n";
       if ($test['result'] === true) {
-        $this->print_success('✔ Test passed.');
+        echo Console::green('✔ Test passed.') . "\n";
         $total['success'] = $total['success'] + 1;
       } else {
         $total['failed'] = $total['failed'] + 1;
-        $this->print_danger('✘ Test failed.');
-        $this->print_default($test['message']);
+        echo Console::red('✘ Test failed.') . "\n";
+        echo Console::log($test['message']) . "\n";
         if (isset($test['expected'])) {
-          $this->print_default("Expected:");
+          echo Console::bold("Expected:") . "\n";
           print_r($test['expected']);
         }
         if (isset($test['found'])) {
-          $this->print_default("Found:");
+          echo Console::bold("Found:") . "\n";
           print_r($test['found']);
         }
       }
     }
-    echo "~~~~~~~~~~~~~~~~~~~~\n";
+    echo "\n--------------------------------------------------\n";
     // Test stat
-    $this->print_default("↳ Total tests\t: " . $total['tests']);
-    if ($total['success'] > 0) $this->print_success("✔ Total passed\t: " . $total['success']);
-    if ($total['failed'] > 0) $this->print_danger("✘ Total failed:\t: " . $total['failed']);
+    echo Console::bold("Total tests\t: " . $total['tests']) . "\n";
+    if ($total['success'] > 0) {
+      // $this->print_success("✔ Total passed\t: " . $total['success']);
+      echo Console::green('✔ All Test passed.') . "\n\n\n";
+    }
+    if ($total['failed'] > 0) {
+      echo Console::red("✘ Total failed:\t: " . $total['failed']) . "\n";
+    }
   }
 }

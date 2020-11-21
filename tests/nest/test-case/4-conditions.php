@@ -9,7 +9,7 @@ $test = [
 ];
 
 try {
-  $database = SleekDB::store('conditions_users', $this->testStore, [
+  $database = SleekDB::store('where_users', $this->testStore, [
     'auto_cache' => true,
     'timeout' => 120
   ]);
