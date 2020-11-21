@@ -225,12 +225,22 @@ function getData($type)
       }]
     ');
   } else if ($type === 'authorBio') {
-    return json_decode('
+    return [
       [
-        { "username": "lkeeves0", "bio": "bio test 1", "email": "email1@test.com" },
-        { "username": "cthompstone1", "bio": "bio test 2", "email": "email2@test.com" },
-        { "username": "strow7", "bio": "bio test 3", "email": "email3@test.com" },
-      ]
-    ');
+        "username" => "lkeeves0",
+        "bio" => "bio test 1",
+        "email" => "email1@test.com"
+      ],
+      [
+        "username" => "cthompstone1",
+        "bio" => "bio test 2",
+        "email" => "email2@test.com"
+      ],
+      [
+        "username" => "strow7",
+        "bio" => "bio test 3",
+        "email" => "email3@test.com"
+      ],
+    ];
   }
 }
