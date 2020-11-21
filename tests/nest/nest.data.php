@@ -126,5 +126,111 @@ function getData($type)
         "likes": 60899
       }
     ]', true);
+  } else if ($type === 'authors') {
+    return json_decode('
+      [{
+        "name": "Luke",
+        "username": "lkeeves0",
+        "gender": "Male"
+      }, {
+        "name": "Charlie",
+        "username": "cthompstone1",
+        "gender": "Male"
+      }, {
+        "name": "Cori",
+        "username": "cpetschelt2",
+        "gender": "Male"
+      }, {
+        "name": "Noak",
+        "username": "noliffe3",
+        "gender": "Male"
+      }, {
+        "name": "Maegan",
+        "username": "mjulyan4",
+        "gender": "Female"
+      }, {
+        "name": "Dulcea",
+        "username": "dsola5",
+        "gender": "Female"
+      }, {
+        "name": "Bellina",
+        "username": "bmatches6",
+        "gender": "Female"
+      }, {
+        "name": "Smitty",
+        "username": "strow7",
+        "gender": "Male"
+      }, {
+        "name": "Hynda",
+        "username": "hbenian8",
+        "gender": "Female"
+      }, {
+        "name": "Fairfax",
+        "username": "fcready9",
+        "gender": "Male"
+      }]
+    ');
+  } else if ($type === 'posts') {
+    return json_decode('
+      [{
+        "title": "sem sed",
+        "username": "lkeeves0",
+        "likes": 84,
+        "comments": 74
+      }, {
+        "title": "quam pede lobortis",
+        "username": "cthompstone1",
+        "likes": 38,
+        "comments": 73
+      }, {
+        "title": "ante ipsum primis",
+        "username": "cthompstone1",
+        "likes": 96,
+        "comments": 79
+      }, {
+        "title": "lectus aliquam",
+        "username": "cthompstone1",
+        "likes": 20,
+        "comments": 64
+      }, {
+        "title": "lacus at",
+        "username": "strow7",
+        "likes": 15,
+        "comments": 88
+      }, {
+        "title": "lorem id",
+        "username": "strow7",
+        "likes": 39,
+        "comments": 77
+      }, {
+        "title": "tristique fusce",
+        "username": "dsola5",
+        "likes": 57,
+        "comments": 35
+      }, {
+        "title": "mattis egestas",
+        "username": "mjulyan4",
+        "likes": 8,
+        "comments": 89
+      }, {
+        "title": "donec ut mauris",
+        "username": "cpetschelt2",
+        "likes": 52,
+        "comments": 85
+      }, {
+        "title": "vestibulum proin eu",
+        "username": "fcready9",
+        "likes": 10,
+        "comments": 44
+      }]
+    ');
+  } else if ($type === 'authorBio') {
+    return json_decode('
+      [
+        { "username": "lkeeves0", "bio": "bio test 1", "email": "email1@test.com" },
+        { "username": "cthompstone1", "bio": "bio test 2", "email": "email2@test.com" },
+        { "username": "strow7", "bio": "bio test 3", "email": "email3@test.com" },
+      ]
+    ');
   }
 }
