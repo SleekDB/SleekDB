@@ -68,21 +68,29 @@ class Nest
     ];
 
     // Greeting
-    echo Console::yellow("\nSleekDB Test Runner\n\n");
+    echo Console::yellow("SleekDB Test Runner\n");
 
     // Empty the test store.
     if (file_exists($this->testStore)) $this->emptyTestStore();
     foreach ($this->getAllTestCases() as $key => $testCase) {
       $total['tests'] = $total['tests'] + 1;
       require_once $this->testCase . $testCase;
-      echo Console::blue($test['title']) . "\n";
+      if (isset($cases)) {
+        $caseRunnerOutput = caseRunner($cases);
+        if (!$caseRunnerOutput['result']) {
+          $test['result'] = $caseRunnerOutput['result'];
+          $test['message'] = $caseRunnerOutput['message'];
+        }
+      }
+      echo ($test['result'] ? Console::green('✔ ') : Console::red('✘ ')) . Console::blue($test['title']) . "\n";
       if ($test['result'] === true) {
-        echo Console::green('✔ Test passed.') . "\n";
         $total['success'] = $total['success'] + 1;
       } else {
         $total['failed'] = $total['failed'] + 1;
-        echo Console::red('✘ Test failed.') . "\n";
-        echo Console::log($test['message']) . "\n";
+        echo Console::light_purple("Reason: ");
+        echo Console::log($test['message']);
+        echo Console::light_purple("Case File: ");
+        Console::log(basename($this->testCase . $testCase));
         if (isset($test['expected'])) {
           echo Console::bold("Expected:") . "\n";
           print_r($test['expected']);
@@ -93,15 +101,15 @@ class Nest
         }
       }
     }
-    echo "\n--------------------------------------------------\n";
-    // Test stat
+    echo "\n_____________________\n";
     echo Console::bold("Total tests\t: " . $total['tests']) . "\n";
     if ($total['success'] > 0) {
-      // $this->print_success("✔ Total passed\t: " . $total['success']);
-      echo Console::green('✔ All Test passed.') . "\n\n\n";
+      echo Console::green("✔ Passed\t: " . $total['success']) . "\n";
     }
     if ($total['failed'] > 0) {
-      echo Console::red("✘ Total failed:\t: " . $total['failed']) . "\n";
+      echo Console::red("✘ Failed\t: " . $total['failed']) . "\n";
     }
+
+    $this->emptyTestStore();
   }
 }
