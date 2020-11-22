@@ -217,6 +217,8 @@ class SleekDB
 
   /**
    * Deletes matched store objects.
+   * 
+   * @param bool $returnRecordsCount
    * @return bool
    * @throws IOException
    * @throws IndexNotFoundException
@@ -224,7 +226,7 @@ class SleekDB
    * @throws EmptyFieldNameException
    * @throws InvalidDataException
    */
-  public function delete()
+  public function delete($returnRecordsCount = false)
   {
     $this->verifyStore();
     // Find all store objects.
@@ -242,12 +244,11 @@ class SleekDB
       // Check do we need to wipe the cache for this store.
       if ($this->deleteCacheOnCreate === true) $this->_deleteAllCache();
       $this->initVariables(); // Reset state.
-      return true;
+      return $returnRecordsCount ? count($storeObjects) : true;
     } else {
       // Nothing found to delete
       $this->initVariables(); // Reset state.
-      return true;
-      // throw new \Exception( 'Invalid store object found, nothing to delete.' );
+      return $returnRecordsCount ? 0 : true;
     }
   }
 
