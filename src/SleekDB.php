@@ -47,8 +47,8 @@ class SleekDB
   private $storeName;
   private $makeCache;
   private $useCache;
-  private $deleteCacheOnCreate;
   private $storePath;
+  private $deleteCacheOnCreate;
 
   private $in;
   private $skip;
@@ -67,6 +67,7 @@ class SleekDB
   private $orConditionsWithAnd = [];
 
   private $listOfJoins = [];
+  private $existsCheck = false;
 
   /**
    * SleekDB constructor.
@@ -87,9 +88,6 @@ class SleekDB
    * @param string $dataDir
    * @param array $options
    * @return SleekDB
-   * @throws EmptyStoreNameException
-   * @throws IOException
-   * @throws InvalidConfigurationException
    */
   public static function store($storeName, $dataDir = false, $options = [])
   {
