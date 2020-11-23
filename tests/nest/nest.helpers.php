@@ -56,11 +56,13 @@ function caseRunner($cases)
   foreach ($cases as $key => $case) {
     $data = ($case['query'])->fetch();
 
-    // Check rows_count
-    if (count($data) !== $case['rows_count']) {
-      $message = $case['name'] . "\nExpected row count is " . $case['rows_count'] . " but received " . count($data);
-      $result = false;
-      break;
+    // Check rows count
+    if (isset($case['rows_count'])) {
+      if (count($data) !== $case['rows_count']) {
+        $message = $case['name'] . "\nExpected row count is " . $case['rows_count'] . " but received " . count($data);
+        $result = false;
+        break;
+      }
     }
 
     // Check validator
