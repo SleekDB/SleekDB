@@ -52,6 +52,8 @@ trait ConditionTrait
     $this->shouldKeepConditions = false;
     // Reset data exists check flag.
     $this->existsCheck = false;
+    // Reset return first item flag.
+    $this->returnFirstItem = false;
     // Initialize variables for the store.
     $this->initVariables();
   } // End of init()
@@ -411,6 +413,17 @@ trait ConditionTrait
   public function exists()
   {
     $this->existsCheck = true;
+    return $this;
+  }
+
+  /**
+   * Return the first item.
+   * @return $this
+   * 
+   */
+  public function first()
+  {
+    $this->returnFirstItem = true;
     return $this;
   }
 }
