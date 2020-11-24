@@ -3,4 +3,6 @@
 
 namespace SleekDB\Exceptions;
 
-class InvalidConfigurationException extends \Exception {}
+class InvalidConfigurationException extends \Exception
+{
+}

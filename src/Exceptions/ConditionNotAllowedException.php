@@ -3,4 +3,6 @@
 
 namespace SleekDB\Exceptions;
 
-class ConditionNotAllowedException extends \Exception {}
+class ConditionNotAllowedException extends \Exception
+{
+}

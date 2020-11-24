@@ -3,4 +3,6 @@
 
 namespace SleekDB\Exceptions;
 
-class InvalidOrderException extends \Exception {}
+class InvalidOrderException extends \Exception
+{
+}

@@ -4,4 +4,6 @@
 namespace SleekDB\Exceptions;
 
 
-class IOException extends \Exception {}
+class IOException extends \Exception
+{
+}

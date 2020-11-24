@@ -3,4 +3,6 @@
 
 namespace SleekDB\Exceptions;
 
-class EmptyConditionException extends \Exception {}
+class EmptyConditionException extends \Exception
+{
+}
