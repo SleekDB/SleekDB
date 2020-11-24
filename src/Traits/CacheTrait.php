@@ -58,6 +58,7 @@ trait CacheTrait
       'skip' => $this->skip,
       'order' => $this->orderBy,
       'existsCheck' => $this->existsCheck,
+      'returnFirstItem' => $this->returnFirstItem,
     ];
 
     if (count($this->conditions)) $validConditins['conditions'] = $this->conditions;

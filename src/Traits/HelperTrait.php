@@ -60,6 +60,8 @@ trait HelperTrait
       $this->listOfJoins = [];
       // Reset data exists check flag.
       $this->existsCheck = false;
+      // Reset return first item flag.
+      $this->returnFirstItem = false;
     }
   } // End of initVariables()
 
@@ -425,11 +427,10 @@ trait HelperTrait
             if ($document) {
               $found[] = $document;
 
-              /*
-                While the query is only to check if the expected data exists or not,
-                then break out of this while loop since we already have an documentn discoverd.
-              */
+              // Break if return only data exist check.
               if ($this->existsCheck === true) break;
+              // Break if return only the first item.
+              if ($this->returnFirstItem === true) break;
             }
           }
         }
@@ -471,7 +472,13 @@ trait HelperTrait
   {
     // Before trying to modify the data, make sure an array was provided.
     if (gettype($this->results) == 'array') {
+      // Join data.
       $this->joinData();
+      // Handle first() method.
+      if ($this->returnFirstItem && count($this->results) > 0) {
+        [$item] = $this->results;
+        $this->results = $item;
+      }
     }
   }
 
