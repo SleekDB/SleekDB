@@ -427,4 +427,26 @@ trait ConditionTrait
     $this->returnFirstItem = true;
     return $this;
   }
+
+  /**
+   * Return distincted values.
+   * @param array|string $fields List of fields to be checked as disctincted.
+   * @return $this;
+   * 
+   */
+  public function distinct($fields = []) {
+    $fieldType = gettype($fields);
+    if($fieldType === 'array') {
+      // Throw error if assoc array found.
+      if($fields === array_values($fields)) {
+        // Append fields.
+      } else {
+        // throw assoc object error
+      }
+    } else if ($fieldType === 'string' && !empty($fields)) {
+      $this->distinctFields[] = trim($fields);
+    } else {
+      // throw error
+    }
+  }
 }
