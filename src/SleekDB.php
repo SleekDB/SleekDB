@@ -5,7 +5,6 @@ namespace SleekDB;
 use SleekDB\Exceptions\ConditionNotAllowedException;
 use SleekDB\Exceptions\EmptyFieldNameException;
 use SleekDB\Exceptions\EmptyStoreDataException;
-use SleekDB\Exceptions\EmptyStoreNameException;
 use SleekDB\Exceptions\IdNotAllowedException;
 use SleekDB\Exceptions\IndexNotFoundException;
 use SleekDB\Exceptions\InvalidConfigurationException;

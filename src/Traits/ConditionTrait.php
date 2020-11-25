@@ -7,6 +7,7 @@ use SleekDB\Exceptions\EmptyFieldNameException;
 use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\InvalidOrderException;
 use SleekDB\Exceptions\InvalidConfigurationException;
+use SleekDB\Exceptions\EmptyStoreNameException;
 
 /**
  * Coditions trait.
@@ -31,7 +32,7 @@ trait ConditionTrait
     if (!!$storeName) {
       $this->storeName = $storeName;
     } else {
-      throw new InvalidConfigurationException('Invalid store name was found.');
+      throw new EmptyStoreNameException('Invalid store name was found.');
     }
 
     if (!!$dataDir) {
