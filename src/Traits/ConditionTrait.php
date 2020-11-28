@@ -8,6 +8,7 @@ use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\InvalidOrderException;
 use SleekDB\Exceptions\InvalidConfigurationException;
 use SleekDB\Exceptions\EmptyStoreNameException;
+use SleekDB\Exceptions\InvalidDataException;
 
 /**
  * Coditions trait.
@@ -434,19 +435,26 @@ trait ConditionTrait
    * @return $this;
    * 
    */
-  public function distinct($fields = []) {
+  public function distinct($fields = [])
+  {
     $fieldType = gettype($fields);
-    if($fieldType === 'array') {
-      // Throw error if assoc array found.
-      if($fields === array_values($fields)) {
+    if ($fieldType === 'array') {
+      if ($fields === array_values($fields)) {
         // Append fields.
+        $this->distinctFields = array_merge($this->distinctFields, $fields);
       } else {
-        // throw assoc object error
+        throw new InvalidDataException(
+          'Field value in distinct() method can not be an associative array, 
+          please provide a string or a list of string as a non-associative array.'
+        );
       }
     } else if ($fieldType === 'string' && !empty($fields)) {
       $this->distinctFields[] = trim($fields);
     } else {
-      // throw error
+      throw new InvalidDataException(
+        'Field value in distinct() is invalid.'
+      );
     }
+    return $this;
   }
 }
