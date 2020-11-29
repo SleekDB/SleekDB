@@ -108,12 +108,13 @@ class SleekDB
     $this->verifyStore();
     // Check if data should be provided from the cache.
     if ($this->makeCache === true) {
-      $this->results = $this->reGenerateCache(); // Re-generate cache.
+      $this->reGenerateCache(); // Re-generate cache.
     } else if ($this->useCache === true) {
-      $this->results = $this->useExistingCache(); // Use existing cache else re-generate.
+      $this->useExistingCache(); // Use existing cache else re-generate.
     } else {
-      $this->results = $this->findStoreDocuments(); // Returns data without looking for cached data.
+      $this->findStoreDocuments(); // Returns data without looking for cached data.
     }
+    
     $this->resultsModifier();
 
     return $this->results;
@@ -182,14 +183,13 @@ class SleekDB
   public function update($updatable)
   {
     $this->verifyStore();
-    // Find all store objects.
-    $storeObjects = $this->findStoreDocuments();
+    $this->findStoreDocuments();
     // If no store object found then return an empty array.
-    if (empty($storeObjects)) {
+    if (empty($this->results)) {
       $this->initVariables(); // Reset state.
       return false;
     }
-    foreach ($storeObjects as $data) {
+    foreach ($this->results as $data) {
       foreach ($updatable as $key => $value) {
         // Do not update the _id reserved index of a store.
         if ($key != '_id') {
@@ -228,10 +228,9 @@ class SleekDB
   public function delete($returnRecordsCount = false)
   {
     $this->verifyStore();
-    // Find all store objects.
-    $storeObjects = $this->findStoreDocuments();
-    if (!empty($storeObjects)) {
-      foreach ($storeObjects as $data) {
+    $this->findStoreDocuments();
+    if (!empty($this->results)) {
+      foreach ($this->results as $data) {
         if (!unlink($this->storePath . 'data/' . $data['_id'] . '.json')) {
           $this->initVariables(); // Reset state.
           throw new IOException(
@@ -243,7 +242,7 @@ class SleekDB
       // Check do we need to wipe the cache for this store.
       if ($this->deleteCacheOnCreate === true) $this->_deleteAllCache();
       $this->initVariables(); // Reset state.
-      return $returnRecordsCount ? count($storeObjects) : true;
+      return $returnRecordsCount ? count($this->results) : true;
     } else {
       // Nothing found to delete
       $this->initVariables(); // Reset state.

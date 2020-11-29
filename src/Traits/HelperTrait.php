@@ -460,14 +460,14 @@ trait HelperTrait
       }
     }
 
-    // Return boolean on data exists check.
-    if ($this->existsCheck === true) {
-      return !empty($found);
-    }
-
-    return $found;
+    $this->results = $found;
   }
 
+  /**
+   * Modify collected data.
+   * @return array|boolean
+   * 
+   */
   private function resultsModifier()
   {
     // Before trying to modify the data, make sure an array was provided.
@@ -478,6 +478,10 @@ trait HelperTrait
       if ($this->returnFirstItem && count($this->results) > 0) {
         [$item] = $this->results;
         $this->results = $item;
+      }
+      // Return boolean on data exists check.
+      if ($this->existsCheck === true) {
+        $this->results = !empty($this->results);
       }
     }
   }

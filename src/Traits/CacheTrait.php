@@ -16,13 +16,13 @@ trait CacheTrait
   private function reGenerateCache()
   {
     $token  = $this->getCacheToken();
-    $result = $this->findStoreDocuments();
+    $this->findStoreDocuments();
     // Write the cache file.
-    file_put_contents($this->getCachePath($token), json_encode($result));
+    file_put_contents($this->getCachePath($token), json_encode($this->results));
     // Reset cache flags to avoid future queries on the same object of the store.
     $this->resetCacheFlags();
     // Return the data.
-    return $result;
+    return $this->results;
   }
 
   /**
@@ -38,10 +38,10 @@ trait CacheTrait
       // Reset cache flags to avoid future queries on the same object of the store.
       $this->resetCacheFlags();
       // Return data from the found cache file.
-      return json_decode(file_get_contents($this->getCachePath($token)), true);
+      $this->results = json_decode(file_get_contents($this->getCachePath($token)), true);
     } else {
       // Cache file was not found, re-generate the cache and return the data.
-      return $this->reGenerateCache();
+      $this->reGenerateCache();
     }
   }
 
