@@ -3,4 +3,6 @@
 
 namespace SleekDB\Exceptions;
 
-class EmptyStoreNameException extends \Exception {}
+class EmptyStoreNameException extends \Exception
+{
+}

@@ -4,4 +4,6 @@
 namespace SleekDB\Exceptions;
 
 
-class IdNotAllowedException extends \Exception {}
+class IdNotAllowedException extends \Exception
+{
+}

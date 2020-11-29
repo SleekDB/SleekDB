@@ -4,6 +4,8 @@
 namespace SleekDB\Exceptions;
 
 
-if(!class_exists('JsonException')){
-    class JsonException extends \Exception {}
+if (!class_exists('JsonException')) {
+    class JsonException extends \Exception
+    {
+    }
 }

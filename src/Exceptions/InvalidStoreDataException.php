@@ -3,4 +3,6 @@
 
 namespace SleekDB\Exceptions;
 
-class InvalidStoreDataException extends \Exception {}
+class InvalidStoreDataException extends \Exception
+{
+}

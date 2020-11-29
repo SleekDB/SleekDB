@@ -4,4 +4,6 @@
 namespace SleekDB\Exceptions;
 
 
-class EmptyFieldNameException extends \Exception {}
+class EmptyFieldNameException extends \Exception
+{
+}

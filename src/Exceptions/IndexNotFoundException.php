@@ -4,4 +4,6 @@
 namespace SleekDB\Exceptions;
 
 
-class IndexNotFoundException extends \Exception {}
+class IndexNotFoundException extends \Exception
+{
+}
