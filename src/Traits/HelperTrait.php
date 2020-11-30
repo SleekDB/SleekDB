@@ -530,7 +530,7 @@ trait HelperTrait
         try {
           $distinct = $this->getNestedProperty($field, $result) !== $this->getNestedProperty($field, $document);
         } catch (\Throwable $th) {
-          // 
+          continue;
         }
       }
     }
