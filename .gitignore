@@ -2,3 +2,4 @@ test.php
 .DS_Store
 sleekdb_test_scripts
 vendor
+.vscode
