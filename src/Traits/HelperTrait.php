@@ -423,6 +423,13 @@ trait HelperTrait
               }
             }
 
+            // Distinct data check.
+            if (count($this->distinctFields) > 0) {
+              if (!$this->distinctData($document, $found)) {
+                $document = false;
+              }
+            }
+
             // Check if there is any document appendable.
             if ($document) {
               $found[] = $document;
@@ -504,6 +511,30 @@ trait HelperTrait
         $this->results[$key][$keyName] = $joinQuery;
       }
     }
+  }
+
+  /**
+   * Check if a document is distinct.
+   * 
+   * @param array $document Documennt to check against collected documents.
+   * @param array $found Collected parent documents.
+   * @return boolean
+   */
+  private function distinctData($document, $found = [])
+  {
+    $distinct = true;
+    foreach ($found as $result) {
+      if (!$distinct) break;
+      foreach ($this->distinctFields as $field) {
+        if (!$distinct) break;
+        try {
+          $distinct = $this->getNestedProperty($field, $result) !== $this->getNestedProperty($field, $document);
+        } catch (\Throwable $th) {
+          // 
+        }
+      }
+    }
+    return $distinct;
   }
 
   /**
