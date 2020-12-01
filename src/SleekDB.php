@@ -68,6 +68,7 @@ class SleekDB
   private $listOfJoins = [];
   private $existsCheck = false;
   private $returnFirstItem = false;
+  private $distinctFields = [];
 
   /**
    * SleekDB constructor.

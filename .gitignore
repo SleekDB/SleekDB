@@ -1,4 +1,5 @@
 .DS_Store
 vendor
+sleekdb_test_scripts
 .idea
 .vscode
