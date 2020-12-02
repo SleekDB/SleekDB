@@ -26,9 +26,10 @@ trait HelperTrait
    */
   private function initVariables()
   {
-    if (!$this->shouldKeepConditions) {
-      // Set empty results
-      $this->results = [];
+    // Set empty results
+    $this->results = [];
+
+    if ($this->shouldKeepConditions === false) {
       // Set a default limit
       $this->limit = 0;
       // Set a default skip
