@@ -117,6 +117,8 @@ class SleekDB
     
     $this->resultsModifier();
 
+    $this->initVariables(); // reset state
+
     return $this->results;
   }
 
@@ -184,12 +186,15 @@ class SleekDB
   {
     $this->verifyStore();
     $this->findStoreDocuments();
-    // If no store object found then return an empty array.
-    if (empty($this->results)) {
-      $this->initVariables(); // Reset state.
+
+    $results = $this->results;
+    $this->initVariables(); // Reset state.
+
+    // If no documents found return false.
+    if (empty($results)) {
       return false;
     }
-    foreach ($this->results as $data) {
+    foreach ($results as $data) {
       foreach ($updatable as $key => $value) {
         // Do not update the _id reserved index of a store.
         if ($key != '_id') {
@@ -210,7 +215,6 @@ class SleekDB
     }
     // Check do we need to wipe the cache for this store.
     if ($this->deleteCacheOnCreate === true) $this->_deleteAllCache();
-    $this->initVariables(); // Reset state.
     return true;
   }
 
@@ -229,10 +233,11 @@ class SleekDB
   {
     $this->verifyStore();
     $this->findStoreDocuments();
-    if (!empty($this->results)) {
-      foreach ($this->results as $data) {
+    $results = $this->results;
+    $this->initVariables(); // reset state
+    if (!empty($results)) {
+      foreach ($results as $data) {
         if (!unlink($this->storePath . 'data/' . $data['_id'] . '.json')) {
-          $this->initVariables(); // Reset state.
           throw new IOException(
             'Unable to delete storage file! 
               Location: "' . $this->storePath . 'data/' . $data['_id'] . '.json' . '"'
@@ -241,11 +246,9 @@ class SleekDB
       }
       // Check do we need to wipe the cache for this store.
       if ($this->deleteCacheOnCreate === true) $this->_deleteAllCache();
-      $this->initVariables(); // Reset state.
-      return $returnRecordsCount ? count($this->results) : true;
+      return $returnRecordsCount ? count($results) : true;
     } else {
       // Nothing found to delete
-      $this->initVariables(); // Reset state.
       return $returnRecordsCount ? 0 : true;
     }
   }
