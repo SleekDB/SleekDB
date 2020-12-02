@@ -483,7 +483,7 @@ trait HelperTrait
       $this->joinData();
       // Handle first() method.
       if ($this->returnFirstItem && count($this->results) > 0) {
-        [$item] = $this->results;
+        list($item) = $this->results;
         $this->results = $item;
       }
       // Return boolean on data exists check.

@@ -1,0 +1,13 @@
+watch:
+  directories:
+    - src
+    - tests
+  fileMask: '*.php'
+phpunit:
+  binaryPath: vendor/bin/phpunit
+  arguments: '--stop-on-failure --testdox tests'
+  timeout: 180
+notifications:
+  passingTests: false
+  failingTests: false
+hideManual: true

@@ -3,6 +3,7 @@
 namespace SleekDB\Traits;
 
 use SleekDB\Exceptions\EmptyConditionException;
+use SleekDB\Exceptions\EmptyDataDirectoryException;
 use SleekDB\Exceptions\EmptyFieldNameException;
 use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\InvalidOrderException;
@@ -30,16 +31,19 @@ trait ConditionTrait
       throw new InvalidConfigurationException('Invalid configurations was found.');
     }
 
-    if (!!$storeName) {
-      $this->storeName = $storeName;
-    } else {
-      throw new EmptyStoreNameException('Invalid store name was found.');
+    if (empty($storeName)) {
+      throw new EmptyStoreNameException('Name for Store is required.');
     }
 
-    if (!!$dataDir) {
-      $this->setDataDirectory($dataDir);
-      $this->verifyStore();
+    $this->storeName = $storeName;
+
+    if (empty($dataDir)) {
+      throw new EmptyDataDirectoryException('Data directory is required.');
     }
+
+    $this->setDataDirectory($dataDir);
+    $this->verifyStore();
+
     // Set auto cache settings.
     $autoCache = true;
     if (isset($conf['auto_cache'])) $autoCache = $conf['auto_cache'];
