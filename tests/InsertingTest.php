@@ -2,8 +2,8 @@
 
 namespace SleekDB\Tests;
 
-use SleekDB\Exceptions\EmptyStoreDataException;
-use SleekDB\Exceptions\InvalidStoreDataException;
+use SleekDB\Exceptions\InvalidDataException;
+use SleekDB\Exceptions\InvalidDataException;
 use SleekDB\Tests\TestCases\SleekDBTestCase;
 
 final class InsertingTest extends SleekDBTestCase
@@ -32,7 +32,7 @@ final class InsertingTest extends SleekDBTestCase
   public function testCannotInsertSingleEmptyData(){
 
     $userStore = $this->stores["users"];
-    $this->expectException(EmptyStoreDataException::class);
+    $this->expectException(InvalidDataException::class);
     $usersData = [];
     $userStore->insert($usersData);
 
@@ -42,7 +42,7 @@ final class InsertingTest extends SleekDBTestCase
 
     $userStore = $this->stores["users"];
 
-    $this->expectException(InvalidStoreDataException::class);
+    $this->expectException(InvalidDataException::class);
     $usersData = "This is a String";
     $userStore->insert($usersData);
   }
@@ -50,7 +50,7 @@ final class InsertingTest extends SleekDBTestCase
   public function testCannotInsertMultipleEmptyData(){
 
     $userStore = $this->stores["users"];
-    $this->expectException(EmptyStoreDataException::class);
+    $this->expectException(InvalidDataException::class);
     $usersData = [];
     $userStore->insertMany($usersData);
 
@@ -60,7 +60,7 @@ final class InsertingTest extends SleekDBTestCase
 
     $userStore = $this->stores["users"];
 
-    $this->expectException(InvalidStoreDataException::class);
+    $this->expectException(InvalidDataException::class);
     $usersData = "This is a String";
     $userStore->insertMany($usersData);
   }

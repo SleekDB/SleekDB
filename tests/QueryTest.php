@@ -2,8 +2,8 @@
 
 namespace SleekDB\Tests;
 
-use SleekDB\Exceptions\EmptyStoreDataException;
-use SleekDB\Exceptions\InvalidStoreDataException;
+use SleekDB\Exceptions\InvalidDataException;
+use SleekDB\Exceptions\InvalidDataException;
 use SleekDB\Tests\TestCases\SleekDBTestCase;
 
 final class QueryTest extends SleekDBTestCase

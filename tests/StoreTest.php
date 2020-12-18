@@ -4,7 +4,7 @@ namespace SleekDB\Tests;
 
 use SleekDB\Exceptions\InvalidConfigurationException;
 use SleekDB\SleekDB;
-use SleekDB\Exceptions\EmptyStoreNameException;
+use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\EmptyDataDirectoryException;
 use SleekDB\Tests\TestCases\SleekDBTestCasePlain;
 
@@ -42,7 +42,7 @@ final class StoreTest extends SleekDBTestCasePlain
   }
 
   public function testCannotCreateStoreWithEmptyStoreName(){
-    $this->expectException(EmptyStoreNameException::class);
+    $this->expectException(InvalidArgumentException::class);
     SleekDB::store("", self::DATA_DIR);
   }
 
