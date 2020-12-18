@@ -19,10 +19,6 @@ class Query
 
   protected $conditions;
 
-  protected $useCache;
-
-  protected $cacheLifetime;
-
   protected $dataDirectory = "";
 
   /**
@@ -45,9 +41,6 @@ class Query
     $this->dataDirectory = $store->getDataDirectory();
 
     $this->conditions = $queryBuilder->_getConditionsArray();
-
-    $this->useCache = $queryBuilder->getUseCache();
-    $this->cacheLifetime = $queryBuilder->getCacheLifetime();
 
     $this->cache = new Cache($store, $queryBuilder);
   }
@@ -145,7 +138,7 @@ class Query
 
         // TODO remove SleekDB check in version 2.0
         if($joinQuery instanceof QueryBuilder || $joinQuery instanceof SleekDB){
-          if(empty($joinQuery->getDataDirectory())) $joinQuery->setDataDirectory($this->dataDirectory);
+          if(empty($joinQuery->getDataDirectory())) $joinQuery->setDataDirectory($this->getDataDirectory());
           $joinResult = $joinQuery->getQuery()->fetch();
         } else if(is_array($joinQuery)){
           // user already fetched the query in the join query function
@@ -171,6 +164,8 @@ class Query
    * @throws InvalidDataException
    * @throws InvalidPropertyAccessException
    * @throws IOException
+   * @throws InvalidConfigurationException
+   * @throws InvalidStoreBootUpException
    */
   public function first(): array
   {
@@ -210,7 +205,7 @@ class Query
           $data[$key] = $value;
         }
       }
-      $storePath = $this->storePath . 'data/' . $data['_id'] . '.json';
+      $storePath = $this->getStorePath() . 'data/' . $data['_id'] . '.json';
       if (file_exists($storePath)) {
         // Wait until it's unlocked, then update data.
         $this->_checkWrite($storePath);
@@ -236,10 +231,10 @@ class Query
     $results = $this->findStoreDocuments();
     if (!empty($results)) {
       foreach ($results as $data) {
-        if (false === unlink($this->storePath . 'data/' . $data['_id'] . '.json')) {
+        if (false === unlink($this->getStorePath() . 'data/' . $data['_id'] . '.json')) {
           throw new IOException(
             'Unable to delete storage file! 
-              Location: "' . $this->storePath . 'data/' . $data['_id'] . '.json' . '"'
+              Location: "' . $this->getStorePath() . 'data/' . $data['_id'] . '.json' . '"'
           );
         }
       }
@@ -309,7 +304,7 @@ class Query
   {
     $found = [];
     // Start collecting and filtering data.
-    $storeDataPath = $this->storePath . 'data/';
+    $storeDataPath = $this->getStorePath() . 'data/';
     $this->_checkRead($storeDataPath);
     if ($handle = opendir($storeDataPath)) {
 
@@ -648,5 +643,21 @@ class Query
         "Document or directory is not readable at \"$path\". Please change permission."
       );
     }
+  }
+
+  /**
+   * @return string
+   */
+  private function getDataDirectory(): string
+  {
+    return $this->dataDirectory;
+  }
+
+  /**
+   * @return string
+   */
+  private function getStorePath(): string
+  {
+    return $this->storePath;
   }
 }

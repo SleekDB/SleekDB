@@ -18,13 +18,11 @@ class Store
   protected $root = __DIR__;
 
   protected $storeName = "";
-
   protected $storePath = "";
 
   protected $dataDirectory = "";
 
   protected $useCache = true;
-
   protected $defaultCacheLifetime = null;
 
   /**
