@@ -166,7 +166,7 @@ class Cache
   }
 
   /**
-   * @return false|array|null
+   * @return array|null array on success, else null
    * @throws IOException
    */
   public function get(){
@@ -203,7 +203,7 @@ class Cache
       }
     }
 
-    return false;
+    return null;
   }
 
   /**

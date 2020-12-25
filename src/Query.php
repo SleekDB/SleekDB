@@ -105,7 +105,6 @@ class Query
    * @return bool
    * @throws InvalidArgumentException
    * @throws IndexNotFoundException
-   * @throws InvalidDataException
    * @throws InvalidPropertyAccessException
    * @throws IOException
    */
@@ -188,7 +187,6 @@ class Query
    * @throws InvalidArgumentException
    * @throws IOException
    * @throws IndexNotFoundException
-   * @throws InvalidDataException
    * @throws InvalidPropertyAccessException
    */
   public function update(array $updatable): bool
@@ -223,7 +221,6 @@ class Query
    * @throws InvalidArgumentException
    * @throws IOException
    * @throws IndexNotFoundException
-   * @throws InvalidDataException
    * @throws InvalidPropertyAccessException
    */
   public function delete(bool $returnRecordsCount = false)
@@ -296,7 +293,6 @@ class Query
    * @return array
    * @throws InvalidArgumentException
    * @throws IndexNotFoundException
-   * @throws InvalidDataException
    * @throws InvalidPropertyAccessException
    * @throws IOException
    */
@@ -518,17 +514,13 @@ class Query
    * @return array
    * @throws InvalidArgumentException
    * @throws IndexNotFoundException
-   * @throws InvalidDataException
    */
   private function sortArray(string $field, array $data, string $order = 'ASC'): array
   {
     $dryData = [];
-    // Check if data is an array.
-    if (is_array($data)) {
-      // Get value of the target field.
-      foreach ($data as $value) {
-        $dryData[] = $this->getNestedProperty($field, $value);
-      }
+    // Get value of the target field.
+    foreach ($data as $value) {
+      $dryData[] = $this->getNestedProperty($field, $value);
     }
     // Decide the order direction.
     if (strtolower($order) === 'asc') asort($dryData);
@@ -548,12 +540,9 @@ class Query
    * @return mixed
    * @throws InvalidArgumentException
    * @throws IndexNotFoundException
-   * @throws InvalidDataException
    */
   private function getNestedProperty(string $fieldName, array $data)
   {
-
-    if (!is_array($data)) throw new InvalidDataException('data has to be an array');
 
     $fieldName = trim($fieldName);
     if (empty($fieldName)) throw new InvalidArgumentException('fieldName is not allowed to be empty');

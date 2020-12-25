@@ -40,7 +40,6 @@ class Store
     if (empty($storeName)) throw new InvalidArgumentException('Invalid store name was found');
     $this->storeName = $storeName;
 
-    if (!is_array($configuration)) throw new InvalidConfigurationException('Invalid configurations was found.');
     $this->setConfiguration($configuration);
 
     $this->setDataDirectory($dataDir);
@@ -144,8 +143,6 @@ class Store
   {
     // Handle invalid data
     if (empty($data)) throw new InvalidDataException('No data found to insert in the store');
-    // Make sure that the data is an array
-    if (!is_array($data)) throw new InvalidDataException('Storable data must an array');
     $data = $this->writeInStore($data);
     // Check do we need to wipe the cache for this store.
     if($this->getUseCache() === true){
@@ -170,8 +167,6 @@ class Store
   {
     // Handle invalid data
     if (empty($data)) throw new InvalidDataException('No data found to insert in the store');
-    // Make sure that the data is an array
-    if (!is_array($data)) throw new InvalidDataException('Data must be an array in order to insert in the store');
     // All results.
     $results = [];
     foreach ($data as $key => $node) {

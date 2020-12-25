@@ -148,5 +148,73 @@ final class QueryTest extends SleekDBTestCase
     $this->assertFalse($userExists);
   }
 
+  public function testCanUseCacheWithNoParameter(){
+      $userStore = $this->stores["users"];
+
+      $query = $userStore->where("_id", "=", 1)->useCache()->getQuery();
+
+      $userCache = $query->getCache();
+
+      $result = $query->fetch();
+
+      $cacheResult = $userCache->get();
+
+      $this->assertSame($result, $cacheResult);
+  }
+
+    public function testCanUseCacheWithLifetimeNull(){
+        $userStore = $this->stores["users"];
+
+        $query = $userStore->where("_id", "=", 1)->useCache(null)->getQuery();
+
+        $userCache = $query->getCache();
+
+        $result = $query->fetch();
+
+        $cacheResult = $userCache->get();
+
+        $this->assertSame($result, $cacheResult);
+    }
+
+    public function testCanUseCacheWithLifetimeZero(){
+        $userStore = $this->stores["users"];
+
+        $query = $userStore->where("_id", "=", 1)->useCache(0)->getQuery();
+
+        $userCache = $query->getCache();
+
+        $result = $query->fetch();
+
+        $userCache->deleteAllWithNoLifetime();
+
+        sleep(1);
+
+        $cacheResult = $userCache->get();
+
+        $this->assertSame($result, $cacheResult);
+    }
+
+    public function testCanUseCacheWithLifetimeInt(){
+        $userStore = $this->stores["users"];
+
+        $query = $userStore->where("_id", "=", 1)->useCache(1)->getQuery();
+
+        $userCache = $query->getCache();
+
+        $result = $query->fetch();
+
+        sleep(1);
+
+        $cacheResult = $userCache->get();
+
+        $this->assertSame($result, $cacheResult);
+
+        sleep(1);
+
+        $cacheResult = $userCache->get();
+
+        $this->assertNotSame($result, $cacheResult);
+    }
+
 
 }

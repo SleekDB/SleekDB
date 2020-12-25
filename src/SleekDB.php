@@ -105,7 +105,6 @@ class SleekDB
    * @return bool
    * @throws InvalidArgumentException
    * @throws IndexNotFoundException
-   * @throws InvalidDataException
    * @throws InvalidPropertyAccessException
    * @throws InvalidStoreBootUpException
    * @throws IOException
@@ -126,6 +125,7 @@ class SleekDB
    * @throws InvalidPropertyAccessException
    * @throws InvalidStoreBootUpException
    * @throws IOException
+   * @throws InvalidConfigurationException
    */
   public function first(): array
   {
@@ -172,7 +172,6 @@ class SleekDB
    * @throws InvalidArgumentException
    * @throws IOException
    * @throws IndexNotFoundException
-   * @throws InvalidDataException
    * @throws InvalidPropertyAccessException
    * @throws InvalidStoreBootUpException
    */
@@ -192,7 +191,6 @@ class SleekDB
    * @throws InvalidStoreBootUpException
    * @throws IOException
    * @throws IndexNotFoundException
-   * @throws InvalidDataException
    */
   public function delete(bool $returnRecordsCount = false){
     $results = $this->queryBuilder->getQuery()->delete($returnRecordsCount);
@@ -404,7 +402,7 @@ class SleekDB
    * @return SleekDB
    * @throws InvalidArgumentException
    */
-  public function useCache($lifetime = null): SleekDB
+  public function useCache(int $lifetime = null): SleekDB
   {
     $this->queryBuilder = $this->queryBuilder->useCache($lifetime);
     return $this;

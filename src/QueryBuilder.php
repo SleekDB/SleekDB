@@ -83,7 +83,6 @@ class QueryBuilder
   public function select(array $fieldNames): QueryBuilder
   {
     $errorMsg = "If select is used an array containing strings with fieldNames has to be given";
-    if (!is_array($fieldNames)) throw new InvalidArgumentException($errorMsg);
     foreach ($fieldNames as $fieldName) {
       if (empty($fieldName)) continue;
       if (!is_string($fieldName)) throw new InvalidArgumentException($errorMsg);
@@ -101,7 +100,6 @@ class QueryBuilder
   public function except(array $fieldNames): QueryBuilder
   {
     $errorMsg = "If except is used an array containing strings with fieldNames has to be given";
-    if (!is_array($fieldNames)) throw new InvalidArgumentException($errorMsg);
     foreach ($fieldNames as $fieldName) {
       if (empty($fieldName)) continue;
       if (!is_string($fieldName)) throw new InvalidArgumentException($errorMsg);
@@ -141,7 +139,6 @@ class QueryBuilder
   public function in(string $fieldName, array $values = []): QueryBuilder
   {
     if (empty($fieldName)) throw new InvalidArgumentException('Field name for in clause can not be empty.');
-    if (!is_array($values)) throw new InvalidArgumentException('Values for in clause has to be given as an array.');
     $this->in[] = [
       'fieldName' => $fieldName,
       'value'     => $values
@@ -159,7 +156,6 @@ class QueryBuilder
   public function notIn(string $fieldName, array $values = []): QueryBuilder
   {
     if (empty($fieldName)) throw new InvalidArgumentException('Field name for notIn clause can not be empty.');
-    if (!is_array($values)) throw new InvalidArgumentException('Values for notIn clause has to be given as an array.');
     $this->notIn[] = [
       'fieldName' => $fieldName,
       'value'     => $values
@@ -267,8 +263,8 @@ class QueryBuilder
    */
   public function skip(int $skip = 0): QueryBuilder
   {
-    if(!is_int($skip) || $skip <= 0){
-      throw new InvalidArgumentException("Skip has to be an integer > 0");
+    if($skip < 0){
+      throw new InvalidArgumentException("Skip has to be an integer >= 0");
     }
 
     $this->skip = $skip;
@@ -284,7 +280,7 @@ class QueryBuilder
    */
   public function limit($limit = 0): QueryBuilder
   {
-    if(!is_int($limit) || $limit <= 0){
+    if($limit <= 0){
       throw new InvalidArgumentException("Limit has to be an integer > 0");
     }
 
@@ -381,7 +377,7 @@ class QueryBuilder
    * @return QueryBuilder
    * @throws InvalidArgumentException
    */
-  public function useCache($lifetime = null): QueryBuilder
+  public function useCache(int $lifetime = null): QueryBuilder
   {
     $this->useCache  = true;
     if(!is_null($lifetime) && (!is_int($lifetime) || $lifetime < 0)){
