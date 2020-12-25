@@ -3,7 +3,6 @@
 namespace SleekDB\Tests;
 
 use SleekDB\Exceptions\InvalidDataException;
-use SleekDB\Exceptions\InvalidDataException;
 use SleekDB\Tests\TestCases\SleekDBTestCase;
 
 final class InsertingTest extends SleekDBTestCase
@@ -42,7 +41,7 @@ final class InsertingTest extends SleekDBTestCase
 
     $userStore = $this->stores["users"];
 
-    $this->expectException(InvalidDataException::class);
+    $this->expectException(\TypeError::class);
     $usersData = "This is a String";
     $userStore->insert($usersData);
   }
@@ -60,7 +59,7 @@ final class InsertingTest extends SleekDBTestCase
 
     $userStore = $this->stores["users"];
 
-    $this->expectException(InvalidDataException::class);
+    $this->expectException(\TypeError::class);
     $usersData = "This is a String";
     $userStore->insertMany($usersData);
   }

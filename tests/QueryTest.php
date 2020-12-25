@@ -3,7 +3,6 @@
 namespace SleekDB\Tests;
 
 use SleekDB\Exceptions\InvalidDataException;
-use SleekDB\Exceptions\InvalidDataException;
 use SleekDB\Tests\TestCases\SleekDBTestCase;
 
 final class QueryTest extends SleekDBTestCase
@@ -94,7 +93,7 @@ final class QueryTest extends SleekDBTestCase
     $userStore = $this->stores["users"];
 
     $user1 = $userStore->limit(1)->fetch();
-    $user2 = $userStore->first()->fetch();
+    $user2 = $userStore->first();
 
     $this->assertSame($user1[0], $user2);
   }
@@ -140,11 +139,11 @@ final class QueryTest extends SleekDBTestCase
 
     $userStore = $this->stores["users"];
 
-    $userExists = $userStore->where("_id", "=", 1)->exists()->fetch();
+    $userExists = $userStore->where("_id", "=", 1)->exists();
 
     $this->assertTrue($userExists);
 
-    $userExists = $userStore->where("_id", "=", 2)->where("_id", "=", 1)->exists()->fetch();
+    $userExists = $userStore->where("_id", "=", 2)->where("_id", "=", 1)->exists();
 
     $this->assertFalse($userExists);
   }

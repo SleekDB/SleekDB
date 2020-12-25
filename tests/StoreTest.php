@@ -5,7 +5,6 @@ namespace SleekDB\Tests;
 use SleekDB\Exceptions\InvalidConfigurationException;
 use SleekDB\SleekDB;
 use SleekDB\Exceptions\InvalidArgumentException;
-use SleekDB\Exceptions\EmptyDataDirectoryException;
 use SleekDB\Tests\TestCases\SleekDBTestCasePlain;
 
 
@@ -46,28 +45,23 @@ final class StoreTest extends SleekDBTestCasePlain
     SleekDB::store("", self::DATA_DIR);
   }
 
-  public function testCannotCreateStoreWithEmptyDataDir(){
-    $this->expectException(EmptyDataDirectoryException::class);
-    SleekDB::store(self::STORE_NAME, "");
-  }
-
   public function testCannotCreateStoreWithOptionsNull(){
-    $this->expectException(InvalidConfigurationException::class);
+    $this->expectException(\TypeError::class);
     SleekDB::store(self::STORE_NAME, self::DATA_DIR, null);
   }
 
   public function testCannotCreateStoreWithOptionsString(){
-    $this->expectException(InvalidConfigurationException::class);
+    $this->expectException(\TypeError::class);
     SleekDB::store(self::STORE_NAME, self::DATA_DIR, "");
   }
 
   public function testCannotCreateStoreWithOptionsObject(){
-    $this->expectException(InvalidConfigurationException::class);
+    $this->expectException(\TypeError::class);
     SleekDB::store(self::STORE_NAME, self::DATA_DIR, (new \stdClass()));
   }
 
   public function testCannotCreateStoreWithOptionsInteger(){
-    $this->expectException(InvalidConfigurationException::class);
+    $this->expectException(\TypeError::class);
     SleekDB::store(self::STORE_NAME, self::DATA_DIR, 1);
   }
 }

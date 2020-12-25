@@ -194,10 +194,9 @@ class QueryBuilder
 
   /**
    * @param array $conditions
-   * @return QueryBuilder
    * @throws InvalidArgumentException
    */
-  private function _orWhere(array $conditions): QueryBuilder
+  private function _orWhere(array $conditions)
   {
 
     if (!(count($conditions) > 0)) {
