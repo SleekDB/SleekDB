@@ -12,18 +12,12 @@ use SleekDB\Exceptions\InvalidStoreBootUpException;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Exceptions\JsonException;
 
-// To provide usage without composer, we need to require all files.
-// Usage without composer is deprecated since 1.6.
-foreach (glob(__DIR__ . '/Exceptions/*.php') as $exception){
-  require_once $exception;
-}
-foreach (glob(__DIR__ . '/*.php') as $class){
-  if(strpos($class, 'SleekDB.php') !== false) continue;
-  require_once $class;
+if(false === class_exists("\Composer\Autoload\ClassLoader")){
+    require_once __DIR__.'/Store.php';
 }
 
 /**
- * @deprecated since version 1.6, use SleekDB\Store instead.
+ * @deprecated since version 2.0, use SleekDB\Store instead.
  */
 class SleekDB
 {

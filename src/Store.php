@@ -12,6 +12,18 @@ use SleekDB\Exceptions\JsonException;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 
+// To provide usage without composer, we need to require all files.
+// Usage without composer is deprecated since 2.0.
+if(false === class_exists("\Composer\Autoload\ClassLoader")) {
+    foreach (glob(__DIR__ . '/Exceptions/*.php') as $exception) {
+        require_once $exception;
+    }
+    foreach (glob(__DIR__ . '/*.php') as $class) {
+        if (strpos($class, 'SleekDB.php') !== false || strpos($class, 'Store.php') !== false) continue;
+        require_once $class;
+    }
+}
+
 class Store
 {
 
