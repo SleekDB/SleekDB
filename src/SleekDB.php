@@ -2,270 +2,468 @@
 
 namespace SleekDB;
 
-use SleekDB\Exceptions\ConditionNotAllowedException;
-use SleekDB\Exceptions\EmptyFieldNameException;
-use SleekDB\Exceptions\EmptyStoreDataException;
+use SleekDB\Exceptions\InvalidArgumentException;
+use SleekDB\Exceptions\InvalidDataException;
 use SleekDB\Exceptions\IdNotAllowedException;
 use SleekDB\Exceptions\IndexNotFoundException;
 use SleekDB\Exceptions\InvalidConfigurationException;
-use SleekDB\Exceptions\InvalidDataException;
-use SleekDB\Exceptions\InvalidStoreDataException;
+use SleekDB\Exceptions\InvalidPropertyAccessException;
+use SleekDB\Exceptions\InvalidStoreBootUpException;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Exceptions\JsonException;
 
-use SleekDB\Traits\HelperTrait;
-use SleekDB\Traits\CacheTrait;
-use SleekDB\Traits\ConditionTrait;
+if(false === class_exists("\Composer\Autoload\ClassLoader")){
+    require_once __DIR__.'/Store.php';
+}
 
-// To provide usage without composer, we need to require the files
-require_once __DIR__ . "/Exceptions/ConditionNotAllowedException.php";
-require_once __DIR__ . "/Exceptions/EmptyFieldNameException.php";
-require_once __DIR__ . "/Exceptions/EmptyStoreNameException.php";
-require_once __DIR__ . "/Exceptions/IdNotAllowedException.php";
-require_once __DIR__ . "/Exceptions/IndexNotFoundException.php";
-require_once __DIR__ . "/Exceptions/InvalidConfigurationException.php";
-require_once __DIR__ . "/Exceptions/InvalidDataException.php";
-require_once __DIR__ . "/Exceptions/InvalidStoreDataException.php";
-require_once __DIR__ . "/Exceptions/IOException.php";
-require_once __DIR__ . "/Exceptions/JsonException.php";
-
-require_once __DIR__ . "/Traits/HelperTrait.php";
-require_once __DIR__ . "/Traits/CacheTrait.php";
-require_once __DIR__ . "/Traits/ConditionTrait.php";
-
-
+/**
+ * @deprecated since version 2.0, use SleekDB\Store instead.
+ */
 class SleekDB
 {
 
-  use HelperTrait;
-  use ConditionTrait;
-  use CacheTrait;
+  /**
+   * @var QueryBuilder
+   */
+  protected $queryBuilder;
 
-  private $root = __DIR__;
+  /**
+   * @var Store
+   */
+  protected $store;
 
-  private $storeName;
-  private $makeCache;
-  private $useCache;
-  private $storePath;
-  private $deleteCacheOnCreate;
-
-  private $in;
-  private $skip;
-  private $notIn;
-  private $limit;
-  private $results;
-  private $orderBy;
-  private $conditions;
-  private $orConditions;
-  private $searchKeyword;
-  private $dataDirectory;
-  private $shouldKeepConditions;
-
-  private $fieldsToSelect = [];
-  private $fieldsToExclude = [];
-  private $orConditionsWithAnd = [];
-
-  private $listOfJoins = [];
-  private $existsCheck = false;
-  private $returnFirstItem = false;
-  private $distinctFields = [];
+  private $shouldKeepConditions = false;
 
   /**
    * SleekDB constructor.
-   * Initialize the database.
+   * @param string $storeName
    * @param string $dataDir
-   * @param array $configurations
+   * @param array $configuration
+   * @throws InvalidArgumentException
    * @throws IOException
    * @throws InvalidConfigurationException
    */
-  function __construct($storeName, $dataDir = false, $configurations = [])
-  {
-    $this->init($storeName, $dataDir, $configurations);
+  function __construct(string $storeName, string $dataDir = "", array $configuration = []){
+    $this->init($storeName, $dataDir, $configuration);
+  }
+
+  /**
+   * Initialize the SleekDB instance.
+   * @param string $storeName
+   * @param string $dataDir
+   * @param array $conf
+   * @throws InvalidArgumentException
+   * @throws IOException
+   * @throws InvalidConfigurationException
+   */
+  public function init(string $storeName, string $dataDir = "", array $conf = []){
+    $this->store = new Store($storeName, $dataDir, $conf);
+    $this->queryBuilder = $this->store->getQueryBuilder();
   }
 
   /**
    * Initialize the store.
    * @param string $storeName
    * @param string $dataDir
-   * @param array $options
+   * @param array $configuration
    * @return SleekDB
+   * @throws InvalidArgumentException
+   * @throws IOException
+   * @throws InvalidConfigurationException
    */
-  public static function store($storeName, $dataDir = false, $options = [])
+  public static function store(string $storeName, string $dataDir = "", array $configuration = []): SleekDB
   {
-    return new SleekDB($storeName, $dataDir, $options);
+    return new SleekDB($storeName, $dataDir, $configuration);
   }
 
   /**
-   * Read store objects.
+   * Execute Query and get Results
    * @return array
-   * @throws ConditionNotAllowedException
+   * @throws InvalidArgumentException
+   * @throws IOException
    * @throws IndexNotFoundException
-   * @throws EmptyFieldNameException
    * @throws InvalidDataException
+   * @throws InvalidPropertyAccessException
+   * @throws InvalidStoreBootUpException
+   * @throws InvalidConfigurationException
    */
-  public function fetch()
+  public function fetch(): array
   {
-    $this->verifyStore();
-    // Check if data should be provided from the cache.
-    if ($this->makeCache === true) {
-      $this->reGenerateCache(); // Re-generate cache.
-    } else if ($this->useCache === true) {
-      $this->useExistingCache(); // Use existing cache else re-generate.
-    } else {
-      $this->findStoreDocuments(); // Returns data without looking for cached data.
-    }
-    
-    $this->resultsModifier();
-
-    $this->initVariables(); // reset state
-
-    return $this->results;
-  }
-
-  /**
-   * Creates a new object in the store.
-   * The object is a plaintext JSON document.
-   * @param array $storeData
-   * @return array
-   * @throws EmptyStoreDataException
-   * @throws IOException
-   * @throws InvalidStoreDataException
-   * @throws JsonException
-   * @throws IdNotAllowedException
-   */
-  public function insert($storeData)
-  {
-    $this->verifyStore();
-    // Handle invalid data
-    if (empty($storeData)) throw new EmptyStoreDataException('No data found to store');
-    // Make sure that the data is an array
-    if (!is_array($storeData)) throw new InvalidStoreDataException('Storable data must an array');
-    $storeData = $this->writeInStore($storeData);
-    // Check do we need to wipe the cache for this store.
-    if ($this->deleteCacheOnCreate === true) $this->_deleteAllCache();
-    return $storeData;
-  }
-
-  /**
-   * Creates multiple objects in the store.
-   * @param $storeData
-   * @return array
-   * @throws EmptyStoreDataException
-   * @throws IOException
-   * @throws InvalidStoreDataException
-   * @throws JsonException
-   * @throws IdNotAllowedException
-   */
-  public function insertMany($storeData)
-  {
-    $this->verifyStore();
-    // Handle invalid data
-    if (empty($storeData)) throw new EmptyStoreDataException('No data found to insert in the store');
-    // Make sure that the data is an array
-    if (!is_array($storeData)) throw new InvalidStoreDataException('Data must be an array in order to insert in the store');
-    // All results.
-    $results = [];
-    foreach ($storeData as $key => $node) {
-      $results[] = $this->writeInStore($node);
-    }
-    // Check do we need to wipe the cache for this store.
-    if ($this->deleteCacheOnCreate === true) $this->_deleteAllCache();
+    $results = $this->queryBuilder->getQuery()->fetch();
+    $this->resetQueryBuilder();
     return $results;
   }
 
   /**
-   * @param $updatable
+   * Check if data is found
    * @return bool
+   * @throws InvalidArgumentException
    * @throws IndexNotFoundException
-   * @throws ConditionNotAllowedException
-   * @throws EmptyFieldNameException
-   * @throws InvalidDataException
+   * @throws InvalidPropertyAccessException
+   * @throws InvalidStoreBootUpException
    * @throws IOException
    */
-  public function update($updatable)
+  public function exists(): bool
   {
-    $this->verifyStore();
-    $this->findStoreDocuments();
+    $results = $this->queryBuilder->getQuery()->exists();
+    $this->resetQueryBuilder();
+    return $results;
+  }
 
-    $results = $this->results;
-    $this->initVariables(); // Reset state.
+  /**
+   * Return the first document.
+   * @return array
+   * @throws InvalidArgumentException
+   * @throws IndexNotFoundException
+   * @throws InvalidDataException
+   * @throws InvalidPropertyAccessException
+   * @throws InvalidStoreBootUpException
+   * @throws IOException
+   * @throws InvalidConfigurationException
+   */
+  public function first(): array
+  {
+    $results = $this->queryBuilder->getQuery()->first();
+    $this->resetQueryBuilder();
+    return $results;
+  }
 
-    // If no documents found return false.
-    if (empty($results)) {
-      return false;
-    }
-    foreach ($results as $data) {
-      foreach ($updatable as $key => $value) {
-        // Do not update the _id reserved index of a store.
-        if ($key != '_id') {
-          $data[$key] = $value;
-        }
-      }
-      $storePath = $this->storePath . 'data/' . $data['_id'] . '.json';
-      if (file_exists($storePath)) {
-        // Wait until it's unlocked, then update data.
-        if (is_writable($storePath)) {
-          file_put_contents($storePath, json_encode($data), LOCK_EX);
-        } else {
-          throw new IOException(
-            "Unable to update the file, permission denied.\nMake sure SleekDB (PHP) has write permission!"
-          );
-        }
-      }
-    }
-    // Check do we need to wipe the cache for this store.
-    if ($this->deleteCacheOnCreate === true) $this->_deleteAllCache();
-    return true;
+  /**
+   * Creates a new object in the store.
+   * It is stored as a plaintext JSON document.
+   * @param array $storeData
+   * @return array
+   * @throws IOException
+   * @throws IdNotAllowedException
+   * @throws InvalidStoreBootUpException
+   * @throws InvalidDataException
+   * @throws JsonException
+   */
+  public function insert(array $storeData): array
+  {
+    return $this->store->insert($storeData);
+  }
+
+  /**
+   * Creates multiple objects in the store.
+   * @param array $storeData
+   * @return array
+   * @throws IOException
+   * @throws IdNotAllowedException
+   * @throws InvalidStoreBootUpException
+   * @throws InvalidDataException
+   * @throws JsonException
+   */
+  public function insertMany(array $storeData): array
+  {
+    return $this->store->insertMany($storeData);
+  }
+
+  /**
+   * Update one or multiple documents, based on current query
+   * @param array $updatable
+   * @return bool
+   * @throws InvalidArgumentException
+   * @throws IOException
+   * @throws IndexNotFoundException
+   * @throws InvalidPropertyAccessException
+   * @throws InvalidStoreBootUpException
+   */
+  public function update(array $updatable): bool
+  {
+    $results = $this->queryBuilder->getQuery()->update($updatable);
+    $this->resetQueryBuilder();
+    return $results;
   }
 
   /**
    * Deletes matched store objects.
-   * 
    * @param bool $returnRecordsCount
-   * @return bool
+   * @return bool|int
+   * @throws InvalidArgumentException
+   * @throws InvalidPropertyAccessException
+   * @throws InvalidStoreBootUpException
    * @throws IOException
    * @throws IndexNotFoundException
-   * @throws ConditionNotAllowedException
-   * @throws EmptyFieldNameException
-   * @throws InvalidDataException
    */
-  public function delete($returnRecordsCount = false)
-  {
-    $this->verifyStore();
-    $this->findStoreDocuments();
-    $results = $this->results;
-    $this->initVariables(); // reset state
-    if (!empty($results)) {
-      foreach ($results as $data) {
-        if (!unlink($this->storePath . 'data/' . $data['_id'] . '.json')) {
-          throw new IOException(
-            'Unable to delete storage file! 
-              Location: "' . $this->storePath . 'data/' . $data['_id'] . '.json' . '"'
-          );
-        }
-      }
-      // Check do we need to wipe the cache for this store.
-      if ($this->deleteCacheOnCreate === true) $this->_deleteAllCache();
-      return $returnRecordsCount ? count($results) : true;
-    } else {
-      // Nothing found to delete
-      return $returnRecordsCount ? 0 : true;
-    }
+  public function delete(bool $returnRecordsCount = false){
+    $results = $this->queryBuilder->getQuery()->delete($returnRecordsCount);
+    $this->resetQueryBuilder();
+    return $results;
   }
 
   /**
    * Deletes a store and wipes all the data and cache it contains.
    * @return bool
+   * @throws IOException
    */
-  public function deleteStore()
+  public function deleteStore(): bool
   {
-    $this->verifyStore();
-    $it = new \RecursiveDirectoryIterator($this->storePath, \RecursiveDirectoryIterator::SKIP_DOTS);
-    $files = new \RecursiveIteratorIterator($it, \RecursiveIteratorIterator::CHILD_FIRST);
-    foreach ($files as $file) {
-      if ($file->isDir()) rmdir($file->getRealPath());
-      else unlink($file->getRealPath());
-    }
-    return rmdir($this->storePath);
+    return $this->store->delete();
+  }
+
+  /**
+   * This method would make a unique token for the current query.
+   * We would use this hash token as the id/name of the cache file.
+   * @return string
+   */
+  public function getCacheToken(): string
+  {
+    return $this->queryBuilder->getCacheToken();
+  }
+
+  /**
+   * Set DataDirectory for current query.
+   * @param string $directory
+   * @return SleekDB
+   * @throws IOException
+   * @throws InvalidConfigurationException
+   */
+  public function setDataDirectory(string $directory): SleekDB
+  {
+    $this->queryBuilder = $this->queryBuilder->setDataDirectory($directory);
+    return $this;
+  }
+
+  /**
+   * @return string
+   */
+  public function getDataDirectory(): string
+  {
+    return $this->queryBuilder->getDataDirectory();
+  }
+
+  /**
+   * Select specific fields
+   * @param string[] $fieldNames
+   * @return SleekDB
+   * @throws InvalidArgumentException
+   */
+  public function select(array $fieldNames): SleekDB
+  {
+    $this->queryBuilder = $this->queryBuilder->select($fieldNames);
+    return $this;
+  }
+
+  /**
+   * Exclude specific fields
+   * @param string[] $fieldNames
+   * @return SleekDB
+   * @throws InvalidArgumentException
+   */
+  public function except(array $fieldNames): SleekDB
+  {
+    $this->queryBuilder = $this->queryBuilder->except($fieldNames);
+    return $this;
+  }
+
+  /**
+   * Add conditions to filter data.
+   * @param string $fieldName
+   * @param string $condition
+   * @param mixed $value
+   * @return SleekDB
+   * @throws InvalidArgumentException
+   */
+  public function where(string $fieldName, string $condition, $value): SleekDB
+  {
+    $this->queryBuilder = $this->queryBuilder->where($fieldName, $condition, $value);
+    return $this;
+  }
+
+  /**
+   * Add "in" condition to filter data.
+   * @param string $fieldName
+   * @param array $values
+   * @return SleekDB
+   * @throws InvalidArgumentException
+   */
+  public function in(string $fieldName, array $values = []): SleekDB
+  {
+    $this->queryBuilder = $this->queryBuilder->in($fieldName, $values);
+    return $this;
+  }
+
+  /**
+   * Add "not in" condition to filter data.
+   * @param string $fieldName
+   * @param array $values
+   * @return SleekDB
+   * @throws InvalidArgumentException
+   */
+  public function notIn(string $fieldName, array $values = []): SleekDB
+  {
+    $this->queryBuilder = $this->queryBuilder->notIn($fieldName, $values);
+    return $this;
+  }
+
+  /**
+   * Add or-where conditions to filter data.
+   * @param string|array|mixed ...$conditions (string fieldName, string condition, mixed value) OR ([string fieldName, string condition, mixed value],...)
+   * @return SleekDB
+   * @throws InvalidArgumentException
+   */
+  public function orWhere(...$conditions): SleekDB
+  {
+    $this->queryBuilder = $this->queryBuilder->orWhere(...$conditions);
+    return $this;
+  }
+
+  /**
+   * Set the amount of data record to skip.
+   * @param int $skip
+   * @return SleekDB
+   * @throws InvalidArgumentException
+   */
+  public function skip(int $skip = 0): SleekDB
+  {
+    $this->queryBuilder = $this->queryBuilder->skip($skip);
+    return $this;
+  }
+
+  /**
+   * Set the amount of data record to limit.
+   * @param int $limit
+   * @return SleekDB
+   * @throws InvalidArgumentException
+   */
+  public function limit(int $limit = 0): SleekDB
+  {
+    $this->queryBuilder = $this->queryBuilder->limit($limit);
+    return $this;
+  }
+
+  /**
+   * Set the sort order.
+   * @param string $order "asc" or "desc"
+   * @param string $orderBy
+   * @return SleekDB
+   * @throws InvalidArgumentException
+   */
+  public function orderBy(string $order, string $orderBy = '_id'): SleekDB
+  {
+    $this->queryBuilder = $this->queryBuilder->orderBy($order, $orderBy);
+    return $this;
+  }
+
+  /**
+   * Do a fulltext like search against more than one field.
+   * @param string|array $field one fieldName or multiple fieldNames as an array
+   * @param string $keyword
+   * @return SleekDB
+   * @throws InvalidArgumentException
+   */
+  public function search($field, string $keyword): SleekDB
+  {
+    $this->queryBuilder = $this->queryBuilder->search($field, $keyword);
+    return $this;
+  }
+
+  /**
+   * @param callable $joinedStore
+   * @param string $dataPropertyName
+   * @return SleekDB
+   */
+  public function join(callable $joinedStore, string $dataPropertyName): SleekDB
+  {
+    $this->queryBuilder = $this->queryBuilder->join($joinedStore, $dataPropertyName);
+    return $this;
+  }
+
+  /**
+   * Re-generate the cache for the query.
+   * @return SleekDB
+   */
+  public function makeCache(): SleekDB
+  {
+    $this->queryBuilder = $this->queryBuilder->regenerateCache();
+    return $this;
+  }
+
+  /**
+   * Disable cache for the query.
+   * @return SleekDB
+   */
+  public function disableCache(): SleekDB
+  {
+    $this->queryBuilder = $this->queryBuilder->disableCache();
+    return $this;
+  }
+
+  /**
+   * Use caching for current query
+   * @param int|null $lifetime time to live as int in seconds or null to regenerate cache on every insert, update and delete
+   * @return SleekDB
+   * @throws InvalidArgumentException
+   */
+  public function useCache(int $lifetime = null): SleekDB
+  {
+    $this->queryBuilder = $this->queryBuilder->useCache($lifetime);
+    return $this;
+  }
+
+  /**
+   * Delete cache file/s for current query.
+   * @return SleekDB
+   * @throws IOException
+   * @throws InvalidStoreBootUpException
+   */
+  public function deleteCache(): SleekDB
+  {
+    $this->queryBuilder->getQuery()->getCache()->delete();
+    return $this;
+  }
+
+  /**
+   * Delete all cache files for current store.
+   * @return SleekDB
+   * @throws IOException
+   * @throws InvalidStoreBootUpException
+   */
+  public function deleteAllCache(): SleekDB
+  {
+    $this->queryBuilder->getQuery()->getCache()->deleteAll();
+    return $this;
+  }
+
+  /**
+   * Keep the active query conditions.
+   * @return SleekDB
+   */
+  public function keepConditions(): SleekDB
+  {
+    $this->shouldKeepConditions = true;
+    return $this;
+  }
+
+  /**
+   * Return distinct values.
+   * @param array|string $fields
+   * @return SleekDB
+   * @throws InvalidDataException
+   */
+  public function distinct($fields = []): SleekDB
+  {
+    $this->queryBuilder = $this->queryBuilder->distinct($fields);
+    return $this;
+  }
+
+  /**
+   * @return Query
+   * @throws InvalidStoreBootUpException
+   */
+  public function getQuery(): Query
+  {
+    $query = $this->queryBuilder->getQuery();
+    $this->resetQueryBuilder();
+    return $query;
+  }
+
+  /**
+   * Handle shouldKeepConditions and reset queryBuilder accordingly
+   */
+  private function resetQueryBuilder(){
+    if($this->shouldKeepConditions === true) return;
+    $this->queryBuilder = $this->store->getQueryBuilder();
   }
 }

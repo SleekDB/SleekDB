@@ -9,7 +9,7 @@ https://sleekdb.github.io/
 
 SleekDB is a simple NoSQL database that store data in JSON files.
 
-Intentionally SleekDB is not desgined for heavy-load IO operations, it is desgined to have a simple solution where we need a database for managing small amount of data!
+Intentionally SleekDB is not designed for heavy-load IO operations, it is designed to have a simple solution where we need a database for managing small amount of data!
 
 ## Features
 
@@ -23,15 +23,15 @@ Intentionally SleekDB is not desgined for heavy-load IO operations, it is desgin
   - Data will be stored in a JSON document, 
     use conditions to filter data of any depth!
 - **Dependency free, only requires PHP to run**
-  - Supports PHP 5.5+, PHP 7+
-    Requires no third-party plugins or softwares.
+  - Supports PHP 7+
+    Requires no third-party plugins or software.
 - **Default caching layer**
   - SleekDB will serve data from cache by default 
-    and regenerate cache each time it creates an object!
+    and regenerate cache each time it creates an object or after a specified lifetime!
 - **Filter, sort, skip, limit and search**
   - Use multiple conditional comparisons, text search, 
     sorting on multiple properties and nested properties.
-- **Runs every where**
+- **Runs everywhere**
   - Runs perfectly on shared-servers or VPS too.
 - **Easy to learn and implement**
   - SleekDB provides a very simple elegant 
