@@ -42,7 +42,7 @@ class Query
 
     $this->conditions = $queryBuilder->_getConditionsArray();
 
-    $this->cache = new Cache($store, $queryBuilder);
+    $this->cache = new Cache($queryBuilder);
   }
 
   /**

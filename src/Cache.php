@@ -26,7 +26,6 @@ class Cache
 
   /**
    * Cache constructor.
-   * @param Store $store
    * @param QueryBuilder $queryBuilder
    * @param string $cacheDir
    * @throws InvalidStoreBootUpException
