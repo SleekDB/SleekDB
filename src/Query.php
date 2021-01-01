@@ -32,8 +32,9 @@ class Query
    * @param QueryBuilder $queryBuilder
    * @throws InvalidStoreBootUpException
    */
-  public function __construct(Store $store, QueryBuilder $queryBuilder)
+  public function __construct(QueryBuilder $queryBuilder)
   {
+    $store = $queryBuilder->getStore();
 
     $store->_checkBootUp();
 
