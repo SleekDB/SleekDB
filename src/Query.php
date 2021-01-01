@@ -28,7 +28,6 @@ class Query
 
   /**
    * Query constructor.
-   * @param Store $store
    * @param QueryBuilder $queryBuilder
    * @throws InvalidStoreBootUpException
    */

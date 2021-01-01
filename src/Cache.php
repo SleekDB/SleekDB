@@ -31,9 +31,11 @@ class Cache
    * @param string $cacheDir
    * @throws InvalidStoreBootUpException
    */
-  public function __construct(Store $store, QueryBuilder $queryBuilder, string $cacheDir = "")
+  public function __construct(QueryBuilder $queryBuilder, string $cacheDir = "")
   {
     $this->setCacheDir($cacheDir);
+
+    $store = $queryBuilder->getStore();
 
     $store->_checkBootUp();
     $this->setCachePath($store->getStorePath());
