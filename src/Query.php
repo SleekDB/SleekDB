@@ -28,12 +28,12 @@ class Query
 
   /**
    * Query constructor.
-   * @param Store $store
    * @param QueryBuilder $queryBuilder
    * @throws InvalidStoreBootUpException
    */
-  public function __construct(Store $store, QueryBuilder $queryBuilder)
+  public function __construct(QueryBuilder $queryBuilder)
   {
+    $store = $queryBuilder->getStore();
 
     $store->_checkBootUp();
 
@@ -42,7 +42,7 @@ class Query
 
     $this->conditions = $queryBuilder->_getConditionsArray();
 
-    $this->cache = new Cache($store, $queryBuilder);
+    $this->cache = new Cache($queryBuilder);
   }
 
   /**
