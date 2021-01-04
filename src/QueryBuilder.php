@@ -464,7 +464,7 @@ class QueryBuilder
    */
   public function getQuery(): Query
   {
-    return new Query($this->store, $this);
+    return new Query($this);
   }
 
   /**
@@ -487,5 +487,9 @@ class QueryBuilder
   public function getDataDirectory(): string
   {
     return $this->store->getDataDirectory();
+  }
+
+  public function getStore(): Store{
+      return $this->store;
   }
 }
