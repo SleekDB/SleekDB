@@ -13,7 +13,6 @@ use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 
 // To provide usage without composer, we need to require all files.
-// Usage without composer is deprecated since 2.0.
 if(false === class_exists("\Composer\Autoload\ClassLoader")) {
     foreach (glob(__DIR__ . '/Exceptions/*.php') as $exception) {
         require_once $exception;
@@ -135,7 +134,7 @@ class Store
   /**
    * @return QueryBuilder
    */
-  public function getQueryBuilder(): QueryBuilder
+  public function createQueryBuilder(): QueryBuilder
   {
     return new QueryBuilder($this);
   }
@@ -158,7 +157,7 @@ class Store
     $data = $this->writeInStore($data);
     // Check do we need to wipe the cache for this store.
     if($this->getUseCache() === true){
-      $queryBuilder = $this->getQueryBuilder();
+      $queryBuilder = $this->createQueryBuilder();
       $cache = $queryBuilder->getQuery()->getCache();
       $cache->deleteAllWithNoLifetime();
     }
@@ -186,7 +185,7 @@ class Store
     }
     // Check do we need to wipe the cache for this store.
     if($this->getUseCache() === true){
-      $queryBuilder = $this->getQueryBuilder();
+      $queryBuilder = $this->createQueryBuilder();
       $cache = $queryBuilder->getQuery()->getCache();
       $cache->deleteAllWithNoLifetime();
     }

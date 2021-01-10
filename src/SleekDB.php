@@ -16,9 +16,6 @@ if(false === class_exists("\Composer\Autoload\ClassLoader")){
     require_once __DIR__.'/Store.php';
 }
 
-/**
- * @deprecated since version 2.0, use SleekDB\Store instead.
- */
 class SleekDB
 {
 
@@ -57,8 +54,8 @@ class SleekDB
    * @throws InvalidConfigurationException
    */
   public function init(string $storeName, string $dataDir = "", array $conf = []){
-    $this->store = new Store($storeName, $dataDir, $conf);
-    $this->queryBuilder = $this->store->getQueryBuilder();
+    $this->setStore(new Store($storeName, $dataDir, $conf));
+    $this->setQueryBuilder($this->getStore()->createQueryBuilder());
   }
 
   /**
@@ -89,9 +86,7 @@ class SleekDB
    */
   public function fetch(): array
   {
-    $results = $this->queryBuilder->getQuery()->fetch();
-    $this->resetQueryBuilder();
-    return $results;
+    return $this->getQuery()->fetch();
   }
 
   /**
@@ -105,9 +100,7 @@ class SleekDB
    */
   public function exists(): bool
   {
-    $results = $this->queryBuilder->getQuery()->exists();
-    $this->resetQueryBuilder();
-    return $results;
+    return $this->getQuery()->exists();
   }
 
   /**
@@ -123,9 +116,7 @@ class SleekDB
    */
   public function first(): array
   {
-    $results = $this->queryBuilder->getQuery()->first();
-    $this->resetQueryBuilder();
-    return $results;
+    return $this->getQuery()->first();
   }
 
   /**
@@ -141,7 +132,7 @@ class SleekDB
    */
   public function insert(array $storeData): array
   {
-    return $this->store->insert($storeData);
+    return $this->getStore()->insert($storeData);
   }
 
   /**
@@ -156,7 +147,7 @@ class SleekDB
    */
   public function insertMany(array $storeData): array
   {
-    return $this->store->insertMany($storeData);
+    return $this->getStore()->insertMany($storeData);
   }
 
   /**
@@ -171,9 +162,7 @@ class SleekDB
    */
   public function update(array $updatable): bool
   {
-    $results = $this->queryBuilder->getQuery()->update($updatable);
-    $this->resetQueryBuilder();
-    return $results;
+    return $this->getQuery()->update($updatable);
   }
 
   /**
@@ -187,9 +176,7 @@ class SleekDB
    * @throws IndexNotFoundException
    */
   public function delete(bool $returnRecordsCount = false){
-    $results = $this->queryBuilder->getQuery()->delete($returnRecordsCount);
-    $this->resetQueryBuilder();
-    return $results;
+    return $this->getQuery()->delete($returnRecordsCount);
   }
 
   /**
@@ -199,7 +186,7 @@ class SleekDB
    */
   public function deleteStore(): bool
   {
-    return $this->store->delete();
+    return $this->getStore()->delete();
   }
 
   /**
@@ -209,7 +196,7 @@ class SleekDB
    */
   public function getCacheToken(): string
   {
-    return $this->queryBuilder->getCacheToken();
+    return $this->getQueryBuilder()->getCacheToken();
   }
 
   /**
@@ -221,7 +208,7 @@ class SleekDB
    */
   public function setDataDirectory(string $directory): SleekDB
   {
-    $this->queryBuilder = $this->queryBuilder->setDataDirectory($directory);
+    $this->setQueryBuilder($this->getQueryBuilder()->setDataDirectory($directory));
     return $this;
   }
 
@@ -230,7 +217,7 @@ class SleekDB
    */
   public function getDataDirectory(): string
   {
-    return $this->queryBuilder->getDataDirectory();
+    return $this->getQueryBuilder()->getDataDirectory();
   }
 
   /**
@@ -241,7 +228,7 @@ class SleekDB
    */
   public function select(array $fieldNames): SleekDB
   {
-    $this->queryBuilder = $this->queryBuilder->select($fieldNames);
+    $this->setQueryBuilder($this->getQueryBuilder()->select($fieldNames));
     return $this;
   }
 
@@ -253,7 +240,7 @@ class SleekDB
    */
   public function except(array $fieldNames): SleekDB
   {
-    $this->queryBuilder = $this->queryBuilder->except($fieldNames);
+    $this->setQueryBuilder($this->getQueryBuilder()->except($fieldNames));
     return $this;
   }
 
@@ -267,7 +254,7 @@ class SleekDB
    */
   public function where(string $fieldName, string $condition, $value): SleekDB
   {
-    $this->queryBuilder = $this->queryBuilder->where($fieldName, $condition, $value);
+    $this->setQueryBuilder($this->getQueryBuilder()->where($fieldName, $condition, $value));
     return $this;
   }
 
@@ -280,7 +267,7 @@ class SleekDB
    */
   public function in(string $fieldName, array $values = []): SleekDB
   {
-    $this->queryBuilder = $this->queryBuilder->in($fieldName, $values);
+    $this->setQueryBuilder($this->getQueryBuilder()->in($fieldName, $values));
     return $this;
   }
 
@@ -293,7 +280,7 @@ class SleekDB
    */
   public function notIn(string $fieldName, array $values = []): SleekDB
   {
-    $this->queryBuilder = $this->queryBuilder->notIn($fieldName, $values);
+    $this->setQueryBuilder($this->getQueryBuilder()->notIn($fieldName, $values));
     return $this;
   }
 
@@ -305,7 +292,7 @@ class SleekDB
    */
   public function orWhere(...$conditions): SleekDB
   {
-    $this->queryBuilder = $this->queryBuilder->orWhere(...$conditions);
+    $this->setQueryBuilder($this->getQueryBuilder()->orWhere(...$conditions));
     return $this;
   }
 
@@ -317,7 +304,7 @@ class SleekDB
    */
   public function skip(int $skip = 0): SleekDB
   {
-    $this->queryBuilder = $this->queryBuilder->skip($skip);
+    $this->setQueryBuilder($this->getQueryBuilder()->skip($skip));
     return $this;
   }
 
@@ -329,7 +316,7 @@ class SleekDB
    */
   public function limit(int $limit = 0): SleekDB
   {
-    $this->queryBuilder = $this->queryBuilder->limit($limit);
+    $this->setQueryBuilder($this->getQueryBuilder()->limit($limit));
     return $this;
   }
 
@@ -342,7 +329,7 @@ class SleekDB
    */
   public function orderBy(string $order, string $orderBy = '_id'): SleekDB
   {
-    $this->queryBuilder = $this->queryBuilder->orderBy($order, $orderBy);
+    $this->setQueryBuilder($this->getQueryBuilder()->orderBy($order, $orderBy));
     return $this;
   }
 
@@ -355,7 +342,7 @@ class SleekDB
    */
   public function search($field, string $keyword): SleekDB
   {
-    $this->queryBuilder = $this->queryBuilder->search($field, $keyword);
+    $this->setQueryBuilder($this->getQueryBuilder()->search($field, $keyword));
     return $this;
   }
 
@@ -366,7 +353,7 @@ class SleekDB
    */
   public function join(callable $joinedStore, string $dataPropertyName): SleekDB
   {
-    $this->queryBuilder = $this->queryBuilder->join($joinedStore, $dataPropertyName);
+    $this->setQueryBuilder($this->getQueryBuilder()->join($joinedStore, $dataPropertyName));
     return $this;
   }
 
@@ -376,7 +363,7 @@ class SleekDB
    */
   public function makeCache(): SleekDB
   {
-    $this->queryBuilder = $this->queryBuilder->regenerateCache();
+    $this->setQueryBuilder($this->getQueryBuilder()->regenerateCache());
     return $this;
   }
 
@@ -386,7 +373,7 @@ class SleekDB
    */
   public function disableCache(): SleekDB
   {
-    $this->queryBuilder = $this->queryBuilder->disableCache();
+    $this->setQueryBuilder($this->getQueryBuilder()->disableCache());
     return $this;
   }
 
@@ -398,7 +385,7 @@ class SleekDB
    */
   public function useCache(int $lifetime = null): SleekDB
   {
-    $this->queryBuilder = $this->queryBuilder->useCache($lifetime);
+    $this->setQueryBuilder($this->getQueryBuilder()->useCache($lifetime));
     return $this;
   }
 
@@ -410,7 +397,7 @@ class SleekDB
    */
   public function deleteCache(): SleekDB
   {
-    $this->queryBuilder->getQuery()->getCache()->delete();
+    $this->getQueryBuilder()->getQuery()->getCache()->delete();
     return $this;
   }
 
@@ -422,7 +409,7 @@ class SleekDB
    */
   public function deleteAllCache(): SleekDB
   {
-    $this->queryBuilder->getQuery()->getCache()->deleteAll();
+    $this->getQueryBuilder()->getQuery()->getCache()->deleteAll();
     return $this;
   }
 
@@ -444,8 +431,23 @@ class SleekDB
    */
   public function distinct($fields = []): SleekDB
   {
-    $this->queryBuilder = $this->queryBuilder->distinct($fields);
+    $this->setQueryBuilder($this->getQueryBuilder()->distinct($fields));
     return $this;
+  }
+
+  /**
+   * @return QueryBuilder
+   */
+  public function getQueryBuilder(): QueryBuilder
+  {
+    return $this->queryBuilder;
+  }
+
+  /**
+   * @param QueryBuilder $queryBuilder
+   */
+  private function setQueryBuilder(QueryBuilder $queryBuilder){
+      $this->queryBuilder = $queryBuilder;
   }
 
   /**
@@ -454,9 +456,35 @@ class SleekDB
    */
   public function getQuery(): Query
   {
-    $query = $this->queryBuilder->getQuery();
+    $query = $this->getQueryBuilder()->getQuery();
     $this->resetQueryBuilder();
     return $query;
+  }
+
+  /**
+   * @return Cache
+   * @throws InvalidStoreBootUpException
+   */
+  public function getCache(): Cache
+  {
+    // we do not want to reset the QueryBuilder
+    return $this->getQueryBuilder()->getQuery()->getCache();
+  }
+
+
+  /**
+   * @param Store $store
+   */
+  private function setStore(Store $store){
+      $this->store = $store;
+  }
+
+  /**
+   * @return Store
+   */
+  public function getStore(): Store
+  {
+    return $this->store;
   }
 
   /**
@@ -464,6 +492,6 @@ class SleekDB
    */
   private function resetQueryBuilder(){
     if($this->shouldKeepConditions === true) return;
-    $this->queryBuilder = $this->store->getQueryBuilder();
+    $this->setQueryBuilder($this->getStore()->createQueryBuilder());
   }
 }
