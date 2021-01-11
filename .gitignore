@@ -1,5 +1,6 @@
-test.php
 .DS_Store
-sleekdb_test_scripts
-vendor
 *config.ini
+vendor
+sleekdb_test_scripts
+.idea
+.vscode
