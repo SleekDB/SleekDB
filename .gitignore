@@ -1,4 +1,5 @@
 .DS_Store
+*config.ini
 vendor
 sleekdb_test_scripts
 .idea
