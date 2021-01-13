@@ -167,7 +167,7 @@ class SleekDB
    */
   public function deleteStore(): bool
   {
-    return $this->getStore()->delete();
+    return $this->getStore()->deleteStore();
   }
 
   /**

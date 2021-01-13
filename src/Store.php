@@ -214,7 +214,7 @@ class Store
    * @return bool
    * @throws IOException
    */
-  public function delete(): bool
+  public function deleteStore(): bool
   {
     $storePath = $this->getStorePath();
     $this->_checkWrite($storePath);
