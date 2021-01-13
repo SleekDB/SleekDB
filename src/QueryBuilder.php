@@ -3,10 +3,7 @@
 namespace SleekDB;
 
 use SleekDB\Exceptions\InvalidArgumentException;
-use SleekDB\Exceptions\InvalidConfigurationException;
 use SleekDB\Exceptions\InvalidDataException;
-use SleekDB\Exceptions\InvalidStoreBootUpException;
-use SleekDB\Exceptions\IOException;
 
 class QueryBuilder
 {
@@ -460,36 +457,13 @@ class QueryBuilder
 
   /**
    * @return Query
-   * @throws InvalidStoreBootUpException
    */
   public function getQuery(): Query
   {
     return new Query($this);
   }
 
-  /**
-   * Set DataDirectory for current query.
-   * @param string $directory
-   * @return QueryBuilder
-   * @throws InvalidConfigurationException
-   * @throws IOException
-   */
-  public function setDataDirectory(string $directory): QueryBuilder
-  {
-    $store = $this->store->setDataDirectory($directory);
-    $this->applyStore($store, false);
-    return $this;
-  }
-
-  /**
-   * @return string
-   */
-  public function getDataDirectory(): string
-  {
-    return $this->store->getDataDirectory();
-  }
-
-  public function getStore(): Store{
+  public function _getStore(): Store{
       return $this->store;
   }
 }

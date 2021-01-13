@@ -6,7 +6,6 @@ use SleekDB\Exceptions\InvalidDataException;
 use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\IdNotAllowedException;
 use SleekDB\Exceptions\InvalidConfigurationException;
-use SleekDB\Exceptions\InvalidStoreBootUpException;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Exceptions\JsonException;
 use RecursiveDirectoryIterator;
@@ -45,15 +44,22 @@ class Store
    * @throws IOException
    * @throws InvalidConfigurationException
    */
-  function __construct(string $storeName, string $dataDir = "", array $configuration = [])
+  function __construct(string $storeName, string $dataDir, array $configuration = [])
   {
     $storeName = trim($storeName);
-    if (empty($storeName)) throw new InvalidArgumentException('Invalid store name was found');
+    if (empty($storeName)) throw new InvalidArgumentException('store name can not be empty');
     $this->storeName = $storeName;
+
+    $dataDir = trim($dataDir);
+    if (empty($dataDir)) throw new InvalidArgumentException('data directory can not be empty');
+    if (substr($dataDir, -1) !== '/') $dataDir = $dataDir . '/';
+    $this->dataDirectory = $dataDir;
 
     $this->setConfiguration($configuration);
 
-    $this->setDataDirectory($dataDir);
+    // boot store
+    $this->createDataDirectory();
+    $this->createStore();
   }
 
   /**
@@ -62,30 +68,6 @@ class Store
   public function getStoreName(): string
   {
     return $this->storeName;
-  }
-
-  /**
-   * @param string $directory
-   * @return Store
-   * @throws IOException
-   * @throws InvalidConfigurationException
-   */
-  public function setDataDirectory(string $directory): Store
-  {
-    // Prepare the data directory.
-    $dataDir = trim($directory);
-    if(empty($dataDir)) return $this;
-
-    // Handle directory path ending.
-    if (substr($dataDir, -1) !== '/') $dataDir = $dataDir . '/';
-
-    // Set the data directory.
-    $this->dataDirectory = $dataDir;
-
-    // boot store
-    $this->createDataDirectory();
-    $this->createStore();
-    return $this;
   }
 
   /**
@@ -148,7 +130,6 @@ class Store
    * @throws IdNotAllowedException
    * @throws InvalidDataException
    * @throws JsonException
-   * @throws InvalidStoreBootUpException
    */
   public function insert(array $data): array
   {
@@ -172,7 +153,6 @@ class Store
    * @throws IdNotAllowedException
    * @throws InvalidDataException
    * @throws JsonException
-   * @throws InvalidStoreBootUpException
    */
   public function insertMany(array $data): array
   {
@@ -250,22 +230,15 @@ class Store
 
   /**
    * @throws IOException
-   * @throws InvalidConfigurationException
    */
   private function createDataDirectory()
   {
-    // Check if data_directory is empty.
-    if (empty($this->dataDirectory)) {
-      throw new InvalidConfigurationException(
-        '"data_directory" can not be empty.'
-      );
-    }
     // Check if the data_directory exists.
-    if (!file_exists($this->dataDirectory)) {
+    if (!file_exists($this->getDataDirectory())) {
       // The directory was not found, create one.
-      if (!mkdir($this->dataDirectory, 0777, true)) {
+      if (!mkdir($this->getDataDirectory(), 0777, true)) {
         throw new IOException(
-          'Unable to create the data directory at ' . $this->dataDirectory
+          'Unable to create the data directory at ' . $this->getDataDirectory()
         );
       }
     }
@@ -276,11 +249,11 @@ class Store
    */
   private function createStore()
   {
-    $storeName = $this->storeName;
+    $storeName = $this->getStoreName();
     // Prepare store name.
     if (substr($storeName, -1) !== '/') $storeName = $storeName . '/';
     // Store directory path.
-    $this->storePath = $this->dataDirectory . $storeName;
+    $this->storePath = $this->getDataDirectory() . $storeName;
     $storePath = $this->getStorePath();
     // Check if the store exists.
     if (!file_exists($storePath)) {
@@ -404,17 +377,6 @@ class Store
   public function getStorePath(): string
   {
     return $this->storePath;
-  }
-
-  /**
-   * @throws InvalidStoreBootUpException
-   */
-  public function _checkBootUp(){
-    if( empty($this->getStorePath()) || empty($this->getDataDirectory()) ){
-      throw new InvalidStoreBootUpException(
-        "Store is not booted up properly. Please set a data directory. Invalid StorePath: \"{$this->getStorePath()}\""
-      );
-    }
   }
 
 }

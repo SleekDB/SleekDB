@@ -8,7 +8,6 @@ use SleekDB\Exceptions\IdNotAllowedException;
 use SleekDB\Exceptions\IndexNotFoundException;
 use SleekDB\Exceptions\InvalidConfigurationException;
 use SleekDB\Exceptions\InvalidPropertyAccessException;
-use SleekDB\Exceptions\InvalidStoreBootUpException;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Exceptions\JsonException;
 
@@ -40,7 +39,7 @@ class SleekDB
    * @throws IOException
    * @throws InvalidConfigurationException
    */
-  function __construct(string $storeName, string $dataDir = "", array $configuration = []){
+  function __construct(string $storeName, string $dataDir, array $configuration = []){
     $this->init($storeName, $dataDir, $configuration);
   }
 
@@ -53,7 +52,7 @@ class SleekDB
    * @throws IOException
    * @throws InvalidConfigurationException
    */
-  public function init(string $storeName, string $dataDir = "", array $conf = []){
+  public function init(string $storeName, string $dataDir, array $conf = []){
     $this->setStore(new Store($storeName, $dataDir, $conf));
     $this->setQueryBuilder($this->getStore()->createQueryBuilder());
   }
@@ -68,7 +67,7 @@ class SleekDB
    * @throws IOException
    * @throws InvalidConfigurationException
    */
-  public static function store(string $storeName, string $dataDir = "", array $configuration = []): SleekDB
+  public static function store(string $storeName, string $dataDir, array $configuration = []): SleekDB
   {
     return new SleekDB($storeName, $dataDir, $configuration);
   }
@@ -81,7 +80,6 @@ class SleekDB
    * @throws IndexNotFoundException
    * @throws InvalidDataException
    * @throws InvalidPropertyAccessException
-   * @throws InvalidStoreBootUpException
    * @throws InvalidConfigurationException
    */
   public function fetch(): array
@@ -95,7 +93,6 @@ class SleekDB
    * @throws InvalidArgumentException
    * @throws IndexNotFoundException
    * @throws InvalidPropertyAccessException
-   * @throws InvalidStoreBootUpException
    * @throws IOException
    */
   public function exists(): bool
@@ -110,7 +107,6 @@ class SleekDB
    * @throws IndexNotFoundException
    * @throws InvalidDataException
    * @throws InvalidPropertyAccessException
-   * @throws InvalidStoreBootUpException
    * @throws IOException
    * @throws InvalidConfigurationException
    */
@@ -126,7 +122,6 @@ class SleekDB
    * @return array
    * @throws IOException
    * @throws IdNotAllowedException
-   * @throws InvalidStoreBootUpException
    * @throws InvalidDataException
    * @throws JsonException
    */
@@ -141,7 +136,6 @@ class SleekDB
    * @return array
    * @throws IOException
    * @throws IdNotAllowedException
-   * @throws InvalidStoreBootUpException
    * @throws InvalidDataException
    * @throws JsonException
    */
@@ -158,7 +152,6 @@ class SleekDB
    * @throws IOException
    * @throws IndexNotFoundException
    * @throws InvalidPropertyAccessException
-   * @throws InvalidStoreBootUpException
    */
   public function update(array $updatable): bool
   {
@@ -171,7 +164,6 @@ class SleekDB
    * @return bool|int
    * @throws InvalidArgumentException
    * @throws InvalidPropertyAccessException
-   * @throws InvalidStoreBootUpException
    * @throws IOException
    * @throws IndexNotFoundException
    */
@@ -197,27 +189,6 @@ class SleekDB
   public function getCacheToken(): string
   {
     return $this->getQueryBuilder()->getCacheToken();
-  }
-
-  /**
-   * Set DataDirectory for current query.
-   * @param string $directory
-   * @return SleekDB
-   * @throws IOException
-   * @throws InvalidConfigurationException
-   */
-  public function setDataDirectory(string $directory): SleekDB
-  {
-    $this->setQueryBuilder($this->getQueryBuilder()->setDataDirectory($directory));
-    return $this;
-  }
-
-  /**
-   * @return string
-   */
-  public function getDataDirectory(): string
-  {
-    return $this->getQueryBuilder()->getDataDirectory();
   }
 
   /**
@@ -393,7 +364,6 @@ class SleekDB
    * Delete cache file/s for current query.
    * @return SleekDB
    * @throws IOException
-   * @throws InvalidStoreBootUpException
    */
   public function deleteCache(): SleekDB
   {
@@ -405,7 +375,6 @@ class SleekDB
    * Delete all cache files for current store.
    * @return SleekDB
    * @throws IOException
-   * @throws InvalidStoreBootUpException
    */
   public function deleteAllCache(): SleekDB
   {
@@ -452,7 +421,6 @@ class SleekDB
 
   /**
    * @return Query
-   * @throws InvalidStoreBootUpException
    */
   public function getQuery(): Query
   {
@@ -463,7 +431,6 @@ class SleekDB
 
   /**
    * @return Cache
-   * @throws InvalidStoreBootUpException
    */
   public function getCache(): Cache
   {

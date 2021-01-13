@@ -2,7 +2,6 @@
 
 namespace SleekDB;
 
-use SleekDB\Exceptions\InvalidStoreBootUpException;
 use SleekDB\Exceptions\IOException;
 
 class Cache
@@ -28,15 +27,13 @@ class Cache
    * Cache constructor.
    * @param QueryBuilder $queryBuilder
    * @param string $cacheDir
-   * @throws InvalidStoreBootUpException
    */
   public function __construct(QueryBuilder $queryBuilder, string $cacheDir = "")
   {
     $this->setCacheDir($cacheDir);
 
-    $store = $queryBuilder->getStore();
+    $store = $queryBuilder->_getStore();
 
-    $store->_checkBootUp();
     $this->setCachePath($store->getStorePath());
 
     $this->setToken($queryBuilder->getCacheToken());

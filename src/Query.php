@@ -7,7 +7,6 @@ use SleekDB\Exceptions\IndexNotFoundException;
 use SleekDB\Exceptions\InvalidConfigurationException;
 use SleekDB\Exceptions\InvalidDataException;
 use SleekDB\Exceptions\InvalidPropertyAccessException;
-use SleekDB\Exceptions\InvalidStoreBootUpException;
 use SleekDB\Exceptions\IOException;
 use Exception;
 use Throwable;
@@ -29,13 +28,10 @@ class Query
   /**
    * Query constructor.
    * @param QueryBuilder $queryBuilder
-   * @throws InvalidStoreBootUpException
    */
   public function __construct(QueryBuilder $queryBuilder)
   {
-    $store = $queryBuilder->getStore();
-
-    $store->_checkBootUp();
+    $store = $queryBuilder->_getStore();
 
     $this->storePath = $store->getStorePath();
     $this->dataDirectory = $store->getDataDirectory();
@@ -73,7 +69,6 @@ class Query
    * @throws InvalidDataException
    * @throws InvalidPropertyAccessException
    * @throws IOException
-   * @throws InvalidStoreBootUpException
    * @throws InvalidConfigurationException
    */
   public function fetch(): array
@@ -124,7 +119,6 @@ class Query
    * @throws InvalidConfigurationException
    * @throws InvalidDataException
    * @throws InvalidPropertyAccessException
-   * @throws InvalidStoreBootUpException
    */
   private function joinData(array &$results){
     // Join data.
@@ -137,7 +131,6 @@ class Query
 
         // TODO remove SleekDB check in version 2.0
         if($joinQuery instanceof QueryBuilder || $joinQuery instanceof SleekDB){
-          if(empty($joinQuery->getDataDirectory())) $joinQuery->setDataDirectory($this->getDataDirectory());
           $joinResult = $joinQuery->getQuery()->fetch();
         } else if(is_array($joinQuery)){
           // user already fetched the query in the join query function
@@ -164,7 +157,6 @@ class Query
    * @throws InvalidPropertyAccessException
    * @throws IOException
    * @throws InvalidConfigurationException
-   * @throws InvalidStoreBootUpException
    */
   public function first(): array
   {
