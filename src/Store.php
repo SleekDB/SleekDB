@@ -2,11 +2,10 @@
 
 namespace SleekDB;
 
-use SleekDB\Exceptions\InvalidDataException;
 use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\IdNotAllowedException;
 use SleekDB\Exceptions\InvalidConfigurationException;
-use SleekDB\Exceptions\InvalidStoreBootUpException;
+use SleekDB\Exceptions\InvalidPropertyAccessException;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Exceptions\JsonException;
 use RecursiveDirectoryIterator;
@@ -45,15 +44,22 @@ class Store
    * @throws IOException
    * @throws InvalidConfigurationException
    */
-  function __construct(string $storeName, string $dataDir = "", array $configuration = [])
+  function __construct(string $storeName, string $dataDir, array $configuration = [])
   {
     $storeName = trim($storeName);
-    if (empty($storeName)) throw new InvalidArgumentException('Invalid store name was found');
+    if (empty($storeName)) throw new InvalidArgumentException('store name can not be empty');
     $this->storeName = $storeName;
+
+    $dataDir = trim($dataDir);
+    if (empty($dataDir)) throw new InvalidArgumentException('data directory can not be empty');
+    if (substr($dataDir, -1) !== '/') $dataDir = $dataDir . '/';
+    $this->dataDirectory = $dataDir;
 
     $this->setConfiguration($configuration);
 
-    $this->setDataDirectory($dataDir);
+    // boot store
+    $this->createDataDirectory();
+    $this->createStore();
   }
 
   /**
@@ -62,30 +68,6 @@ class Store
   public function getStoreName(): string
   {
     return $this->storeName;
-  }
-
-  /**
-   * @param string $directory
-   * @return Store
-   * @throws IOException
-   * @throws InvalidConfigurationException
-   */
-  public function setDataDirectory(string $directory): Store
-  {
-    // Prepare the data directory.
-    $dataDir = trim($directory);
-    if(empty($dataDir)) return $this;
-
-    // Handle directory path ending.
-    if (substr($dataDir, -1) !== '/') $dataDir = $dataDir . '/';
-
-    // Set the data directory.
-    $this->dataDirectory = $dataDir;
-
-    // boot store
-    $this->createDataDirectory();
-    $this->createStore();
-    return $this;
   }
 
   /**
@@ -146,14 +128,13 @@ class Store
    * @return array
    * @throws IOException
    * @throws IdNotAllowedException
-   * @throws InvalidDataException
+   * @throws InvalidArgumentException
    * @throws JsonException
-   * @throws InvalidStoreBootUpException
    */
   public function insert(array $data): array
   {
     // Handle invalid data
-    if (empty($data)) throw new InvalidDataException('No data found to insert in the store');
+    if (empty($data)) throw new InvalidArgumentException('No data found to insert in the store');
     $data = $this->writeInStore($data);
     // Check do we need to wipe the cache for this store.
     if($this->getUseCache() === true){
@@ -170,14 +151,13 @@ class Store
    * @return array
    * @throws IOException
    * @throws IdNotAllowedException
-   * @throws InvalidDataException
+   * @throws InvalidArgumentException
    * @throws JsonException
-   * @throws InvalidStoreBootUpException
    */
   public function insertMany(array $data): array
   {
     // Handle invalid data
-    if (empty($data)) throw new InvalidDataException('No data found to insert in the store');
+    if (empty($data)) throw new InvalidArgumentException('No data found to insert in the store');
     // All results.
     $results = [];
     foreach ($data as $key => $node) {
@@ -224,17 +204,17 @@ class Store
 
     $storePath = $dataPath . $id . '.json';
     if (!file_put_contents($storePath, $storableJSON)) {
-      throw new IOException("Unable to write the object file! Please check if PHP has write permission.");
+      throw new IOException("Unable to write the object file! Please check if PHP has write permission. Location: \"$storePath\"");
     }
     return $storeData;
   }
 
   /**
-   * Deletes a store and wipes all the data and cache it contains.
+   * Delete store with all its data and cache.
    * @return bool
    * @throws IOException
    */
-  public function delete(): bool
+  public function deleteStore(): bool
   {
     $storePath = $this->getStorePath();
     $this->_checkWrite($storePath);
@@ -250,22 +230,15 @@ class Store
 
   /**
    * @throws IOException
-   * @throws InvalidConfigurationException
    */
   private function createDataDirectory()
   {
-    // Check if data_directory is empty.
-    if (empty($this->dataDirectory)) {
-      throw new InvalidConfigurationException(
-        '"data_directory" can not be empty.'
-      );
-    }
     // Check if the data_directory exists.
-    if (!file_exists($this->dataDirectory)) {
+    if (!file_exists($this->getDataDirectory())) {
       // The directory was not found, create one.
-      if (!mkdir($this->dataDirectory, 0777, true)) {
+      if (!mkdir($this->getDataDirectory(), 0777, true)) {
         throw new IOException(
-          'Unable to create the data directory at ' . $this->dataDirectory
+          'Unable to create the data directory at ' . $this->getDataDirectory()
         );
       }
     }
@@ -276,11 +249,11 @@ class Store
    */
   private function createStore()
   {
-    $storeName = $this->storeName;
+    $storeName = $this->getStoreName();
     // Prepare store name.
     if (substr($storeName, -1) !== '/') $storeName = $storeName . '/';
     // Store directory path.
-    $this->storePath = $this->dataDirectory . $storeName;
+    $this->storePath = $this->getDataDirectory() . $storeName;
     $storePath = $this->getStorePath();
     // Check if the store exists.
     if (!file_exists($storePath)) {
@@ -407,14 +380,159 @@ class Store
   }
 
   /**
-   * @throws InvalidStoreBootUpException
+   * Retrieve all documents.
+   * @return array
+   * @throws InvalidPropertyAccessException
+   * @throws IOException
+   * @throws InvalidArgumentException
    */
-  public function _checkBootUp(){
-    if( empty($this->getStorePath()) || empty($this->getDataDirectory()) ){
-      throw new InvalidStoreBootUpException(
-        "Store is not booted up properly. Please set a data directory. Invalid StorePath: \"{$this->getStorePath()}\""
-      );
+  public function findAll(): array
+  {
+    return $this->createQueryBuilder()->getQuery()->fetch();
+  }
+
+  /**
+   * Retrieve one document by its _id. Very fast because it finds the document by its file path.
+   * @param int $id
+   * @return array|null
+   * @throws IOException
+   */
+  public function findById(int $id){
+
+    $filePath = $this->getStorePath() . "data/$id.json";
+
+    if(!file_exists($filePath)) return null;
+
+    $this->_checkRead($filePath);
+
+    // retrieve file content
+    $content = false;
+    $fp = fopen($filePath, 'r');
+    if(flock($fp, LOCK_SH)){
+      $content = file_get_contents($filePath);
     }
+    flock($fp, LOCK_UN);
+    fclose($fp);
+
+    if($content === false) return null;
+
+    return @json_decode($content, true);
+  }
+
+  /**
+   * Retrieve one or multiple documents.
+   * @param array $criteria
+   * @param array $orderBy
+   * @param int $limit
+   * @param int $offset
+   * @return array
+   * @throws IOException
+   * @throws InvalidArgumentException
+   * @throws InvalidPropertyAccessException
+   */
+  public function findBy(array $criteria, array $orderBy = null, int $limit = null, int $offset = null): array
+  {
+    $qb = $this->createQueryBuilder();
+
+    $qb->where($criteria);
+
+    if($orderBy !== null) $qb->orderBy($orderBy);
+
+    if($limit !== null) $qb->limit($limit);
+
+    if($offset !== null) $qb->skip($offset);
+
+    return $qb->getQuery()->fetch();
+
+  }
+
+  /**
+   * Retrieve one document.
+   * @param array $criteria
+   * @return array|null single document or NULL if no document can be found
+   * @throws IOException
+   * @throws InvalidArgumentException
+   * @throws InvalidPropertyAccessException
+   */
+  public function findOneBy(array $criteria)
+  {
+    $qb = $this->createQueryBuilder();
+
+    $qb->where($criteria);
+
+    $result = $qb->getQuery()->first();
+
+    return (!empty($result))? $result : null;
+
+  }
+
+  /**
+   * Update one or multiple documents.
+   * @param array $updatable true if all documents could be updated and false if one document did not exist
+   * @return bool
+   * @throws IOException
+   * @throws InvalidArgumentException
+   */
+  public function update(array $updatable): bool
+  {
+
+    if(empty($updatable)) throw new InvalidArgumentException("No documents to update.");
+
+    $multipleDocuments = array_keys($updatable) === range(0, (count($updatable) - 1));
+
+    // multiple documents to update
+    foreach ($updatable as $document)
+    {
+      if($multipleDocuments === false){
+        $document = $updatable;
+      }
+
+      if(!is_array($document)) throw new InvalidArgumentException('Documents have to be arrays.');
+      if(!array_key_exists('_id', $document)) throw new InvalidArgumentException('Documents have to have "_id".');
+
+      $id = $document['_id'];
+      $storePath = $this->getStorePath() . "data/$id.json";
+
+      if (!file_exists($storePath)) return false;
+
+      // Wait until it's unlocked, then update data.
+      $this->_checkWrite($storePath);
+      if(file_put_contents($storePath, json_encode($document), LOCK_EX) === false){
+        throw new IOException("Could not update document with _id \"$id\". Please check permissions at: $storePath");
+      }
+
+      if($multipleDocuments === false) break;
+    }
+
+    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
+
+    return true;
+  }
+
+  /**
+   * Delete one or multiple documents.
+   * @param $criteria
+   * @param int $returnOption
+   * @return array|bool|int
+   * @throws IOException
+   * @throws InvalidArgumentException
+   * @throws InvalidPropertyAccessException
+   */
+  public function deleteBy($criteria, $returnOption = Query::DELETE_RETURN_BOOL){
+    return $this->createQueryBuilder()->where($criteria)->getQuery()->delete($returnOption);
+  }
+
+  /**
+   * Delete one document by its _id. Very fast because it deletes the document by its file path.
+   * @param $id
+   * @return bool true if document does not exist or deletion was successful, false otherwise
+   */
+  public function deleteById($id): bool
+  {
+
+    $filePath = $this->getStorePath() . "data/$id.json";
+
+    return (!file_exists($filePath) || true === @unlink($filePath));
   }
 
 }

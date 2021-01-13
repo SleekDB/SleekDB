@@ -3,11 +3,7 @@
 namespace SleekDB;
 
 use SleekDB\Exceptions\InvalidArgumentException;
-use SleekDB\Exceptions\IndexNotFoundException;
-use SleekDB\Exceptions\InvalidConfigurationException;
-use SleekDB\Exceptions\InvalidDataException;
 use SleekDB\Exceptions\InvalidPropertyAccessException;
-use SleekDB\Exceptions\InvalidStoreBootUpException;
 use SleekDB\Exceptions\IOException;
 use Exception;
 use Throwable;
@@ -26,16 +22,18 @@ class Query
    */
   protected $cache;
 
+
+  const DELETE_RETURN_BOOL = 1;
+  const DELETE_RETURN_RESULTS = 1;
+  const DELETE_RETURN_COUNT = 1;
+
   /**
    * Query constructor.
    * @param QueryBuilder $queryBuilder
-   * @throws InvalidStoreBootUpException
    */
   public function __construct(QueryBuilder $queryBuilder)
   {
-    $store = $queryBuilder->getStore();
-
-    $store->_checkBootUp();
+    $store = $queryBuilder->_getStore();
 
     $this->storePath = $store->getStorePath();
     $this->dataDirectory = $store->getDataDirectory();
@@ -69,12 +67,8 @@ class Query
    * Execute Query and get Results
    * @return array
    * @throws InvalidArgumentException
-   * @throws IndexNotFoundException
-   * @throws InvalidDataException
    * @throws InvalidPropertyAccessException
    * @throws IOException
-   * @throws InvalidStoreBootUpException
-   * @throws InvalidConfigurationException
    */
   public function fetch(): array
   {
@@ -104,7 +98,6 @@ class Query
    * Check if data is found
    * @return bool
    * @throws InvalidArgumentException
-   * @throws IndexNotFoundException
    * @throws InvalidPropertyAccessException
    * @throws IOException
    */
@@ -119,12 +112,8 @@ class Query
   /**
    * @param array $results
    * @throws IOException
-   * @throws IndexNotFoundException
    * @throws InvalidArgumentException
-   * @throws InvalidConfigurationException
-   * @throws InvalidDataException
    * @throws InvalidPropertyAccessException
-   * @throws InvalidStoreBootUpException
    */
   private function joinData(array &$results){
     // Join data.
@@ -137,7 +126,6 @@ class Query
 
         // TODO remove SleekDB check in version 2.0
         if($joinQuery instanceof QueryBuilder || $joinQuery instanceof SleekDB){
-          if(empty($joinQuery->getDataDirectory())) $joinQuery->setDataDirectory($this->getDataDirectory());
           $joinResult = $joinQuery->getQuery()->fetch();
         } else if(is_array($joinQuery)){
           // user already fetched the query in the join query function
@@ -159,12 +147,8 @@ class Query
    * Return the first document.
    * @return array empty array or single document
    * @throws InvalidArgumentException
-   * @throws IndexNotFoundException
-   * @throws InvalidDataException
    * @throws InvalidPropertyAccessException
    * @throws IOException
-   * @throws InvalidConfigurationException
-   * @throws InvalidStoreBootUpException
    */
   public function first(): array
   {
@@ -186,7 +170,6 @@ class Query
    * @return bool
    * @throws InvalidArgumentException
    * @throws IOException
-   * @throws IndexNotFoundException
    * @throws InvalidPropertyAccessException
    */
   public function update(array $updatable): bool
@@ -216,31 +199,47 @@ class Query
 
   /**
    * Deletes matched store objects.
-   * @param bool $returnRecordsCount if true int will be returned
-   * @return bool|int
+   * @param int $returnOption
+   * @return bool|array|int
    * @throws InvalidArgumentException
    * @throws IOException
-   * @throws IndexNotFoundException
    * @throws InvalidPropertyAccessException
    */
-  public function delete(bool $returnRecordsCount = false)
+  public function delete(int $returnOption = self::DELETE_RETURN_BOOL)
   {
     $results = $this->findStoreDocuments();
+    $returnValue = null;
+
+    switch ($returnOption){
+      case self::DELETE_RETURN_BOOL:
+        $returnValue = !empty($results);
+        break;
+      case self::DELETE_RETURN_COUNT:
+        $returnValue = count($results);
+        break;
+      case self::DELETE_RETURN_RESULTS:
+        $returnValue = $results;
+        break;
+      default:
+        throw new InvalidArgumentException("return option \"$returnOption\" is not supported");
+    }
+
     if (!empty($results)) {
-      foreach ($results as $data) {
-        if (false === unlink($this->getStorePath() . 'data/' . $data['_id'] . '.json')) {
+      foreach ($results as $key => $data) {
+        if (false === @unlink($this->getStorePath() . 'data/' . $data['_id'] . '.json')) {
           throw new IOException(
-            'Unable to delete storage file! 
-              Location: "' . $this->getStorePath() . 'data/' . $data['_id'] . '.json' . '"'
+            'Unable to delete document! 
+            Already deleted documents: '.$key.'. 
+            Location: "' . $this->getStorePath() . 'data/' . $data['_id'] . '.json"'
           );
         }
       }
-      $this->cache->deleteAllWithNoLifetime();
-      return $returnRecordsCount ? count($results) : true;
-    } else {
-      // Nothing found to delete
-      return $returnRecordsCount ? 0 : true;
     }
+
+
+    $this->cache->deleteAllWithNoLifetime();
+
+    return $returnValue;
   }
 
 
@@ -292,7 +291,6 @@ class Query
    * @param bool $getOneDocument
    * @return array
    * @throws InvalidArgumentException
-   * @throws IndexNotFoundException
    * @throws InvalidPropertyAccessException
    * @throws IOException
    */
@@ -513,7 +511,6 @@ class Query
    * @param string $order
    * @return array
    * @throws InvalidArgumentException
-   * @throws IndexNotFoundException
    */
   private function sortArray(string $field, array $data, string $order = 'ASC'): array
   {
@@ -539,7 +536,6 @@ class Query
    * @param array $data
    * @return mixed
    * @throws InvalidArgumentException
-   * @throws IndexNotFoundException
    */
   private function getNestedProperty(string $fieldName, array $data)
   {
@@ -549,13 +545,16 @@ class Query
 
     // Dive deep step by step.
     foreach (explode('.', $fieldName) as $i) {
-      // If the field do not exists then insert an empty string.
+
+      // If the field does not exists we return null;
       if (!isset($data[$i])) {
-        throw new IndexNotFoundException('"' . $i . '" index was not found in the provided data array');
+        return null;
       }
+
       // The index is valid, collect the data.
       $data = $data[$i];
     }
+
     return $data;
   }
 
@@ -632,14 +631,6 @@ class Query
         "Document or directory is not readable at \"$path\". Please change permission."
       );
     }
-  }
-
-  /**
-   * @return string
-   */
-  private function getDataDirectory(): string
-  {
-    return $this->dataDirectory;
   }
 
   /**

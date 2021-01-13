@@ -3,12 +3,9 @@
 namespace SleekDB;
 
 use SleekDB\Exceptions\InvalidArgumentException;
-use SleekDB\Exceptions\InvalidDataException;
 use SleekDB\Exceptions\IdNotAllowedException;
-use SleekDB\Exceptions\IndexNotFoundException;
 use SleekDB\Exceptions\InvalidConfigurationException;
 use SleekDB\Exceptions\InvalidPropertyAccessException;
-use SleekDB\Exceptions\InvalidStoreBootUpException;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Exceptions\JsonException;
 
@@ -40,7 +37,7 @@ class SleekDB
    * @throws IOException
    * @throws InvalidConfigurationException
    */
-  function __construct(string $storeName, string $dataDir = "", array $configuration = []){
+  function __construct(string $storeName, string $dataDir, array $configuration = []){
     $this->init($storeName, $dataDir, $configuration);
   }
 
@@ -53,7 +50,7 @@ class SleekDB
    * @throws IOException
    * @throws InvalidConfigurationException
    */
-  public function init(string $storeName, string $dataDir = "", array $conf = []){
+  public function init(string $storeName, string $dataDir, array $conf = []){
     $this->setStore(new Store($storeName, $dataDir, $conf));
     $this->setQueryBuilder($this->getStore()->createQueryBuilder());
   }
@@ -68,7 +65,7 @@ class SleekDB
    * @throws IOException
    * @throws InvalidConfigurationException
    */
-  public static function store(string $storeName, string $dataDir = "", array $configuration = []): SleekDB
+  public static function store(string $storeName, string $dataDir, array $configuration = []): SleekDB
   {
     return new SleekDB($storeName, $dataDir, $configuration);
   }
@@ -78,11 +75,7 @@ class SleekDB
    * @return array
    * @throws InvalidArgumentException
    * @throws IOException
-   * @throws IndexNotFoundException
-   * @throws InvalidDataException
    * @throws InvalidPropertyAccessException
-   * @throws InvalidStoreBootUpException
-   * @throws InvalidConfigurationException
    */
   public function fetch(): array
   {
@@ -93,9 +86,7 @@ class SleekDB
    * Check if data is found
    * @return bool
    * @throws InvalidArgumentException
-   * @throws IndexNotFoundException
    * @throws InvalidPropertyAccessException
-   * @throws InvalidStoreBootUpException
    * @throws IOException
    */
   public function exists(): bool
@@ -107,12 +98,8 @@ class SleekDB
    * Return the first document.
    * @return array
    * @throws InvalidArgumentException
-   * @throws IndexNotFoundException
-   * @throws InvalidDataException
    * @throws InvalidPropertyAccessException
-   * @throws InvalidStoreBootUpException
    * @throws IOException
-   * @throws InvalidConfigurationException
    */
   public function first(): array
   {
@@ -126,8 +113,7 @@ class SleekDB
    * @return array
    * @throws IOException
    * @throws IdNotAllowedException
-   * @throws InvalidStoreBootUpException
-   * @throws InvalidDataException
+   * @throws InvalidArgumentException
    * @throws JsonException
    */
   public function insert(array $storeData): array
@@ -141,8 +127,7 @@ class SleekDB
    * @return array
    * @throws IOException
    * @throws IdNotAllowedException
-   * @throws InvalidStoreBootUpException
-   * @throws InvalidDataException
+   * @throws InvalidArgumentException
    * @throws JsonException
    */
   public function insertMany(array $storeData): array
@@ -156,9 +141,7 @@ class SleekDB
    * @return bool
    * @throws InvalidArgumentException
    * @throws IOException
-   * @throws IndexNotFoundException
    * @throws InvalidPropertyAccessException
-   * @throws InvalidStoreBootUpException
    */
   public function update(array $updatable): bool
   {
@@ -167,16 +150,14 @@ class SleekDB
 
   /**
    * Deletes matched store objects.
-   * @param bool $returnRecordsCount
-   * @return bool|int
+   * @param int $returnOption
+   * @return bool|array|int
    * @throws InvalidArgumentException
    * @throws InvalidPropertyAccessException
-   * @throws InvalidStoreBootUpException
    * @throws IOException
-   * @throws IndexNotFoundException
    */
-  public function delete(bool $returnRecordsCount = false){
-    return $this->getQuery()->delete($returnRecordsCount);
+  public function delete(int $returnOption = Query::DELETE_RETURN_BOOL){
+    return $this->getQuery()->delete($returnOption);
   }
 
   /**
@@ -186,7 +167,7 @@ class SleekDB
    */
   public function deleteStore(): bool
   {
-    return $this->getStore()->delete();
+    return $this->getStore()->deleteStore();
   }
 
   /**
@@ -197,27 +178,6 @@ class SleekDB
   public function getCacheToken(): string
   {
     return $this->getQueryBuilder()->getCacheToken();
-  }
-
-  /**
-   * Set DataDirectory for current query.
-   * @param string $directory
-   * @return SleekDB
-   * @throws IOException
-   * @throws InvalidConfigurationException
-   */
-  public function setDataDirectory(string $directory): SleekDB
-  {
-    $this->setQueryBuilder($this->getQueryBuilder()->setDataDirectory($directory));
-    return $this;
-  }
-
-  /**
-   * @return string
-   */
-  public function getDataDirectory(): string
-  {
-    return $this->getQueryBuilder()->getDataDirectory();
   }
 
   /**
@@ -246,15 +206,26 @@ class SleekDB
 
   /**
    * Add conditions to filter data.
-   * @param string $fieldName
-   * @param string $condition
-   * @param mixed $value
+   * @param string|array|mixed ...$conditions (string fieldName, string condition, mixed value) OR (array(array(string fieldName, string condition, mixed value)[, array(...)]))
    * @return SleekDB
    * @throws InvalidArgumentException
    */
-  public function where(string $fieldName, string $condition, $value): SleekDB
+  public function where(...$conditions): SleekDB
   {
-    $this->setQueryBuilder($this->getQueryBuilder()->where($fieldName, $condition, $value));
+    foreach ($conditions as $key => $arg) {
+      if ($key > 0) throw new InvalidArgumentException("Allowed: (string fieldName, string condition, mixed value) OR (array(array(string fieldName, string condition, mixed value)[, array(...)]))");
+      if (is_array($arg)) {
+        // parameters given as arrays for multiple "where" with "and" between each condition
+        $this->setQueryBuilder($this->getQueryBuilder()->where($arg));
+        break;
+      }
+      if (count($conditions) === 3) {
+        // parameters given as (string fieldName, string condition, mixed value) for a single "where"
+        $this->setQueryBuilder($this->getQueryBuilder()->where($conditions));
+        break;
+      }
+    }
+
     return $this;
   }
 
@@ -286,13 +257,26 @@ class SleekDB
 
   /**
    * Add or-where conditions to filter data.
-   * @param string|array|mixed ...$conditions (string fieldName, string condition, mixed value) OR ([string fieldName, string condition, mixed value],...)
+   * @param string|array|mixed ...$conditions (string fieldName, string condition, mixed value) OR array(array(string fieldName, string condition, mixed value) [, array(...)])
    * @return SleekDB
    * @throws InvalidArgumentException
    */
   public function orWhere(...$conditions): SleekDB
   {
-    $this->setQueryBuilder($this->getQueryBuilder()->orWhere(...$conditions));
+    foreach ($conditions as $key => $arg) {
+      if ($key > 0) throw new InvalidArgumentException("Allowed: (string fieldName, string condition, mixed value) OR array(array(string fieldName, string condition, mixed value) [, array(...)])");
+      if (is_array($arg)) {
+        // parameters given as arrays for an "or where" with "and" between each condition
+        $this->setQueryBuilder($this->getQueryBuilder()->orWhere($arg));
+        break;
+      }
+      if (count($conditions) === 3) {
+        // parameters given as (string fieldName, string condition, mixed value) for a single "or where"
+        $this->setQueryBuilder($this->getQueryBuilder()->orWhere($conditions));
+        break;
+      }
+    }
+
     return $this;
   }
 
@@ -329,7 +313,7 @@ class SleekDB
    */
   public function orderBy(string $order, string $orderBy = '_id'): SleekDB
   {
-    $this->setQueryBuilder($this->getQueryBuilder()->orderBy($order, $orderBy));
+    $this->setQueryBuilder($this->getQueryBuilder()->orderBy([$orderBy => $order]));
     return $this;
   }
 
@@ -393,7 +377,6 @@ class SleekDB
    * Delete cache file/s for current query.
    * @return SleekDB
    * @throws IOException
-   * @throws InvalidStoreBootUpException
    */
   public function deleteCache(): SleekDB
   {
@@ -405,7 +388,6 @@ class SleekDB
    * Delete all cache files for current store.
    * @return SleekDB
    * @throws IOException
-   * @throws InvalidStoreBootUpException
    */
   public function deleteAllCache(): SleekDB
   {
@@ -427,7 +409,7 @@ class SleekDB
    * Return distinct values.
    * @param array|string $fields
    * @return SleekDB
-   * @throws InvalidDataException
+   * @throws InvalidArgumentException
    */
   public function distinct($fields = []): SleekDB
   {
@@ -452,7 +434,6 @@ class SleekDB
 
   /**
    * @return Query
-   * @throws InvalidStoreBootUpException
    */
   public function getQuery(): Query
   {
@@ -463,7 +444,6 @@ class SleekDB
 
   /**
    * @return Cache
-   * @throws InvalidStoreBootUpException
    */
   public function getCache(): Cache
   {
@@ -494,4 +474,92 @@ class SleekDB
     if($this->shouldKeepConditions === true) return;
     $this->setQueryBuilder($this->getStore()->createQueryBuilder());
   }
+
+
+  /**
+   * Retrieve all documents.
+   * @return array
+   * @throws InvalidPropertyAccessException
+   * @throws IOException
+   * @throws InvalidArgumentException
+   */
+  public function findAll(): array
+  {
+    return $this->getStore()->findAll();
+  }
+
+  /**
+   * Retrieve one document by its _id. Very fast because it finds the document by its file path.
+   * @param int $id
+   * @return array|null
+   * @throws IOException
+   */
+  public function findById(int $id){
+    return $this->getStore()->findById($id);
+  }
+
+  /**
+   * Retrieve one or multiple documents.
+   * @param array $criteria
+   * @param array $orderBy
+   * @param int $limit
+   * @param int $offset
+   * @return array
+   * @throws IOException
+   * @throws InvalidArgumentException
+   * @throws InvalidPropertyAccessException
+   */
+  public function findBy(array $criteria, array $orderBy = null, int $limit = null, int $offset = null): array
+  {
+    return $this->findBy($criteria, $orderBy, $limit, $offset);
+  }
+
+  /**
+   * Retrieve one document.
+   * @param array $criteria
+   * @return array|null single document or NULL if no document can be found
+   * @throws IOException
+   * @throws InvalidArgumentException
+   * @throws InvalidPropertyAccessException
+   */
+  public function findOneBy(array $criteria)
+  {
+    return $this->getStore()->findOneBy($criteria);
+  }
+
+  /**
+   * Update one or multiple documents.
+   * @param array $updatable true if all documents could be updated and false if one document did not exist
+   * @return bool
+   * @throws IOException
+   * @throws InvalidArgumentException
+   */
+  public function updateBy(array $updatable): bool
+  {
+    return $this->getStore()->update($updatable);
+  }
+
+  /**
+   * Delete one or multiple documents.
+   * @param $criteria
+   * @param int $returnOption
+   * @return array|bool|int
+   * @throws IOException
+   * @throws InvalidArgumentException
+   * @throws InvalidPropertyAccessException
+   */
+  public function deleteBy($criteria, $returnOption = Query::DELETE_RETURN_BOOL){
+    return $this->getStore()->deleteBy($criteria, $returnOption);
+  }
+
+  /**
+   * Delete one document by its _id. Very fast because it deletes the document by its file path.
+   * @param $id
+   * @return bool true if document does not exist or deletion was successful, false otherwise
+   */
+  public function deleteById($id): bool
+  {
+    return $this->getStore()->deleteById($id);
+  }
+
 }
