@@ -204,13 +204,13 @@ class Store
 
     $storePath = $dataPath . $id . '.json';
     if (!file_put_contents($storePath, $storableJSON)) {
-      throw new IOException("Unable to write the object file! Please check if PHP has write permission.");
+      throw new IOException("Unable to write the object file! Please check if PHP has write permission. Location: \"$storePath\"");
     }
     return $storeData;
   }
 
   /**
-   * Deletes a store and wipes all the data and cache it contains.
+   * Delete store with all its data and cache.
    * @return bool
    * @throws IOException
    */
@@ -377,6 +377,162 @@ class Store
   public function getStorePath(): string
   {
     return $this->storePath;
+  }
+
+  /**
+   * Retrieve all documents.
+   * @return array
+   * @throws InvalidPropertyAccessException
+   * @throws IOException
+   * @throws InvalidArgumentException
+   */
+  public function findAll(): array
+  {
+    return $this->createQueryBuilder()->getQuery()->fetch();
+  }
+
+  /**
+   * Retrieve one document by its _id. Very fast because it finds the document by its file path.
+   * @param int $id
+   * @return array|null
+   * @throws IOException
+   */
+  public function findById(int $id){
+
+    $filePath = $this->getStorePath() . "data/$id.json";
+
+    if(!file_exists($filePath)) return null;
+
+    $this->_checkRead($filePath);
+
+    // retrieve file content
+    $content = false;
+    $fp = fopen($filePath, 'r');
+    if(flock($fp, LOCK_SH)){
+      $content = file_get_contents($filePath);
+    }
+    flock($fp, LOCK_UN);
+    fclose($fp);
+
+    if($content === false) return null;
+
+    return @json_decode($content, true);
+  }
+
+  /**
+   * Retrieve one or multiple documents.
+   * @param array $criteria
+   * @param array $orderBy
+   * @param int $limit
+   * @param int $offset
+   * @return array
+   * @throws IOException
+   * @throws InvalidArgumentException
+   * @throws InvalidPropertyAccessException
+   */
+  public function findBy(array $criteria, array $orderBy = null, int $limit = null, int $offset = null): array
+  {
+    $qb = $this->createQueryBuilder();
+
+    $qb->where($criteria);
+
+    if($orderBy !== null) $qb->orderBy($orderBy);
+
+    if($limit !== null) $qb->limit($limit);
+
+    if($offset !== null) $qb->skip($offset);
+
+    return $qb->getQuery()->fetch();
+
+  }
+
+  /**
+   * Retrieve one document.
+   * @param array $criteria
+   * @return array|null single document or NULL if no document can be found
+   * @throws IOException
+   * @throws InvalidArgumentException
+   * @throws InvalidPropertyAccessException
+   */
+  public function findOneBy(array $criteria)
+  {
+    $qb = $this->createQueryBuilder();
+
+    $qb->where($criteria);
+
+    $result = $qb->getQuery()->first();
+
+    return (!empty($result))? $result : null;
+
+  }
+
+  /**
+   * Update one or multiple documents.
+   * @param array $updatable true if all documents could be updated and false if one document did not exist
+   * @return bool
+   * @throws IOException
+   * @throws InvalidArgumentException
+   */
+  public function update(array $updatable): bool
+  {
+
+    if(empty($updatable)) throw new InvalidArgumentException("No documents to update.");
+
+    $multipleDocuments = array_keys($updatable) === range(0, (count($updatable) - 1));
+
+    // multiple documents to update
+    foreach ($updatable as $document)
+    {
+      if($multipleDocuments === false){
+        $document = $updatable;
+      }
+
+      if(!is_array($document)) throw new InvalidArgumentException('Documents have to be arrays.');
+      if(!array_key_exists('_id', $document)) throw new InvalidArgumentException('Documents have to have "_id".');
+
+      $id = $document['_id'];
+      $storePath = $this->getStorePath() . "data/$id.json";
+
+      if (!file_exists($storePath)) return false;
+
+      // Wait until it's unlocked, then update data.
+      $this->_checkWrite($storePath);
+      if(file_put_contents($storePath, json_encode($document), LOCK_EX) === false){
+        throw new IOException("Could not update document with _id \"$id\". Please check permissions at: $storePath");
+      }
+
+      if($multipleDocuments === false) break;
+    }
+
+    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
+
+    return true;
+  }
+
+  /**
+   * Delete one or multiple documents.
+   * @param $criteria
+   * @param int $returnOption
+   * @return array|bool|int
+   * @throws IOException
+   * @throws InvalidArgumentException
+   * @throws InvalidPropertyAccessException
+   */
+  public function deleteBy($criteria, $returnOption = Query::DELETE_RETURN_BOOL){
+    return $this->createQueryBuilder()->where($criteria)->getQuery()->delete($returnOption);
+  }
+
+  /**
+   * Delete one document by its _id. Very fast because it deletes the document by its file path.
+   * @param $id
+   * @return bool true if document does not exist or deletion was successful, false otherwise
+   */
+  public function deleteById($id): bool
+  {
+
+    $filePath = $this->getStorePath() . "data/$id.json";
+
+    return (!file_exists($filePath) || true === @unlink($filePath));
   }
 
 }

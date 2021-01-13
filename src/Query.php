@@ -226,7 +226,7 @@ class Query
 
     if (!empty($results)) {
       foreach ($results as $key => $data) {
-        if (false === unlink($this->getStorePath() . 'data/' . $data['_id'] . '.json')) {
+        if (false === @unlink($this->getStorePath() . 'data/' . $data['_id'] . '.json')) {
           throw new IOException(
             'Unable to delete document! 
             Already deleted documents: '.$key.'. 
@@ -631,14 +631,6 @@ class Query
         "Document or directory is not readable at \"$path\". Please change permission."
       );
     }
-  }
-
-  /**
-   * @return string
-   */
-  private function getDataDirectory(): string
-  {
-    return $this->dataDirectory;
   }
 
   /**

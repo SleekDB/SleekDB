@@ -105,23 +105,63 @@ class QueryBuilder
   }
 
   /**
+   * Validates condition and returns a correctly formatted associative array
+   * @param $condition
+   * @return array
+   * @throws InvalidArgumentException
+   */
+  private function validateCondition($condition): array
+  {
+    if(count($condition) !== 3 || !array_key_exists(0, $condition) || !array_key_exists(1, $condition)
+      || !array_key_exists(2, $condition)){
+      throw new InvalidArgumentException("Invalid condition structure.");
+    }
+
+    $fieldName = $condition[0];
+    $whereCondition = trim($condition[1]);
+    $value = $condition[2];
+
+    if (!is_string($fieldName) || $fieldName === "") {
+      throw new InvalidArgumentException("fieldName has to be a string and can not be empty");
+    }
+    if (!is_string($whereCondition) || $whereCondition === "") {
+      throw new InvalidArgumentException("condition has to be a string and can not be empty");
+    }
+
+    return [
+      "fieldName" => $fieldName,
+      "condition" => $whereCondition,
+      "value" => $value
+    ];
+  }
+
+  /**
    * Add conditions to filter data.
-   * @param string $fieldName
-   * @param string $condition
-   * @param mixed $value
+   * @param array $conditions
    * @return QueryBuilder
    * @throws InvalidArgumentException
    */
-  public function where(string $fieldName, string $condition, $value): QueryBuilder
+  public function where(array $conditions): QueryBuilder
   {
-    if (empty($fieldName)) throw new InvalidArgumentException('Field name in where condition can not be empty.');
-    if (empty($condition)) throw new InvalidArgumentException('The comparison operator can not be empty.');
-    // Append the condition into the conditions variable.
-    $this->conditions[] = [
-      'fieldName' => $fieldName,
-      'condition' => trim($condition),
-      'value'     => $value
-    ];
+    if (empty($conditions)) {
+      throw new InvalidArgumentException("You need to specify a where clause");
+    }
+
+    $justOneCondition = false; // the user provided one where condition
+
+    foreach ($conditions as $condition) {
+
+      if (!is_array($condition)) {
+        // the user provided just one where clause
+        $condition = $conditions;
+        $justOneCondition = true;
+      }
+
+      $this->conditions[] = $this->validateCondition($condition);
+
+      if($justOneCondition === true) break;
+    }
+
     return $this;
   }
 
@@ -161,94 +201,39 @@ class QueryBuilder
 
   /**
    * Add or-where conditions to filter data.
-   * @param string|array|mixed ...$conditions (string fieldName, string condition, mixed value) OR ([string fieldName, string condition, mixed value],...)
+   * @param array $conditions array(array(string fieldName, string condition, mixed value) [, array(...)])
    * @return QueryBuilder
    * @throws InvalidArgumentException
    */
-  public function orWhere(...$conditions): QueryBuilder
-  {
-    foreach ($conditions as $key => $arg) {
-      if ($key > 0) throw new InvalidArgumentException("Allowed: (string fieldName, string condition, mixed value) OR ([string fieldName, string condition, mixed value],...)");
-      if (is_array($arg)) {
-        // parameters given as arrays for an "or where" with "and" between each condition
-        $this->_orWhere($conditions);
-        break;
-      }
-      if (count($conditions) === 3 && is_string($arg) && is_string($conditions[1])) {
-        // parameters given as (string fieldName, string condition, mixed value) for a single "or where"
-        $this->_orWhere([$conditions]);
-        break;
-      }
-    }
-
-    return $this;
-  }
-
-  /**
-   * @param array $conditions
-   * @throws InvalidArgumentException
-   */
-  private function _orWhere(array $conditions)
+  public function orWhere(array $conditions): QueryBuilder
   {
 
-    if (!(count($conditions) > 0)) {
+    if (empty($conditions)) {
       throw new InvalidArgumentException("You need to specify a where clause");
     }
 
     $orConditionsWithAnd = [];
 
-    foreach ($conditions as $key => $condition) {
+    $justOneCondition = false; // the user provided one where condition
 
+    foreach ($conditions as $condition) {
+
+      // the user provided just one where clause
       if (!is_array($condition)) {
-        throw new InvalidArgumentException("The where clause has to be an array");
+        $condition = $conditions;
+        $justOneCondition = true;
       }
 
-      // the user can pass the conditions as an array or a map
-      if (
-        count($condition) === 3 && array_key_exists(0, $condition) && array_key_exists(1, $condition)
-        && array_key_exists(2, $condition)
-      ) {
-        // user passed the condition as an array
+      $orConditionsWithAnd[] = $this->validateCondition($condition);
 
-        $fieldName = $condition[0];
-        $whereCondition = trim($condition[1]);
-        $value = $condition[2];
-
-      } else {
-        // user passed the condition as a map
-
-        if (!array_key_exists("fieldName", $condition) || empty($condition["fieldName"])) {
-          throw new InvalidArgumentException("fieldName is required in where clause");
-        }
-        if (!array_key_exists("condition", $condition) || empty($condition["condition"])) {
-          throw new InvalidArgumentException("condition is required in where clause");
-        }
-        if (!array_key_exists("value", $condition)) {
-          throw new InvalidArgumentException("value is required in where clause");
-        }
-
-        $fieldName = $condition["fieldName"];
-        $whereCondition = trim($condition["condition"]);
-        $value = $condition["value"];
-      }
-
-      if (empty($fieldName)) {
-        throw new InvalidArgumentException("fieldName is required in where clause");
-      }
-      if (empty($whereCondition)) {
-        throw new InvalidArgumentException("condition is required in where clause");
-      }
-
-      $orConditionsWithAnd[] = [
-        "fieldName" => $fieldName,
-        "condition" => $whereCondition,
-        "value" => $value
-      ];
+      if($justOneCondition === true) break;
     }
 
     if(!empty($orConditionsWithAnd)){
       $this->orConditions[] = $orConditionsWithAnd;
     }
+
+    return $this;
   }
 
   /**
@@ -287,19 +272,35 @@ class QueryBuilder
 
   /**
    * Set the sort order.
-   * @param string $order "asc" or "desc"
-   * @param string $orderBy
+   * @param array $criteria to order by. array($fieldName => $order). $order can be "asc" or "desc"
    * @return QueryBuilder
    * @throws InvalidArgumentException
    */
-  public function orderBy(string $order, string $orderBy = '_id'): QueryBuilder
+  public function orderBy( array $criteria): QueryBuilder
   {
     // Validate order.
-    $order = strtolower($order);
-    if (!in_array($order, ['asc', 'desc'])) throw new InvalidArgumentException('Invalid order. Please use "asc" or "desc" only.');
+    $order = "";
+    $fieldName = "";
+    foreach ($criteria as $fieldName => $order){
+
+      if(!is_string($order))
+        throw new InvalidArgumentException('Order has to be a string! Please use "asc" or "desc" only.');
+
+      $order = strtolower($order);
+
+      if(!is_string($fieldName))
+        throw new InvalidArgumentException("Field name has to be a string");
+
+      // TODO allow multiple order criteria
+      break;
+    }
+
+    if (!in_array($order, ['asc', 'desc']))
+      throw new InvalidArgumentException('Please use "asc" or "desc" only.');
+
     $this->orderBy = [
-      'order' => $order,
-      'field' => $orderBy
+      'field' => $fieldName,
+      'order' => $order
     ];
     return $this;
   }
