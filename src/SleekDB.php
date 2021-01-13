@@ -3,9 +3,7 @@
 namespace SleekDB;
 
 use SleekDB\Exceptions\InvalidArgumentException;
-use SleekDB\Exceptions\InvalidDataException;
 use SleekDB\Exceptions\IdNotAllowedException;
-use SleekDB\Exceptions\IndexNotFoundException;
 use SleekDB\Exceptions\InvalidConfigurationException;
 use SleekDB\Exceptions\InvalidPropertyAccessException;
 use SleekDB\Exceptions\IOException;
@@ -77,10 +75,7 @@ class SleekDB
    * @return array
    * @throws InvalidArgumentException
    * @throws IOException
-   * @throws IndexNotFoundException
-   * @throws InvalidDataException
    * @throws InvalidPropertyAccessException
-   * @throws InvalidConfigurationException
    */
   public function fetch(): array
   {
@@ -91,7 +86,6 @@ class SleekDB
    * Check if data is found
    * @return bool
    * @throws InvalidArgumentException
-   * @throws IndexNotFoundException
    * @throws InvalidPropertyAccessException
    * @throws IOException
    */
@@ -104,11 +98,8 @@ class SleekDB
    * Return the first document.
    * @return array
    * @throws InvalidArgumentException
-   * @throws IndexNotFoundException
-   * @throws InvalidDataException
    * @throws InvalidPropertyAccessException
    * @throws IOException
-   * @throws InvalidConfigurationException
    */
   public function first(): array
   {
@@ -122,7 +113,7 @@ class SleekDB
    * @return array
    * @throws IOException
    * @throws IdNotAllowedException
-   * @throws InvalidDataException
+   * @throws InvalidArgumentException
    * @throws JsonException
    */
   public function insert(array $storeData): array
@@ -136,7 +127,7 @@ class SleekDB
    * @return array
    * @throws IOException
    * @throws IdNotAllowedException
-   * @throws InvalidDataException
+   * @throws InvalidArgumentException
    * @throws JsonException
    */
   public function insertMany(array $storeData): array
@@ -150,7 +141,6 @@ class SleekDB
    * @return bool
    * @throws InvalidArgumentException
    * @throws IOException
-   * @throws IndexNotFoundException
    * @throws InvalidPropertyAccessException
    */
   public function update(array $updatable): bool
@@ -165,7 +155,6 @@ class SleekDB
    * @throws InvalidArgumentException
    * @throws InvalidPropertyAccessException
    * @throws IOException
-   * @throws IndexNotFoundException
    */
   public function delete(int $returnOption = Query::DELETE_RETURN_BOOL){
     return $this->getQuery()->delete($returnOption);
@@ -396,7 +385,7 @@ class SleekDB
    * Return distinct values.
    * @param array|string $fields
    * @return SleekDB
-   * @throws InvalidDataException
+   * @throws InvalidArgumentException
    */
   public function distinct($fields = []): SleekDB
   {

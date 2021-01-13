@@ -2,7 +2,7 @@
 
 namespace SleekDB\Tests;
 
-use SleekDB\Exceptions\InvalidDataException;
+use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Tests\TestCases\SleekDBTestCase;
 
 final class QueryTest extends SleekDBTestCase

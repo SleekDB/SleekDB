@@ -3,7 +3,6 @@
 namespace SleekDB;
 
 use SleekDB\Exceptions\InvalidArgumentException;
-use SleekDB\Exceptions\InvalidDataException;
 
 class QueryBuilder
 {
@@ -343,7 +342,7 @@ class QueryBuilder
    * Return distinct values.
    * @param array|string $fields
    * @return QueryBuilder
-   * @throws InvalidDataException
+   * @throws InvalidArgumentException
    */
   public function distinct($fields = []): QueryBuilder
   {
@@ -353,7 +352,7 @@ class QueryBuilder
         // Append fields.
         $this->distinctFields = array_merge($this->distinctFields, $fields);
       } else {
-        throw new InvalidDataException(
+        throw new InvalidArgumentException(
           'Field value in distinct() method can not be an associative array, 
           please provide a string or a list of string as a non-associative array.'
         );
@@ -361,7 +360,7 @@ class QueryBuilder
     } else if ($fieldType === 'string' && !empty($fields)) {
       $this->distinctFields[] = trim($fields);
     } else {
-      throw new InvalidDataException(
+      throw new InvalidArgumentException(
         'Field value in distinct() is invalid.'
       );
     }

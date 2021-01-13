@@ -2,7 +2,7 @@
 
 namespace SleekDB\Tests;
 
-use SleekDB\Exceptions\InvalidDataException;
+use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Tests\TestCases\SleekDBTestCase;
 
 final class InsertingTest extends SleekDBTestCase
@@ -31,7 +31,7 @@ final class InsertingTest extends SleekDBTestCase
   public function testCannotInsertSingleEmptyData(){
 
     $userStore = $this->stores["users"];
-    $this->expectException(InvalidDataException::class);
+    $this->expectException(InvalidArgumentException::class);
     $usersData = [];
     $userStore->insert($usersData);
 
@@ -49,7 +49,7 @@ final class InsertingTest extends SleekDBTestCase
   public function testCannotInsertMultipleEmptyData(){
 
     $userStore = $this->stores["users"];
-    $this->expectException(InvalidDataException::class);
+    $this->expectException(InvalidArgumentException::class);
     $usersData = [];
     $userStore->insertMany($usersData);
 

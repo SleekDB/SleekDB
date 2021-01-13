@@ -2,10 +2,10 @@
 
 namespace SleekDB;
 
-use SleekDB\Exceptions\InvalidDataException;
 use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\IdNotAllowedException;
 use SleekDB\Exceptions\InvalidConfigurationException;
+use SleekDB\Exceptions\InvalidPropertyAccessException;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Exceptions\JsonException;
 use RecursiveDirectoryIterator;
@@ -128,13 +128,13 @@ class Store
    * @return array
    * @throws IOException
    * @throws IdNotAllowedException
-   * @throws InvalidDataException
+   * @throws InvalidArgumentException
    * @throws JsonException
    */
   public function insert(array $data): array
   {
     // Handle invalid data
-    if (empty($data)) throw new InvalidDataException('No data found to insert in the store');
+    if (empty($data)) throw new InvalidArgumentException('No data found to insert in the store');
     $data = $this->writeInStore($data);
     // Check do we need to wipe the cache for this store.
     if($this->getUseCache() === true){
@@ -151,13 +151,13 @@ class Store
    * @return array
    * @throws IOException
    * @throws IdNotAllowedException
-   * @throws InvalidDataException
+   * @throws InvalidArgumentException
    * @throws JsonException
    */
   public function insertMany(array $data): array
   {
     // Handle invalid data
-    if (empty($data)) throw new InvalidDataException('No data found to insert in the store');
+    if (empty($data)) throw new InvalidArgumentException('No data found to insert in the store');
     // All results.
     $results = [];
     foreach ($data as $key => $node) {

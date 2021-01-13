@@ -2,11 +2,7 @@
 
 namespace SleekDB;
 
-use phpDocumentor\Reflection\Types\Self_;
 use SleekDB\Exceptions\InvalidArgumentException;
-use SleekDB\Exceptions\IndexNotFoundException;
-use SleekDB\Exceptions\InvalidConfigurationException;
-use SleekDB\Exceptions\InvalidDataException;
 use SleekDB\Exceptions\InvalidPropertyAccessException;
 use SleekDB\Exceptions\IOException;
 use Exception;
@@ -71,11 +67,8 @@ class Query
    * Execute Query and get Results
    * @return array
    * @throws InvalidArgumentException
-   * @throws IndexNotFoundException
-   * @throws InvalidDataException
    * @throws InvalidPropertyAccessException
    * @throws IOException
-   * @throws InvalidConfigurationException
    */
   public function fetch(): array
   {
@@ -105,7 +98,6 @@ class Query
    * Check if data is found
    * @return bool
    * @throws InvalidArgumentException
-   * @throws IndexNotFoundException
    * @throws InvalidPropertyAccessException
    * @throws IOException
    */
@@ -120,10 +112,7 @@ class Query
   /**
    * @param array $results
    * @throws IOException
-   * @throws IndexNotFoundException
    * @throws InvalidArgumentException
-   * @throws InvalidConfigurationException
-   * @throws InvalidDataException
    * @throws InvalidPropertyAccessException
    */
   private function joinData(array &$results){
@@ -158,11 +147,8 @@ class Query
    * Return the first document.
    * @return array empty array or single document
    * @throws InvalidArgumentException
-   * @throws IndexNotFoundException
-   * @throws InvalidDataException
    * @throws InvalidPropertyAccessException
    * @throws IOException
-   * @throws InvalidConfigurationException
    */
   public function first(): array
   {
@@ -184,7 +170,6 @@ class Query
    * @return bool
    * @throws InvalidArgumentException
    * @throws IOException
-   * @throws IndexNotFoundException
    * @throws InvalidPropertyAccessException
    */
   public function update(array $updatable): bool
@@ -218,7 +203,6 @@ class Query
    * @return bool|array|int
    * @throws InvalidArgumentException
    * @throws IOException
-   * @throws IndexNotFoundException
    * @throws InvalidPropertyAccessException
    */
   public function delete(int $returnOption = self::DELETE_RETURN_BOOL)
@@ -307,7 +291,6 @@ class Query
    * @param bool $getOneDocument
    * @return array
    * @throws InvalidArgumentException
-   * @throws IndexNotFoundException
    * @throws InvalidPropertyAccessException
    * @throws IOException
    */
@@ -528,7 +511,6 @@ class Query
    * @param string $order
    * @return array
    * @throws InvalidArgumentException
-   * @throws IndexNotFoundException
    */
   private function sortArray(string $field, array $data, string $order = 'ASC'): array
   {
@@ -554,7 +536,6 @@ class Query
    * @param array $data
    * @return mixed
    * @throws InvalidArgumentException
-   * @throws IndexNotFoundException
    */
   private function getNestedProperty(string $fieldName, array $data)
   {
@@ -564,13 +545,16 @@ class Query
 
     // Dive deep step by step.
     foreach (explode('.', $fieldName) as $i) {
-      // If the field do not exists then insert an empty string.
+
+      // If the field does not exists we return null;
       if (!isset($data[$i])) {
-        throw new IndexNotFoundException('"' . $i . '" index was not found in the provided data array');
+        return null;
       }
+
       // The index is valid, collect the data.
       $data = $data[$i];
     }
+
     return $data;
   }
 
