@@ -2,6 +2,7 @@
 
 namespace SleekDB;
 
+use phpDocumentor\Reflection\Types\Self_;
 use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\IndexNotFoundException;
 use SleekDB\Exceptions\InvalidConfigurationException;
@@ -24,6 +25,11 @@ class Query
    * @var Cache
    */
   protected $cache;
+
+
+  const DELETE_RETURN_BOOL = 1;
+  const DELETE_RETURN_RESULTS = 1;
+  const DELETE_RETURN_COUNT = 1;
 
   /**
    * Query constructor.
@@ -208,31 +214,48 @@ class Query
 
   /**
    * Deletes matched store objects.
-   * @param bool $returnRecordsCount if true int will be returned
-   * @return bool|int
+   * @param int $returnOption
+   * @return bool|array|int
    * @throws InvalidArgumentException
    * @throws IOException
    * @throws IndexNotFoundException
    * @throws InvalidPropertyAccessException
    */
-  public function delete(bool $returnRecordsCount = false)
+  public function delete(int $returnOption = self::DELETE_RETURN_BOOL)
   {
     $results = $this->findStoreDocuments();
+    $returnValue = null;
+
+    switch ($returnOption){
+      case self::DELETE_RETURN_BOOL:
+        $returnValue = !empty($results);
+        break;
+      case self::DELETE_RETURN_COUNT:
+        $returnValue = count($results);
+        break;
+      case self::DELETE_RETURN_RESULTS:
+        $returnValue = $results;
+        break;
+      default:
+        throw new InvalidArgumentException("return option \"$returnOption\" is not supported");
+    }
+
     if (!empty($results)) {
-      foreach ($results as $data) {
+      foreach ($results as $key => $data) {
         if (false === unlink($this->getStorePath() . 'data/' . $data['_id'] . '.json')) {
           throw new IOException(
-            'Unable to delete storage file! 
-              Location: "' . $this->getStorePath() . 'data/' . $data['_id'] . '.json' . '"'
+            'Unable to delete document! 
+            Already deleted documents: '.$key.'. 
+            Location: "' . $this->getStorePath() . 'data/' . $data['_id'] . '.json"'
           );
         }
       }
-      $this->cache->deleteAllWithNoLifetime();
-      return $returnRecordsCount ? count($results) : true;
-    } else {
-      // Nothing found to delete
-      return $returnRecordsCount ? 0 : true;
     }
+
+
+    $this->cache->deleteAllWithNoLifetime();
+
+    return $returnValue;
   }
 
 

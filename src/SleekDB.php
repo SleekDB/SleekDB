@@ -160,15 +160,15 @@ class SleekDB
 
   /**
    * Deletes matched store objects.
-   * @param bool $returnRecordsCount
-   * @return bool|int
+   * @param int $returnOption
+   * @return bool|array|int
    * @throws InvalidArgumentException
    * @throws InvalidPropertyAccessException
    * @throws IOException
    * @throws IndexNotFoundException
    */
-  public function delete(bool $returnRecordsCount = false){
-    return $this->getQuery()->delete($returnRecordsCount);
+  public function delete(int $returnOption = Query::DELETE_RETURN_BOOL){
+    return $this->getQuery()->delete($returnOption);
   }
 
   /**
