@@ -27,6 +27,10 @@ class Query
   const DELETE_RETURN_RESULTS = 1;
   const DELETE_RETURN_COUNT = 1;
 
+  private $tokenAddition = [
+    'oneDocument' => false
+  ];
+
   /**
    * Query constructor.
    * @param QueryBuilder $queryBuilder
@@ -72,24 +76,15 @@ class Query
    */
   public function fetch(): array
   {
+    $results = $this->getCacheContent();
 
-    $useCache = $this->getCondition("useCache");
-    $regenerateCache = $this->getCondition("regenerateCache");
-
-    if($useCache === true){
-      $cache = $this->getCache();
-
-      if($regenerateCache === true) $cache->delete();
-
-      $cacheResults = $cache->get();
-      if(is_array($cacheResults)) return $cacheResults;
-    }
+    if(!empty($results)) return $results;
 
     $results = $this->findStoreDocuments();
 
     $this->joinData($results);
 
-    if($useCache === true) $this->getCache()->set($results);
+    $this->setCacheContent($results);
 
     return $results;
   }
@@ -103,11 +98,62 @@ class Query
    */
   public function exists(): bool
   {
-    $results = $this->findStoreDocuments(true);
-
     // Return boolean on data exists check.
-    return !empty($results);
+    return !empty($this->first());
   }
+
+  /**
+   * Get results from cache
+   * @param bool $getOneDocument
+   * @return array|null
+   * @throws IOException
+   * @throws InvalidPropertyAccessException
+   */
+  private function getCacheContent(bool $getOneDocument = false)
+  {
+    $useCache = $this->getCondition("useCache");
+    $regenerateCache = $this->getCondition("regenerateCache");
+
+    $tokenAddition = $this->tokenAddition;
+
+    if($useCache === true){
+      $cache = $this->getCache();
+
+      if($getOneDocument === true) $tokenAddition['oneDocument'] = true;
+
+      $cache->setTokenAddition($tokenAddition);
+
+      if($regenerateCache === true) $cache->delete();
+
+      $cacheResults = $cache->get();
+
+      $cache->removeTokenAddition();
+
+      if(is_array($cacheResults)) return $cacheResults;
+    }
+    return null;
+  }
+
+  /**
+   * Add content to cache
+   * @param array $results
+   * @param bool $isOneDocument
+   * @throws IOException
+   * @throws InvalidPropertyAccessException
+   */
+  private function setCacheContent(array $results, bool $isOneDocument = false)
+  {
+    $useCache = $this->getCondition("useCache");
+    $tokenAddition = $this->tokenAddition;
+    if($useCache === true){
+      $cache = $this->getCache();
+      if($isOneDocument === true) $tokenAddition['oneDocument'] = true;
+      $cache->setTokenAddition($tokenAddition);
+      $cache->set($results);
+      $cache->removeTokenAddition();
+    }
+  }
+
 
   /**
    * @param array $results
@@ -152,6 +198,9 @@ class Query
    */
   public function first(): array
   {
+    $results = $this->getCacheContent(true);
+    if(!empty($results)) return $results;
+
     $results = $this->findStoreDocuments(true);
 
     $this->joinData($results);
@@ -160,6 +209,8 @@ class Query
       list($item) = $results;
       $results = $item;
     }
+
+    $this->setCacheContent($results, true);
 
     return $results;
   }

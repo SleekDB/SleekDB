@@ -22,6 +22,8 @@ class Cache
 
   protected $token;
 
+  protected $tokenAddition = "";
+
 
   /**
    * Cache constructor.
@@ -101,8 +103,13 @@ class Cache
     return $this;
   }
 
-  public function getToken(){
-    return $this->token;
+  /**
+   * @return string
+   */
+  public function getToken(): string
+  {
+    $tokenAddition = (!empty($this->getTokenAddition())) ? '.' . $this->getTokenAddition() : '';
+    return $this->token.$tokenAddition;
   }
 
   /**
@@ -211,6 +218,35 @@ class Cache
   public function delete()
   {
     $this->_delete(glob($this->getCachePath().$this->getToken()."*.json"));
+  }
+
+  /**
+   * @param array $tokenAddition
+   * @return Cache
+   */
+  public function setTokenAddition(array $tokenAddition = []): Cache
+  {
+    if(!empty($tokenAddition)){
+      $this->tokenAddition = md5(json_encode($tokenAddition));
+    }
+    return $this;
+  }
+
+  /**
+   * @return string
+   */
+  private function getTokenAddition(): string
+  {
+    return $this->tokenAddition;
+  }
+
+  /**
+   * @return $this
+   */
+  public function removeTokenAddition(): Cache
+  {
+    $this->tokenAddition = "";
+    return $this;
   }
 
   /**
