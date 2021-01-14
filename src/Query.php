@@ -277,11 +277,12 @@ class Query
 
     if (!empty($results)) {
       foreach ($results as $key => $data) {
-        if (false === @unlink($this->getStorePath() . 'data/' . $data['_id'] . '.json')) {
+        $filePath = $this->getStorePath() . 'data/' . $data['_id'] . '.json';
+        if (file_exists($filePath) && false === @unlink($filePath)) {
           throw new IOException(
             'Unable to delete document! 
             Already deleted documents: '.$key.'. 
-            Location: "' . $this->getStorePath() . 'data/' . $data['_id'] . '.json"'
+            Location: "' . $filePath .'"'
           );
         }
       }
