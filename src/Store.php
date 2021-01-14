@@ -519,18 +519,26 @@ class Store
    * @throws InvalidPropertyAccessException
    */
   public function deleteBy($criteria, $returnOption = Query::DELETE_RETURN_BOOL){
-    return $this->createQueryBuilder()->where($criteria)->getQuery()->delete($returnOption);
+
+    $query = $this->createQueryBuilder()->where($criteria)->getQuery();
+
+    $query->getCache()->deleteAllWithNoLifetime();
+
+    return $query->delete($returnOption);
   }
 
   /**
    * Delete one document by its _id. Very fast because it deletes the document by its file path.
    * @param $id
    * @return bool true if document does not exist or deletion was successful, false otherwise
+   * @throws IOException
    */
   public function deleteById($id): bool
   {
 
     $filePath = $this->getStorePath() . "data/$id.json";
+
+    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
 
     return (!file_exists($filePath) || true === @unlink($filePath));
   }
