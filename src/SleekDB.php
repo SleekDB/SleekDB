@@ -177,7 +177,7 @@ class SleekDB
    */
   public function getCacheToken(): string
   {
-    return $this->getQueryBuilder()->getCacheToken();
+    return $this->getQueryBuilder()->getQuery()->getCache()->getToken();
   }
 
   /**
@@ -556,6 +556,7 @@ class SleekDB
    * Delete one document by its _id. Very fast because it deletes the document by its file path.
    * @param $id
    * @return bool true if document does not exist or deletion was successful, false otherwise
+   * @throws IOException
    */
   public function deleteById($id): bool
   {

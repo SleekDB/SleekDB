@@ -20,27 +20,21 @@ class Cache
 
   protected $cacheDir = "";
 
-  protected $token;
-
-  protected $tokenAddition = "";
-
+  protected $tokenArray;
 
   /**
    * Cache constructor.
-   * @param QueryBuilder $queryBuilder
+   * @param Query $query
+   * @param string $storePath
    * @param string $cacheDir
    */
-  public function __construct(QueryBuilder $queryBuilder, string $cacheDir = "")
+  public function __construct(Query $query, string $storePath, string $cacheDir = "")
   {
     $this->setCacheDir($cacheDir);
 
-    $store = $queryBuilder->_getStore();
+    $this->setCachePath($storePath);
 
-    $this->setCachePath($store->getStorePath());
-
-    $this->setToken($queryBuilder->getCacheToken());
-
-    $this->setLifetime($queryBuilder->getCacheLifetime());
+    $this->setTokenArray($query->_getCacheTokenArray());
   }
 
   /**
@@ -94,13 +88,21 @@ class Cache
   }
 
   /**
-   * @param string $token
+   * @param array $tokenArray
    * @return Cache
    */
-  private function setToken(string $token): Cache
+  private function setTokenArray(array &$tokenArray): Cache
   {
-    $this->token = $token;
+    $this->tokenArray = &$tokenArray;
     return $this;
+  }
+
+  /**
+   * @return array
+   */
+  private function getTokenArray(): array
+  {
+    return $this->tokenArray;
   }
 
   /**
@@ -108,8 +110,7 @@ class Cache
    */
   public function getToken(): string
   {
-    $tokenAddition = (!empty($this->getTokenAddition())) ? '.' . $this->getTokenAddition() : '';
-    return $this->token.$tokenAddition;
+    return md5(json_encode($this->getTokenArray()));
   }
 
   /**
@@ -126,7 +127,7 @@ class Cache
   /**
    * @return string
    */
-  public function getCacheDir(): string
+  private function getCacheDir(): string
   {
     return (!empty($this->cacheDir)) ? $this->cacheDir : self::DEFAULT_CACHE_DIR;
   }
@@ -218,35 +219,6 @@ class Cache
   public function delete()
   {
     $this->_delete(glob($this->getCachePath().$this->getToken()."*.json"));
-  }
-
-  /**
-   * @param array $tokenAddition
-   * @return Cache
-   */
-  public function setTokenAddition(array $tokenAddition = []): Cache
-  {
-    if(!empty($tokenAddition)){
-      $this->tokenAddition = md5(json_encode($tokenAddition));
-    }
-    return $this;
-  }
-
-  /**
-   * @return string
-   */
-  private function getTokenAddition(): string
-  {
-    return $this->tokenAddition;
-  }
-
-  /**
-   * @return $this
-   */
-  public function removeTokenAddition(): Cache
-  {
-    $this->tokenAddition = "";
-    return $this;
   }
 
   /**
