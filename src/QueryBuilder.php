@@ -55,19 +55,9 @@ class QueryBuilder
    */
   public function __construct(Store $store)
   {
-    $this->applyStore($store, true);
-  }
-
-  /**
-   * @param Store $store
-   * @param bool $applyCacheConfigOfStore if set to true the default configurations from the store will be applied
-   */
-  private function applyStore(Store $store, bool $applyCacheConfigOfStore){
     $this->store = $store;
-    if($applyCacheConfigOfStore === true){
-      $this->useCache = $store->getUseCache();
-      $this->cacheLifetime = $store->getDefaultCacheLifetime();
-    }
+    $this->useCache = $store->getUseCache();
+    $this->cacheLifetime = $store->getDefaultCacheLifetime();
   }
 
   /**
@@ -395,29 +385,14 @@ class QueryBuilder
   }
 
   /**
-   * @return null|int
-   */
-  public function getCacheLifetime(){
-    return $this->cacheLifetime;
-  }
-
-  /**
-   * @return bool
-   */
-  public function getUseCache(): bool
-  {
-    return $this->useCache;
-  }
-
-  /**
    * This method would make a unique token for the current query.
    * We would use this hash token as the id/name of the cache file.
-   * @return string
+   * @return array
    */
-  public function getCacheToken(): string
+  public function _getCacheTokenArray(): array
   {
     $properties = [];
-    $conditionsArray = $this->_getConditionsArray();
+    $conditionsArray = $this->_getConditionProperties();
 
     foreach ($conditionsArray as $propertyName => $propertyValue){
       if(!in_array($propertyName, $this->propertiesNotUsedForCacheToken)){
@@ -425,13 +400,13 @@ class QueryBuilder
       }
     }
 
-    return md5(json_encode($properties));
+    return $properties;
   }
 
   /**
    * @return array
    */
-  public function _getConditionsArray(): array
+  public function _getConditionProperties(): array
   {
     $allProperties = get_object_vars($this);
     $properties = [];

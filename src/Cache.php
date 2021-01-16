@@ -20,25 +20,21 @@ class Cache
 
   protected $cacheDir = "";
 
-  protected $token;
-
+  protected $tokenArray;
 
   /**
    * Cache constructor.
-   * @param QueryBuilder $queryBuilder
+   * @param Query $query
+   * @param string $storePath
    * @param string $cacheDir
    */
-  public function __construct(QueryBuilder $queryBuilder, string $cacheDir = "")
+  public function __construct(Query $query, string $storePath, string $cacheDir = "")
   {
     $this->setCacheDir($cacheDir);
 
-    $store = $queryBuilder->_getStore();
+    $this->setCachePath($storePath);
 
-    $this->setCachePath($store->getStorePath());
-
-    $this->setToken($queryBuilder->getCacheToken());
-
-    $this->setLifetime($queryBuilder->getCacheLifetime());
+    $this->setTokenArray($query->_getCacheTokenArray());
   }
 
   /**
@@ -92,17 +88,29 @@ class Cache
   }
 
   /**
-   * @param string $token
+   * @param array $tokenArray
    * @return Cache
    */
-  private function setToken(string $token): Cache
+  private function setTokenArray(array &$tokenArray): Cache
   {
-    $this->token = $token;
+    $this->tokenArray = &$tokenArray;
     return $this;
   }
 
-  public function getToken(){
-    return $this->token;
+  /**
+   * @return array
+   */
+  private function getTokenArray(): array
+  {
+    return $this->tokenArray;
+  }
+
+  /**
+   * @return string
+   */
+  public function getToken(): string
+  {
+    return md5(json_encode($this->getTokenArray()));
   }
 
   /**
@@ -119,7 +127,7 @@ class Cache
   /**
    * @return string
    */
-  public function getCacheDir(): string
+  private function getCacheDir(): string
   {
     return (!empty($this->cacheDir)) ? $this->cacheDir : self::DEFAULT_CACHE_DIR;
   }

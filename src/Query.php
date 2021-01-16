@@ -13,14 +13,14 @@ class Query
 
   protected $storePath;
 
-  protected $conditions;
-
-  protected $dataDirectory = "";
+  protected $queryBuilderProperties;
 
   /**
    * @var Cache
    */
   protected $cache;
+
+  protected $cacheTokenArray;
 
 
   const DELETE_RETURN_BOOL = 1;
@@ -36,12 +36,16 @@ class Query
     $store = $queryBuilder->_getStore();
 
     $this->storePath = $store->getStorePath();
-    $this->dataDirectory = $store->getDataDirectory();
 
-    $this->conditions = $queryBuilder->_getConditionsArray();
+    $this->queryBuilderProperties = $queryBuilder->_getConditionProperties();
 
-    $this->cache = new Cache($queryBuilder);
+    $this->cacheTokenArray = $queryBuilder->_getCacheTokenArray();
+
+    // set cache
+    $this->cache = new Cache($this, $this->_getStorePath());
+    $this->cache->setLifetime($this->_getCacheLifeTime());
   }
+
 
   /**
    * @return Cache
@@ -49,18 +53,6 @@ class Query
   public function getCache(): Cache
   {
     return $this->cache;
-  }
-
-  /**
-   * @param string $conditionKey
-   * @return mixed
-   * @throws InvalidPropertyAccessException
-   */
-  private function getCondition(string $conditionKey){
-    if(array_key_exists($conditionKey,$this->conditions)){
-      return $this->conditions[$conditionKey];
-    }
-    throw new InvalidPropertyAccessException("Tried to access condition \"$conditionKey\" which is not specified in QueryBuilder as property");
   }
 
   /**
@@ -72,24 +64,17 @@ class Query
    */
   public function fetch(): array
   {
+    $this->updateCacheTokenArray(['oneDocument' => false]);
 
-    $useCache = $this->getCondition("useCache");
-    $regenerateCache = $this->getCondition("regenerateCache");
+    $results = $this->getCacheContent();
 
-    if($useCache === true){
-      $cache = $this->getCache();
-
-      if($regenerateCache === true) $cache->delete();
-
-      $cacheResults = $cache->get();
-      if(is_array($cacheResults)) return $cacheResults;
-    }
+    if($results !== null) return $results;
 
     $results = $this->findStoreDocuments();
 
     $this->joinData($results);
 
-    if($useCache === true) $this->getCache()->set($results);
+    $this->setCacheContent($results);
 
     return $results;
   }
@@ -103,44 +88,8 @@ class Query
    */
   public function exists(): bool
   {
-    $results = $this->findStoreDocuments(true);
-
     // Return boolean on data exists check.
-    return !empty($results);
-  }
-
-  /**
-   * @param array $results
-   * @throws IOException
-   * @throws InvalidArgumentException
-   * @throws InvalidPropertyAccessException
-   */
-  private function joinData(array &$results){
-    // Join data.
-    $listOfJoins = $this->getCondition("listOfJoins");
-    foreach ($results as $key => $doc) {
-      foreach ($listOfJoins as $join) {
-        // Execute the child query.
-        $joinQuery = ($join['relation'])($doc); // QueryBuilder or result of fetch
-        $keyName = $join['name'] ? $join['name'] : $joinQuery->storeName;
-
-        // TODO remove SleekDB check in version 2.0
-        if($joinQuery instanceof QueryBuilder || $joinQuery instanceof SleekDB){
-          $joinResult = $joinQuery->getQuery()->fetch();
-        } else if(is_array($joinQuery)){
-          // user already fetched the query in the join query function
-          $joinResult = $joinQuery;
-        } else {
-          throw new InvalidArgumentException("Invalid join query");
-        }
-
-        // TODO discuss if that is a good idea -> would be inconsistent
-        //  if(count($joinResult) === 1) $joinResult = $joinResult[0];
-
-        // Add child documents with the current document.
-        $results[$key][$keyName] = $joinResult;
-      }
-    }
+    return !empty($this->first());
   }
 
   /**
@@ -152,6 +101,11 @@ class Query
    */
   public function first(): array
   {
+    $this->updateCacheTokenArray(['oneDocument' => true]);
+
+    $results = $this->getCacheContent();
+    if($results !== null) return $results;
+
     $results = $this->findStoreDocuments(true);
 
     $this->joinData($results);
@@ -160,6 +114,8 @@ class Query
       list($item) = $results;
       $results = $item;
     }
+
+    $this->setCacheContent($results);
 
     return $results;
   }
@@ -186,7 +142,7 @@ class Query
           $data[$key] = $value;
         }
       }
-      $storePath = $this->getStorePath() . 'data/' . $data['_id'] . '.json';
+      $storePath = $this->_getStoreDataPath() . $data['_id'] . '.json';
       if (file_exists($storePath)) {
         // Wait until it's unlocked, then update data.
         $this->_checkWrite($storePath);
@@ -226,11 +182,12 @@ class Query
 
     if (!empty($results)) {
       foreach ($results as $key => $data) {
-        if (false === @unlink($this->getStorePath() . 'data/' . $data['_id'] . '.json')) {
+        $filePath = $this->_getStoreDataPath() . $data['_id'] . '.json';
+        if (file_exists($filePath) && false === @unlink($filePath)) {
           throw new IOException(
             'Unable to delete document! 
             Already deleted documents: '.$key.'. 
-            Location: "' . $this->getStorePath() . 'data/' . $data['_id'] . '.json"'
+            Location: "' . $filePath .'"'
           );
         }
       }
@@ -242,7 +199,90 @@ class Query
     return $returnValue;
   }
 
+  /**
+   * @param string $propertyKey
+   * @return mixed
+   * @throws InvalidPropertyAccessException
+   */
+  private function getQueryBuilderProperty(string $propertyKey){
+    if(array_key_exists($propertyKey,$this->queryBuilderProperties)){
+      return $this->queryBuilderProperties[$propertyKey];
+    }
+    throw new InvalidPropertyAccessException("Tried to access condition \"$propertyKey\" which is not specified in QueryBuilder as property");
+  }
 
+  /**
+   * Get results from cache
+   * @return array|null
+   * @throws IOException
+   * @throws InvalidPropertyAccessException
+   */
+  private function getCacheContent()
+  {
+    $useCache = $this->getQueryBuilderProperty("useCache");
+    $regenerateCache = $this->getQueryBuilderProperty("regenerateCache");
+
+    if($useCache === true){
+      $cache = $this->getCache();
+
+
+      if($regenerateCache === true) $cache->delete();
+
+      $cacheResults = $cache->get();
+
+      if(is_array($cacheResults)) return $cacheResults;
+    }
+    return null;
+  }
+
+  /**
+   * Add content to cache
+   * @param array $results
+   * @throws IOException
+   * @throws InvalidPropertyAccessException
+   */
+  private function setCacheContent(array $results)
+  {
+    $useCache = $this->getQueryBuilderProperty("useCache");
+    if($useCache === true){
+      $cache = $this->getCache();
+      $cache->set($results);
+    }
+  }
+
+  /**
+   * @param array $results
+   * @throws IOException
+   * @throws InvalidArgumentException
+   * @throws InvalidPropertyAccessException
+   */
+  private function joinData(array &$results){
+    // Join data.
+    $listOfJoins = $this->getQueryBuilderProperty("listOfJoins");
+    foreach ($results as $key => $doc) {
+      foreach ($listOfJoins as $join) {
+        // Execute the child query.
+        $joinQuery = ($join['relation'])($doc); // QueryBuilder or result of fetch
+        $keyName = $join['name'] ? $join['name'] : $joinQuery->storeName;
+
+        // TODO remove SleekDB check in version 2.0
+        if($joinQuery instanceof QueryBuilder || $joinQuery instanceof SleekDB){
+          $joinResult = $joinQuery->getQuery()->fetch();
+        } else if(is_array($joinQuery)){
+          // user already fetched the query in the join query function
+          $joinResult = $joinQuery;
+        } else {
+          throw new InvalidArgumentException("Invalid join query");
+        }
+
+        // TODO discuss if that is a good idea -> would be inconsistent
+        //  if(count($joinResult) === 1) $joinResult = $joinResult[0];
+
+        // Add child documents with the current document.
+        $results[$key][$keyName] = $joinResult;
+      }
+    }
+  }
 
   /**
    * @param string $condition
@@ -298,7 +338,7 @@ class Query
   {
     $found = [];
     // Start collecting and filtering data.
-    $storeDataPath = $this->getStorePath() . 'data/';
+    $storeDataPath = $this->_getStoreDataPath();
     $this->_checkRead($storeDataPath);
     if ($handle = opendir($storeDataPath)) {
 
@@ -323,7 +363,7 @@ class Query
         // Append only passed data from this store.
 
         // Where conditions
-        $conditions = $this->getCondition("conditions");
+        $conditions = $this->getQueryBuilderProperty("conditions");
         if(!empty($conditions)) {
           // Iterate each conditions.
           foreach ($conditions as $condition) {
@@ -341,7 +381,7 @@ class Query
 
         // where [] or ([] and [] and []) or ([] and [] and [])
         // two dimensional array. first dimension is "or" between each condition, second is "and".
-        $orConditions = $this->getCondition("orConditions");
+        $orConditions = $this->getQueryBuilderProperty("orConditions");
         if ($storePassed === false && !empty($orConditions)) {
           // Check if one condition will allow this document.
           foreach ($orConditions as $conditionsWithAndBetween) { // () or ()
@@ -364,7 +404,7 @@ class Query
         }
 
         // IN clause.
-        $in = $this->getCondition("in");
+        $in = $this->getQueryBuilderProperty("in");
         if ($storePassed === true && !empty($in)) {
           foreach ($in as $inClause) {
             try {
@@ -381,7 +421,7 @@ class Query
         }
 
         // notIn clause.
-        $notIn = $this->getCondition("notIn");
+        $notIn = $this->getQueryBuilderProperty("notIn");
         if ($storePassed === true && !empty($notIn)) {
           foreach ($notIn as $notInClause) {
             try {
@@ -397,7 +437,7 @@ class Query
         }
 
         // Distinct data check.
-        $distinctFields = $this->getCondition("distinctFields");
+        $distinctFields = $this->getQueryBuilderProperty("distinctFields");
         if ($storePassed === true && count($distinctFields) > 0) {
           foreach ($found as $result) {
             foreach ($distinctFields as $field) {
@@ -422,112 +462,76 @@ class Query
       closedir($handle);
     }
 
+    // apply additional changes to result like sort and limit
     if (count($found) > 0) {
+
       // Check do we need to sort the data.
-      $orderBy = $this->getCondition("orderBy");
+      $orderBy = $this->getQueryBuilderProperty("orderBy");
       if ($orderBy['order'] !== false) {
         // Start sorting on all data.
-        $found = $this->sortArray($orderBy['field'], $found, $orderBy['order']);
+        $order = $orderBy['order'];
+        $field = $orderBy['field'];
+        $dryData = [];
+        // Get value of the target field.
+        foreach ($found as $value) {
+          $dryData[] = $this->getNestedProperty($field, $value);
+        }
+        // Decide the order direction.
+        if (strtolower($order) === 'asc') asort($dryData);
+        else if (strtolower($order) === 'desc') arsort($dryData);
+        // Re arrange the array.
+        $finalArray = [];
+        foreach ($dryData as $key => $value) {
+          $finalArray[] = $found[$key];
+        }
+        $found = $finalArray;
       }
 
       // If there was text search then we would also sort the result by search ranking.
-      $searchKeyword = $this->getCondition("searchKeyword");
+      $searchKeyword = $this->getQueryBuilderProperty("searchKeyword");
       if (!empty($searchKeyword)) {
         $found = $this->performSearch($found);
       }
 
       // Skip data
-      $skip = $this->getCondition("skip");
+      $skip = $this->getQueryBuilderProperty("skip");
       if (!empty($skip) && $skip > 0) $found = array_slice($found, $skip);
 
       // Limit data.
-      $limit = $this->getCondition("limit");
+      $limit = $this->getQueryBuilderProperty("limit");
       if (!empty($limit) && $limit > 0) $found = array_slice($found, 0, $limit);
 
-      $fieldsToSelect = $this->getCondition("fieldsToSelect");
-      if (!empty($fieldsToSelect) && count($fieldsToSelect) > 0) {
-        $found = $this->applyFieldsToSelect($found);
-      }
-
-      $fieldsToExclude = $this->getCondition("fieldsToExclude");
-      if (count($fieldsToExclude) > 0) {
-        $found = $this->applyFieldsToExclude($found);
-      }
-    }
-
-    return $found;
-  }
-
-  /**
-   * @param array $found
-   * @return array
-   * @throws InvalidPropertyAccessException
-   */
-  private function applyFieldsToSelect(array $found): array
-  {
-    $fieldsToSelect = $this->getCondition("fieldsToSelect");
-    if (!(count($found) > 0) || !(count($fieldsToSelect) > 0)) {
-      return $found;
-    }
-    foreach ($found as $key => $item) {
-      $newItem = [];
-      $newItem['_id'] = $item['_id'];
-      foreach ($fieldsToSelect as $fieldToSelect) {
-        if (array_key_exists($fieldToSelect, $item)) {
-          $newItem[$fieldToSelect] = $item[$fieldToSelect];
+      // select specific fields
+      $fieldsToSelect = $this->getQueryBuilderProperty("fieldsToSelect");
+      if (count($found) > 0 && !empty($fieldsToSelect) && count($fieldsToSelect) > 0) {
+        foreach ($found as $key => $item) {
+          $newItem = [];
+          $newItem['_id'] = $item['_id'];
+          foreach ($fieldsToSelect as $fieldToSelect) {
+            if (array_key_exists($fieldToSelect, $item)) {
+              $newItem[$fieldToSelect] = $item[$fieldToSelect];
+            }
+          }
+          $found[$key] = $newItem;
         }
       }
-      $found[$key] = $newItem;
-    }
-    return $found;
-  }
 
-  /**
-   * @param array $found
-   * @return array
-   * @throws InvalidPropertyAccessException
-   */
-  private function applyFieldsToExclude(array $found): array
-  {
-    $fieldsToExclude = $this->getCondition("fieldsToExclude");
-    if (!(count($found) > 0) || !(count($fieldsToExclude) > 0)) {
-      return $found;
-    }
-    foreach ($found as $key => $item) {
-      foreach ($fieldsToExclude as $fieldToExclude) {
-        if (array_key_exists($fieldToExclude, $item)) {
-          unset($item[$fieldToExclude]);
+      // exclude specific fields
+      $fieldsToExclude = $this->getQueryBuilderProperty("fieldsToExclude");
+      if (count($found) > 0 && !empty($fieldsToExclude) && count($fieldsToExclude) > 0) {
+        foreach ($found as $key => $item) {
+          foreach ($fieldsToExclude as $fieldToExclude) {
+            if (array_key_exists($fieldToExclude, $item)) {
+              unset($item[$fieldToExclude]);
+            }
+          }
+          $found[$key] = $item;
         }
+        return $found;
       }
-      $found[$key] = $item;
     }
-    return $found;
-  }
 
-  /**
-   * Sort store objects.
-   * @param string $field
-   * @param array $data
-   * @param string $order
-   * @return array
-   * @throws InvalidArgumentException
-   */
-  private function sortArray(string $field, array $data, string $order = 'ASC'): array
-  {
-    $dryData = [];
-    // Get value of the target field.
-    foreach ($data as $value) {
-      $dryData[] = $this->getNestedProperty($field, $value);
-    }
-    // Decide the order direction.
-    if (strtolower($order) === 'asc') asort($dryData);
-    else if (strtolower($order) === 'desc') arsort($dryData);
-    // Re arrange the array.
-    $finalArray = [];
-    foreach ($dryData as $key => $value) {
-      $finalArray[] = $data[$key];
-    }
-    return $finalArray;
+    return $found;
   }
 
   /**
@@ -566,7 +570,7 @@ class Query
    */
   private function performSearch(array $data = []): array
   {
-    $searchKeyword = $this->getCondition("searchKeyword");
+    $searchKeyword = $this->getQueryBuilderProperty("searchKeyword");
     if (empty($data)) return $data;
     $nodesRank = [];
     // Looping on each store data.
@@ -636,8 +640,55 @@ class Query
   /**
    * @return string
    */
-  private function getStorePath(): string
+  private function _getStorePath(): string
   {
     return $this->storePath;
   }
+
+  /**
+   * Returns path to location of content
+   * @return string
+   */
+  private function _getStoreDataPath(): string
+  {
+    return $this->_getStorePath().'data/';
+  }
+
+  /**
+   * Returns a reference to the array used for cache token generation
+   * @return array
+   */
+  public function &_getCacheTokenArray(): array
+  {
+    return $this->cacheTokenArray;
+  }
+
+  /**
+   * @return mixed
+   */
+  private function _getCacheLifeTime()
+  {
+    try{
+      return $this->getQueryBuilderProperty('cacheLifetime');
+    } catch (InvalidPropertyAccessException $exception){
+      return null;
+    }
+  }
+
+  /**
+   * @param array $tokenUpdate
+   */
+  private function updateCacheTokenArray(array $tokenUpdate)
+  {
+    if(empty($tokenUpdate)) return;
+
+    $cacheTokenArray = $this->_getCacheTokenArray();
+
+    foreach ($tokenUpdate as $key => $value){
+      $cacheTokenArray[$key] = $value;
+    }
+
+    $this->cacheTokenArray = $cacheTokenArray;
+  }
+
 }
