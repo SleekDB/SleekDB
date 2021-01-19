@@ -137,7 +137,7 @@ class Store
     if (empty($data)) throw new InvalidArgumentException('No data found to insert in the store');
     $data = $this->writeInStore($data);
     // Check do we need to wipe the cache for this store.
-    if($this->getUseCache() === true){
+    if($this->_getUseCache() === true){
       $queryBuilder = $this->createQueryBuilder();
       $cache = $queryBuilder->getQuery()->getCache();
       $cache->deleteAllWithNoLifetime();
@@ -164,7 +164,7 @@ class Store
       $results[] = $this->writeInStore($node);
     }
     // Check do we need to wipe the cache for this store.
-    if($this->getUseCache() === true){
+    if($this->_getUseCache() === true){
       $queryBuilder = $this->createQueryBuilder();
       $cache = $queryBuilder->getQuery()->getCache();
       $cache->deleteAllWithNoLifetime();
@@ -313,7 +313,7 @@ class Store
   /**
    * @return bool
    */
-  public function getUseCache(): bool
+  public function _getUseCache(): bool
   {
     return $this->useCache;
   }
@@ -321,7 +321,7 @@ class Store
   /**
    * @return null|int
    */
-  public function getDefaultCacheLifetime()
+  public function _getDefaultCacheLifetime()
   {
     return $this->defaultCacheLifetime;
   }
@@ -365,8 +365,17 @@ class Store
   {
     $counterPath = $this->getStorePath() . '_cnt.sdb';
     if (file_exists($counterPath)) {
+      $content = 0;
       $this->_checkRead($counterPath);
-      return (int) file_get_contents($counterPath);
+
+      $fp = fopen($counterPath, 'r');
+      if(flock($fp, LOCK_SH)){
+        $content = stream_get_contents($fp);
+      }
+      flock($fp, LOCK_UN);
+      fclose($fp);
+
+      return (int) $content;
     }
     return 0;
   }
@@ -409,7 +418,7 @@ class Store
     $content = false;
     $fp = fopen($filePath, 'r');
     if(flock($fp, LOCK_SH)){
-      $content = file_get_contents($filePath);
+      $content = stream_get_contents($fp);
     }
     flock($fp, LOCK_UN);
     fclose($fp);
@@ -511,14 +520,14 @@ class Store
 
   /**
    * Delete one or multiple documents.
-   * @param $criteria
+   * @param array $criteria
    * @param int $returnOption
    * @return array|bool|int
    * @throws IOException
    * @throws InvalidArgumentException
    * @throws InvalidPropertyAccessException
    */
-  public function deleteBy($criteria, $returnOption = Query::DELETE_RETURN_BOOL){
+  public function deleteBy(array $criteria, int $returnOption = Query::DELETE_RETURN_BOOL){
 
     $query = $this->createQueryBuilder()->where($criteria)->getQuery();
 
@@ -529,11 +538,11 @@ class Store
 
   /**
    * Delete one document by its _id. Very fast because it deletes the document by its file path.
-   * @param $id
+   * @param int $id
    * @return bool true if document does not exist or deletion was successful, false otherwise
    * @throws IOException
    */
-  public function deleteById($id): bool
+  public function deleteById(int $id): bool
   {
 
     $filePath = $this->getStorePath() . "data/$id.json";

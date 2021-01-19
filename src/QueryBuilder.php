@@ -56,8 +56,8 @@ class QueryBuilder
   public function __construct(Store $store)
   {
     $this->store = $store;
-    $this->useCache = $store->getUseCache();
-    $this->cacheLifetime = $store->getDefaultCacheLifetime();
+    $this->useCache = $store->_getUseCache();
+    $this->cacheLifetime = $store->_getDefaultCacheLifetime();
   }
 
   /**
@@ -313,16 +313,16 @@ class QueryBuilder
   }
 
   /**
-   * @param callable $joinedStore
+   * @param callable $joinFunction
    * @param string $dataPropertyName
    * @return QueryBuilder
    */
-  public function join(callable $joinedStore, string $dataPropertyName): QueryBuilder
+  public function join(callable $joinFunction, string $dataPropertyName): QueryBuilder
   {
-    if (is_callable($joinedStore)) {
+    if (is_callable($joinFunction)) {
       $this->listOfJoins[] = [
-        'relation' => $joinedStore,
-        'name' => $dataPropertyName
+        'dataPropertyName' => $dataPropertyName,
+        'joinFunction' => $joinFunction
       ];
     }
     return $this;
@@ -366,7 +366,7 @@ class QueryBuilder
    */
   public function useCache(int $lifetime = null): QueryBuilder
   {
-    $this->useCache  = true;
+    $this->useCache = true;
     if(!is_null($lifetime) && (!is_int($lifetime) || $lifetime < 0)){
       throw new InvalidArgumentException("lifetime has to be int >= 0 or null");
     }
@@ -380,7 +380,7 @@ class QueryBuilder
    */
   public function disableCache(): QueryBuilder
   {
-    $this->useCache  = false;
+    $this->useCache = false;
     return $this;
   }
 
