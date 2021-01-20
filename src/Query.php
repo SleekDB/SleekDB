@@ -262,24 +262,24 @@ class Query
     foreach ($results as $key => $doc) {
       foreach ($listOfJoins as $join) {
         // Execute the child query.
-        $joinQuery = ($join['relation'])($doc); // QueryBuilder or result of fetch
-        $keyName = $join['name'] ? $join['name'] : $joinQuery->storeName;
+        $joinQuery = ($join['joinFunction'])($doc); // QueryBuilder or result of fetch
+        $dataPropertyName =$join['dataPropertyName'];
 
-        // TODO remove SleekDB check in version 2.0
+        // TODO remove SleekDB check in version 3.0
         if($joinQuery instanceof QueryBuilder || $joinQuery instanceof SleekDB){
           $joinResult = $joinQuery->getQuery()->fetch();
         } else if(is_array($joinQuery)){
           // user already fetched the query in the join query function
           $joinResult = $joinQuery;
         } else {
-          throw new InvalidArgumentException("Invalid join query");
+          throw new InvalidArgumentException("Invalid join query.");
         }
 
         // TODO discuss if that is a good idea -> would be inconsistent
         //  if(count($joinResult) === 1) $joinResult = $joinResult[0];
 
         // Add child documents with the current document.
-        $results[$key][$keyName] = $joinResult;
+        $results[$key][$dataPropertyName] = $joinResult;
       }
     }
   }
@@ -352,7 +352,13 @@ class Query
 
         $this->_checkRead($documentPath);
 
-        $data = @json_decode(@file_get_contents($documentPath), true); // get document by path
+        $data = "";
+        $fp = fopen($documentPath, 'r');
+        if(flock($fp, LOCK_SH)){
+          $data = @json_decode(@stream_get_contents($fp), true); // get document by path
+        }
+        flock($fp, LOCK_UN);
+        fclose($fp);
 
         if (empty($data)) {
           continue;

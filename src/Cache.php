@@ -26,10 +26,11 @@ class Cache
    * Cache constructor.
    * @param Query $query
    * @param string $storePath
-   * @param string $cacheDir
    */
-  public function __construct(Query $query, string $storePath, string $cacheDir = "")
+  public function __construct(Query $query, string $storePath)
   {
+    // TODO make it possible to define custom cache directory.
+    $cacheDir = "";
     $this->setCacheDir($cacheDir);
 
     $this->setCachePath($storePath);

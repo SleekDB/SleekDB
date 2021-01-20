@@ -13,6 +13,11 @@ if(false === class_exists("\Composer\Autoload\ClassLoader")){
     require_once __DIR__.'/Store.php';
 }
 
+/**
+ * Class SleekDB
+ * @package SleekDB
+ * @deprecated since version 2.0, use SleekDB\Store instead.
+ */
 class SleekDB
 {
 
