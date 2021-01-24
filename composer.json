@@ -1,60 +1,60 @@
 {
-    "name": "rakibtg/sleekdb",
-    "description": "SleekDB - A 30Kb NoSQL Database made using PHP",
-    "keywords": [
-        "framework",
-        "nosql",
-        "database",
-        "flatfile",
-        "php",
-        "rest",
-        "api",
-        "micro",
-        "SleekDB"
-    ],
-    "type": "library",
-    "license": "MIT",
-    "authors": [
-        {
-            "name": "rakibtg",
-            "email": "rakibtg@gmail.com"
-        }
-    ],
-    "require": {
-        "php": ">=7.0",
-        "ext-json": "*"
-    },
-    "require-dev": {
-        "phpunit/phpunit": "^6.5",
-        "spatie/phpunit-watcher": "^1.8".
-        "league/climate": "^3.5"
-    },
-    "autoload": {
-        "psr-4": {
-            "SleekDB\\": "src/"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "SleekDB\\Tests\\": "tests/"
-        }
-    },
-    "scripts": {
-        "test": [
-            "Composer\\Config::disableProcessTimeout",
-            "phpunit --testdox --stop-on-failure tests"
-        ],
-        "test:plain": [
-            "Composer\\Config::disableProcessTimeout",
-            "phpunit --stop-on-failure tests"
-        ],
-        "test:coverage": [
-            "Composer\\Config::disableProcessTimeout",
-            "phpunit --coverage-html ./tests/coverage tests"
-        ],
-        "test:watch": [
-            "Composer\\Config::disableProcessTimeout",
-            "phpunit-watcher watch < /dev/tty"
-        ]
+  "name": "rakibtg/sleekdb",
+  "description": "SleekDB - A 30Kb NoSQL Database made using PHP",
+  "keywords": [
+    "framework",
+    "nosql",
+    "database",
+    "flatfile",
+    "php",
+    "rest",
+    "api",
+    "micro",
+    "SleekDB"
+  ],
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "rakibtg",
+      "email": "rakibtg@gmail.com"
     }
+  ],
+  "require": {
+    "php": ">=7.0",
+    "ext-json": "*"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^6.5",
+    "spatie/phpunit-watcher": "^1.8",
+    "league/climate": "^3.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "SleekDB\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "SleekDB\\Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "test": [
+      "Composer\\Config::disableProcessTimeout",
+      "phpunit --testdox --stop-on-failure tests"
+    ],
+    "test:plain": [
+      "Composer\\Config::disableProcessTimeout",
+      "phpunit --stop-on-failure tests"
+    ],
+    "test:coverage": [
+      "Composer\\Config::disableProcessTimeout",
+      "phpunit --coverage-html ./tests/coverage tests"
+    ],
+    "test:watch": [
+      "Composer\\Config::disableProcessTimeout",
+      "phpunit-watcher watch < /dev/tty"
+    ]
+  }
 }
