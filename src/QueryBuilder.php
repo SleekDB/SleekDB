@@ -32,9 +32,9 @@ class QueryBuilder
   protected $listOfJoins = [];
   protected $distinctFields = [];
 
-  protected $useCache = null;
+  protected $useCache;
   protected $regenerateCache = false;
-  protected $cacheLifetime = null;
+  protected $cacheLifetime;
 
   // will also not be used for cache token
   protected $propertiesNotUsedInConditionsArray = [
