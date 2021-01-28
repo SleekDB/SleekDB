@@ -69,7 +69,9 @@ class Cache
 
     if(!empty($storePath)){
 
-      if(substr($storePath, -1) !== "/") $storePath .= "/";
+      if(substr($storePath, -1) !== "/") {
+        $storePath .= "/";
+      }
 
       $cachePath = $storePath . $cacheDir;
 
@@ -120,7 +122,9 @@ class Cache
    */
   private function setCacheDir(string $cacheDir): Cache
   {
-    if(!empty($cacheDir) && substr($cacheDir, -1) !== "/") $cacheDir .= "/";
+    if(!empty($cacheDir) && substr($cacheDir, -1) !== "/") {
+      $cacheDir .= "/";
+    }
     $this->cacheDir = $cacheDir;
     return $this;
   }
