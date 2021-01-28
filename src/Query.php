@@ -365,7 +365,7 @@ class Query
         $this->_checkRead($documentPath);
 
         $data = "";
-        $fp = fopen($documentPath, 'r');
+        $fp = fopen($documentPath, 'rb');
         if(flock($fp, LOCK_SH)){
           $data = @json_decode(@stream_get_contents($fp), true); // get document by path
         }

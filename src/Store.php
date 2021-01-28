@@ -348,7 +348,7 @@ class Store
     $counterPath = $this->getStorePath() . '_cnt.sdb';
     if (file_exists($counterPath)) {
       $this->_checkRead($counterPath);
-      $fp = fopen($counterPath, 'r+');
+      $fp = fopen($counterPath, 'rb+');
       for ($retries = 10; $retries > 0; $retries--) {
         flock($fp, LOCK_UN);
         if (flock($fp, LOCK_EX) === false) {
@@ -379,7 +379,7 @@ class Store
       $content = 0;
       $this->_checkRead($counterPath);
 
-      $fp = fopen($counterPath, 'r');
+      $fp = fopen($counterPath, 'rb');
       if(flock($fp, LOCK_SH)){
         $content = stream_get_contents($fp);
       }
@@ -427,7 +427,7 @@ class Store
 
     // retrieve file content
     $content = false;
-    $fp = fopen($filePath, 'r');
+    $fp = fopen($filePath, 'rb');
     if(flock($fp, LOCK_SH)){
       $content = stream_get_contents($fp);
     }
