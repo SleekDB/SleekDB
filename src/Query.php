@@ -356,7 +356,7 @@ class Query
 
       while (false !== ($entry = readdir($handle))) {
 
-        if ($entry == "." || $entry == "..") {
+        if ($entry === "." || $entry === "..") {
           continue;
         }
 
