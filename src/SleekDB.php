@@ -218,7 +218,9 @@ class SleekDB
   public function where(...$conditions): SleekDB
   {
     foreach ($conditions as $key => $arg) {
-      if ($key > 0) throw new InvalidArgumentException("Allowed: (string fieldName, string condition, mixed value) OR (array(array(string fieldName, string condition, mixed value)[, array(...)]))");
+      if ($key > 0) {
+        throw new InvalidArgumentException("Allowed: (string fieldName, string condition, mixed value) OR (array(array(string fieldName, string condition, mixed value)[, array(...)]))");
+      }
       if (is_array($arg)) {
         // parameters given as arrays for multiple "where" with "and" between each condition
         $this->setQueryBuilder($this->getQueryBuilder()->where($arg));
@@ -269,7 +271,9 @@ class SleekDB
   public function orWhere(...$conditions): SleekDB
   {
     foreach ($conditions as $key => $arg) {
-      if ($key > 0) throw new InvalidArgumentException("Allowed: (string fieldName, string condition, mixed value) OR array(array(string fieldName, string condition, mixed value) [, array(...)])");
+      if ($key > 0) {
+        throw new InvalidArgumentException("Allowed: (string fieldName, string condition, mixed value) OR array(array(string fieldName, string condition, mixed value) [, array(...)])");
+      }
       if (is_array($arg)) {
         // parameters given as arrays for an "or where" with "and" between each condition
         $this->setQueryBuilder($this->getQueryBuilder()->orWhere($arg));
@@ -476,7 +480,9 @@ class SleekDB
    * Handle shouldKeepConditions and reset queryBuilder accordingly
    */
   private function resetQueryBuilder(){
-    if($this->shouldKeepConditions === true) return;
+    if($this->shouldKeepConditions === true) {
+      return;
+    }
     $this->setQueryBuilder($this->getStore()->createQueryBuilder());
   }
 
