@@ -516,7 +516,7 @@ class SleekDB
    */
   public function findBy(array $criteria, array $orderBy = null, int $limit = null, int $offset = null): array
   {
-    return $this->findBy($criteria, $orderBy, $limit, $offset);
+    return $this->getStore()->findBy($criteria, $orderBy, $limit, $offset);
   }
 
   /**
