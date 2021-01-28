@@ -60,7 +60,7 @@ class Store
       throw new InvalidArgumentException('data directory can not be empty');
     }
     if (substr($dataDir, -1) !== '/') {
-      $dataDir = $dataDir . '/';
+      $dataDir .= '/';
     }
     $this->dataDirectory = $dataDir;
 
