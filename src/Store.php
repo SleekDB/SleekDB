@@ -259,14 +259,11 @@ class Store
   private function createDataDirectory()
   {
     $dataDir = $this->getDataDirectory();
-    // Check if the data_directory exists.
-    if (!file_exists($dataDir)) {
-      // The directory was not found, create one.
-      if (!mkdir($dataDir, 0777, true) && !is_dir($dataDir)) {
-        throw new IOException(
-          'Unable to create the data directory at ' . $this->getDataDirectory()
-        );
-      }
+    // Check if the data_directory exists or create one.
+    if (!file_exists($dataDir) && !mkdir($dataDir, 0777, true) && !is_dir($dataDir)) {
+      throw new IOException(
+        'Unable to create the data directory at ' . $this->getDataDirectory()
+      );
     }
   }
 
