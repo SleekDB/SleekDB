@@ -280,7 +280,7 @@ class Store
     $storeName = $this->getStoreName();
     // Prepare store name.
     if (substr($storeName, -1) !== '/') {
-      $storeName = $storeName . '/';
+      $storeName .= '/';
     }
     // Store directory path.
     $this->storePath = $this->getDataDirectory() . $storeName;
