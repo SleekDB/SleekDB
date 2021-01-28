@@ -312,9 +312,9 @@ class Query
   {
     switch (strtolower(trim($condition))){
       case "=":
-        return ($fieldValue == $value);
+        return ($fieldValue === $value);
       case "!=":
-        return ($fieldValue != $value);
+        return ($fieldValue !== $value);
       case ">":
         return ($fieldValue > $value);
       case ">=":
