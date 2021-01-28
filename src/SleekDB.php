@@ -42,7 +42,7 @@ class SleekDB
    * @throws IOException
    * @throws InvalidConfigurationException
    */
-  function __construct(string $storeName, string $dataDir, array $configuration = []){
+  public function __construct(string $storeName, string $dataDir, array $configuration = []){
     $this->init($storeName, $dataDir, $configuration);
   }
 
