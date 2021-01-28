@@ -71,8 +71,12 @@ class QueryBuilder
   {
     $errorMsg = "If select is used an array containing strings with fieldNames has to be given";
     foreach ($fieldNames as $fieldName) {
-      if (empty($fieldName)) continue;
-      if (!is_string($fieldName)) throw new InvalidArgumentException($errorMsg);
+      if (empty($fieldName)) {
+        continue;
+      }
+      if (!is_string($fieldName)) {
+        throw new InvalidArgumentException($errorMsg);
+      }
       $this->fieldsToSelect[] = $fieldName;
     }
     return $this;
@@ -88,8 +92,12 @@ class QueryBuilder
   {
     $errorMsg = "If except is used an array containing strings with fieldNames has to be given";
     foreach ($fieldNames as $fieldName) {
-      if (empty($fieldName)) continue;
-      if (!is_string($fieldName)) throw new InvalidArgumentException($errorMsg);
+      if (empty($fieldName)) {
+        continue;
+      }
+      if (!is_string($fieldName)) {
+        throw new InvalidArgumentException($errorMsg);
+      }
       $this->fieldsToExclude[] = $fieldName;
     }
     return $this;
@@ -150,7 +158,9 @@ class QueryBuilder
 
       $this->conditions[] = $this->validateCondition($condition);
 
-      if($justOneCondition === true) break;
+      if($justOneCondition === true) {
+        break;
+      }
     }
 
     return $this;
@@ -165,7 +175,9 @@ class QueryBuilder
    */
   public function in(string $fieldName, array $values = []): QueryBuilder
   {
-    if (empty($fieldName)) throw new InvalidArgumentException('Field name for in clause can not be empty.');
+    if (empty($fieldName)) {
+      throw new InvalidArgumentException('Field name for in clause can not be empty.');
+    }
     $this->in[] = [
       'fieldName' => $fieldName,
       'value'     => $values
@@ -182,7 +194,9 @@ class QueryBuilder
    */
   public function notIn(string $fieldName, array $values = []): QueryBuilder
   {
-    if (empty($fieldName)) throw new InvalidArgumentException('Field name for notIn clause can not be empty.');
+    if (empty($fieldName)) {
+      throw new InvalidArgumentException('Field name for notIn clause can not be empty.');
+    }
     $this->notIn[] = [
       'fieldName' => $fieldName,
       'value'     => $values
@@ -217,7 +231,9 @@ class QueryBuilder
 
       $orConditionsWithAnd[] = $this->validateCondition($condition);
 
-      if($justOneCondition === true) break;
+      if($justOneCondition === true) {
+        break;
+      }
     }
 
     if(!empty($orConditionsWithAnd)){
@@ -274,20 +290,23 @@ class QueryBuilder
     $fieldName = "";
     foreach ($criteria as $fieldName => $order){
 
-      if(!is_string($order))
+      if(!is_string($order)) {
         throw new InvalidArgumentException('Order has to be a string! Please use "asc" or "desc" only.');
+      }
 
       $order = strtolower($order);
 
-      if(!is_string($fieldName))
+      if(!is_string($fieldName)) {
         throw new InvalidArgumentException("Field name has to be a string");
+      }
 
       // TODO allow multiple order criteria
       break;
     }
 
-    if (!in_array($order, ['asc', 'desc']))
+    if (!in_array($order, ['asc', 'desc'])) {
       throw new InvalidArgumentException('Please use "asc" or "desc" only.');
+    }
 
     $this->orderBy = [
       'field' => $fieldName,
@@ -305,11 +324,15 @@ class QueryBuilder
    */
   public function search($field, string $keyword): QueryBuilder
   {
-    if (empty($field)) throw new InvalidArgumentException('Cant perform search due to no field name was provided');
-    if (!empty($keyword)) $this->searchKeyword = [
-      'field'   => (array) $field,
-      'keyword' => $keyword
-    ];
+    if (empty($field)) {
+      throw new InvalidArgumentException('Cant perform search due to no field name was provided');
+    }
+    if (!empty($keyword)) {
+      $this->searchKeyword = [
+        'field' => (array)$field,
+        'keyword' => $keyword
+      ];
+    }
     return $this;
   }
 
