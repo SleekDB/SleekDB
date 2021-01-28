@@ -35,7 +35,7 @@ class Store
   protected $dataDirectory = "";
 
   protected $useCache = true;
-  protected $defaultCacheLifetime = null;
+  protected $defaultCacheLifetime;
   protected $primaryKey = "_id";
 
   /**
