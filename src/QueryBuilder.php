@@ -111,8 +111,8 @@ class QueryBuilder
    */
   private function validateCondition($condition): array
   {
-    if(count($condition) !== 3 || !array_key_exists(0, $condition) || !array_key_exists(1, $condition)
-      || !array_key_exists(2, $condition)){
+    if(!array_key_exists(0, $condition) || !array_key_exists(1, $condition)
+      || !array_key_exists(2, $condition) || count($condition) !== 3){
       throw new InvalidArgumentException("Invalid condition structure.");
     }
 
@@ -391,7 +391,7 @@ class QueryBuilder
   public function useCache(int $lifetime = null): QueryBuilder
   {
     $this->useCache = true;
-    if(!is_null($lifetime) && (!is_int($lifetime) || $lifetime < 0)){
+    if((!is_int($lifetime) || $lifetime < 0) && !is_null($lifetime)){
       throw new InvalidArgumentException("lifetime has to be int >= 0 or null");
     }
     $this->cacheLifetime = $lifetime;
