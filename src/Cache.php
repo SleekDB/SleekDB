@@ -197,13 +197,13 @@ class Cache
         if(is_numeric($lifetime)){
           if($lifetime === "0"){
               return json_decode(file_get_contents($cacheFile), true);
-          } else {
-            $fileExpiredAfter = filemtime($cacheFile) + (int) $lifetime;
-            if(time() <= $fileExpiredAfter){
-              return json_decode(file_get_contents($cacheFile), true);
-            }
-            $this->_delete([$cacheFile]);
           }
+
+          $fileExpiredAfter = filemtime($cacheFile) + (int) $lifetime;
+          if(time() <= $fileExpiredAfter){
+            return json_decode(file_get_contents($cacheFile), true);
+          }
+          $this->_delete([$cacheFile]);
         } else if($lifetime === self::NO_LIFETIME_FILE_STRING){
             return json_decode(file_get_contents($cacheFile), true);
         }
