@@ -72,7 +72,9 @@ class Query
 
     $results = $this->getCacheContent();
 
-    if($results !== null) return $results;
+    if($results !== null) {
+      return $results;
+    }
 
     $results = $this->findStoreDocuments();
 
@@ -108,7 +110,9 @@ class Query
     $this->updateCacheTokenArray(['oneDocument' => true]);
 
     $results = $this->getCacheContent();
-    if($results !== null) return $results;
+    if($results !== null) {
+      return $results;
+    }
 
     $results = $this->findStoreDocuments(true);
 
@@ -235,11 +239,15 @@ class Query
       $cache = $this->getCache();
 
 
-      if($regenerateCache === true) $cache->delete();
+      if($regenerateCache === true) {
+        $cache->delete();
+      }
 
       $cacheResults = $cache->get();
 
-      if(is_array($cacheResults)) return $cacheResults;
+      if(is_array($cacheResults)) {
+        return $cacheResults;
+      }
     }
     return null;
   }
@@ -393,7 +401,9 @@ class Query
               break;
             }
             $storePassed = $this->verifyWhereConditions($condition['condition'], $fieldValue, $condition['value']);
-            if ($storePassed === false) break;
+            if ($storePassed === false) {
+              break;
+            }
           }
         }
 
@@ -412,12 +422,16 @@ class Query
                 break;
               }
               $storePassed = $this->verifyWhereConditions($condition['condition'], $fieldValue, $condition['value']);
-              if ($storePassed === true) continue;
+              if ($storePassed === true) {
+                continue;
+              }
               break; // one where was false
             }
 
             // one condition block was true, that means that we dont have to look into the other conditions
-            if($storePassed === true) break;
+            if($storePassed === true) {
+              break;
+            }
           }
         }
 
@@ -464,9 +478,13 @@ class Query
               } catch (Throwable $th) {
                 continue;
               }
-              if ($storePassed === false) break;
+              if ($storePassed === false) {
+                break;
+              }
             }
-            if ($storePassed === false) break;
+            if ($storePassed === false) {
+              break;
+            }
           }
         }
 
@@ -474,7 +492,9 @@ class Query
           $found[] = $data;
 
           // if we just check for existence or want to return the first item, we dont need to look for more documents
-          if ($getOneDocument === true) break;
+          if ($getOneDocument === true) {
+            break;
+          }
         }
       }
       closedir($handle);
@@ -495,8 +515,12 @@ class Query
           $dryData[] = $this->getNestedProperty($field, $value);
         }
         // Decide the order direction.
-        if (strtolower($order) === 'asc') asort($dryData);
-        else if (strtolower($order) === 'desc') arsort($dryData);
+        if (strtolower($order) === 'asc') {
+          asort($dryData);
+        }
+        else if (strtolower($order) === 'desc') {
+          arsort($dryData);
+        }
         // Re arrange the array.
         $finalArray = [];
         foreach ($dryData as $key => $value) {
@@ -513,11 +537,15 @@ class Query
 
       // Skip data
       $skip = $this->getQueryBuilderProperty("skip");
-      if (!empty($skip) && $skip > 0) $found = array_slice($found, $skip);
+      if (!empty($skip) && $skip > 0) {
+        $found = array_slice($found, $skip);
+      }
 
       // Limit data.
       $limit = $this->getQueryBuilderProperty("limit");
-      if (!empty($limit) && $limit > 0) $found = array_slice($found, 0, $limit);
+      if (!empty($limit) && $limit > 0) {
+        $found = array_slice($found, 0, $limit);
+      }
 
       // select specific fields
       $fieldsToSelect = $this->getQueryBuilderProperty("fieldsToSelect");
@@ -563,7 +591,9 @@ class Query
   {
 
     $fieldName = trim($fieldName);
-    if (empty($fieldName)) throw new InvalidArgumentException('fieldName is not allowed to be empty');
+    if (empty($fieldName)) {
+      throw new InvalidArgumentException('fieldName is not allowed to be empty');
+    }
 
     // Dive deep step by step.
     foreach (explode('.', $fieldName) as $i) {
@@ -589,12 +619,16 @@ class Query
   private function performSearch(array $data = []): array
   {
     $searchKeyword = $this->getQueryBuilderProperty("searchKeyword");
-    if (empty($data)) return $data;
+    if (empty($data)) {
+      return $data;
+    }
     $nodesRank = [];
     // Looping on each store data.
     foreach ($data as $key => $value) {
       // Looping on each field name of search-able fields.
-      if(!is_array($searchKeyword)) break;
+      if(!is_array($searchKeyword)) {
+        break;
+      }
       foreach ($searchKeyword['field'] as $field) {
         try {
           $nodeValue = $this->getNestedProperty($field, $value);
@@ -605,8 +639,11 @@ class Query
           }
           if ($percent > 50) {
             // Check if current store object already has a value, if so then add the new value.
-            if (isset($nodesRank[$key])) $nodesRank[$key] += $percent;
-            else $nodesRank[$key] = $percent;
+            if (isset($nodesRank[$key])) {
+              $nodesRank[$key] += $percent;
+            } else {
+              $nodesRank[$key] = $percent;
+            }
           }
         } catch (Exception $e) {
           continue;
@@ -698,7 +735,9 @@ class Query
    */
   private function updateCacheTokenArray(array $tokenUpdate)
   {
-    if(empty($tokenUpdate)) return;
+    if(empty($tokenUpdate)) {
+      return;
+    }
 
     $cacheTokenArray = $this->_getCacheTokenArray();
 
