@@ -47,7 +47,7 @@ class Store
    * @throws IOException
    * @throws InvalidConfigurationException
    */
-  function __construct(string $storeName, string $dataDir, array $configuration = [])
+  public function __construct(string $storeName, string $dataDir, array $configuration = [])
   {
     $storeName = trim($storeName);
     if (empty($storeName)) {
