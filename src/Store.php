@@ -104,7 +104,7 @@ class Store
 
     if(array_key_exists("cache_lifetime", $configuration)){
       $defaultCacheLifetime = $configuration["cache_lifetime"];
-      if(!is_null($defaultCacheLifetime) && !is_int($defaultCacheLifetime)){
+      if(!is_int($defaultCacheLifetime) && !is_null($defaultCacheLifetime)){
         throw new InvalidConfigurationException("cache_lifetime has to be null or int");
       }
 
