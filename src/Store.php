@@ -203,8 +203,6 @@ class Store
    */
   private function writeInStore(array $storeData): array
   {
-    // Cast to array
-    $storeData = (array) $storeData;
     $primaryKey = $this->primaryKey;
     // Check if it has the primary key
     if (isset($storeData[$primaryKey])) {
