@@ -326,8 +326,8 @@ class Query
           $value = str_replace($characterToEscape, "\\".$characterToEscape, $value); // zero or more characters
         }
 
-        $value = str_replace('%', '.*', $value); // zero or more characters
-        $value = str_replace('_', '.{1}', $value); // single character
+
+        $value = str_replace(array('%', '_'), array('.*', '.{1}'), $value); // (zero or more characters) and (single character)
         $pattern = "/^" . $value . "$/i";
         return (preg_match($pattern, $fieldValue) === 1);
 
