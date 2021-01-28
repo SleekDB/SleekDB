@@ -243,10 +243,11 @@ class Store
    */
   private function createDataDirectory()
   {
+    $dataDir = $this->getDataDirectory();
     // Check if the data_directory exists.
-    if (!file_exists($this->getDataDirectory())) {
+    if (!file_exists($dataDir)) {
       // The directory was not found, create one.
-      if (!mkdir($this->getDataDirectory(), 0777, true)) {
+      if (!mkdir($dataDir, 0777, true) && !is_dir($dataDir)) {
         throw new IOException(
           'Unable to create the data directory at ' . $this->getDataDirectory()
         );
@@ -268,17 +269,17 @@ class Store
     // Check if the store exists.
     if (!file_exists($storePath)) {
       // The directory was not found, create one with cache directory.
-      if (!mkdir($storePath, 0777, true)) {
+      if (!mkdir($storePath, 0777, true) && !is_dir($storePath)) {
         throw new IOException("Unable to create the store path at \"$storePath\"");
       }
       // Create the cache directory.
       $cacheDirectory = $storePath . 'cache';
-      if (!mkdir($cacheDirectory, 0777, true)) {
+      if (!mkdir($cacheDirectory, 0777, true) && !is_dir($cacheDirectory)) {
         throw new IOException("Unable to create the store's cache directory at \"$storePath\"");
       }
       // Create the data directory.
       $dataDirectory = $storePath . 'data';
-      if (!mkdir($dataDirectory, 0777, true)) {
+      if (!mkdir($dataDirectory, 0777, true) && !is_dir($dataDirectory)) {
         throw new IOException("Unable to create the store's data directory at \"$dataDirectory\"");
       }
       // Create the store counter file.
