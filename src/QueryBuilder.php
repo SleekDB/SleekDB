@@ -21,7 +21,7 @@ class QueryBuilder
   protected $skip = 0;
   protected $notIn = [];
   protected $limit = 0;
-  protected $orderBy = ['order' => false, 'field' => '_id'];
+  protected $orderBy = [];
   protected $conditions = [];
   protected $orConditions = []; // two dimensional array. first dimension is "or" between each condition, second is "and".
   protected $searchKeyword = "";
@@ -58,6 +58,7 @@ class QueryBuilder
     $this->store = $store;
     $this->useCache = $store->_getUseCache();
     $this->cacheLifetime = $store->_getDefaultCacheLifetime();
+    $this->orderBy["field"] = $store->getPrimaryKey();
   }
 
   /**

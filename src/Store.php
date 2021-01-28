@@ -34,6 +34,7 @@ class Store
 
   protected $useCache = true;
   protected $defaultCacheLifetime = null;
+  protected $primaryKey = "_id";
 
   /**
    * Store constructor.
@@ -111,6 +112,14 @@ class Store
       $timeout = $configuration["timeout"];
     }
     set_time_limit($timeout);
+
+    if(array_key_exists("primary_key", $configuration)){
+      $primaryKey = $configuration["primary_key"];
+      if(!is_string($primaryKey)){
+        throw new InvalidConfigurationException("primary key has to be a string");
+      }
+      $this->primaryKey = $primaryKey;
+    }
   }
 
   /**
@@ -184,15 +193,16 @@ class Store
   {
     // Cast to array
     $storeData = (array) $storeData;
-    // Check if it has _id key
-    if (isset($storeData['_id'])) {
+    $primaryKey = $this->primaryKey;
+    // Check if it has the primary key
+    if (isset($storeData[$primaryKey])) {
       throw new IdNotAllowedException(
-        'The _id index is reserved by SleekDB, please delete the _id key and try again'
+        "The $primaryKey index is reserved by SleekDB, please delete the $primaryKey key and try again"
       );
     }
     $id = $this->getStoreId();
     // Add the system ID with the store data array.
-    $storeData['_id'] = $id;
+    $storeData[$primaryKey] = $id;
     // Prepare storable data
     $storableJSON = json_encode($storeData);
     if ($storableJSON === false) throw new JsonException('Unable to encode the data array, 
@@ -401,7 +411,7 @@ class Store
   }
 
   /**
-   * Retrieve one document by its _id. Very fast because it finds the document by its file path.
+   * Retrieve one document by its primary key. Very fast because it finds the document by its file path.
    * @param int $id
    * @return array|null
    * @throws IOException
@@ -484,6 +494,7 @@ class Store
    */
   public function update(array $updatable): bool
   {
+    $primaryKey = $this->primaryKey;
 
     if(empty($updatable)) throw new InvalidArgumentException("No documents to update.");
 
@@ -497,9 +508,9 @@ class Store
       }
 
       if(!is_array($document)) throw new InvalidArgumentException('Documents have to be arrays.');
-      if(!array_key_exists('_id', $document)) throw new InvalidArgumentException('Documents have to have "_id".');
+      if(!array_key_exists($primaryKey, $document)) throw new InvalidArgumentException("Documents have to have \"$primaryKey\".");
 
-      $id = $document['_id'];
+      $id = $document[$primaryKey];
       $storePath = $this->getStorePath() . "data/$id.json";
 
       if (!file_exists($storePath)) return false;
@@ -507,7 +518,7 @@ class Store
       // Wait until it's unlocked, then update data.
       $this->_checkWrite($storePath);
       if(file_put_contents($storePath, json_encode($document), LOCK_EX) === false){
-        throw new IOException("Could not update document with _id \"$id\". Please check permissions at: $storePath");
+        throw new IOException("Could not update document with $primaryKey \"$id\". Please check permissions at: $storePath");
       }
 
       if($multipleDocuments === false) break;
@@ -537,7 +548,7 @@ class Store
   }
 
   /**
-   * Delete one document by its _id. Very fast because it deletes the document by its file path.
+   * Delete one document by its primary key. Very fast because it deletes the document by its file path.
    * @param int $id
    * @return bool true if document does not exist or deletion was successful, false otherwise
    * @throws IOException
@@ -550,6 +561,14 @@ class Store
     $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
 
     return (!file_exists($filePath) || true === @unlink($filePath));
+  }
+
+  /**
+   * @return string
+   */
+  public function getPrimaryKey(): string
+  {
+    return $this->primaryKey;
   }
 
 }

@@ -27,6 +27,8 @@ class Query
   const DELETE_RETURN_RESULTS = 1;
   const DELETE_RETURN_COUNT = 1;
 
+  protected $primaryKey;
+
   /**
    * Query constructor.
    * @param QueryBuilder $queryBuilder
@@ -36,6 +38,8 @@ class Query
     $store = $queryBuilder->_getStore();
 
     $this->storePath = $store->getStorePath();
+
+    $this->primaryKey = $store->getPrimaryKey();
 
     $this->queryBuilderProperties = $queryBuilder->_getConditionProperties();
 
@@ -135,14 +139,17 @@ class Query
     if (empty($results)) {
       return false;
     }
+
+    $primaryKey = $this->primaryKey;
+
     foreach ($results as $data) {
       foreach ($updatable as $key => $value) {
-        // Do not update the _id reserved index of a store.
-        if ($key != '_id') {
+        // Do not update the primary key reserved index of a store.
+        if ($key !== $primaryKey) {
           $data[$key] = $value;
         }
       }
-      $storePath = $this->_getStoreDataPath() . $data['_id'] . '.json';
+      $storePath = $this->_getStoreDataPath() . $data[$primaryKey] . '.json';
       if (file_exists($storePath)) {
         // Wait until it's unlocked, then update data.
         $this->_checkWrite($storePath);
@@ -166,6 +173,8 @@ class Query
     $results = $this->findStoreDocuments();
     $returnValue = null;
 
+    $primaryKey = $this->primaryKey;
+
     switch ($returnOption){
       case self::DELETE_RETURN_BOOL:
         $returnValue = !empty($results);
@@ -182,7 +191,7 @@ class Query
 
     if (!empty($results)) {
       foreach ($results as $key => $data) {
-        $filePath = $this->_getStoreDataPath() . $data['_id'] . '.json';
+        $filePath = $this->_getStoreDataPath() . $data[$primaryKey] . '.json';
         if (file_exists($filePath) && false === @unlink($filePath)) {
           throw new IOException(
             'Unable to delete document! 
@@ -340,6 +349,9 @@ class Query
     // Start collecting and filtering data.
     $storeDataPath = $this->_getStoreDataPath();
     $this->_checkRead($storeDataPath);
+
+    $primaryKey = $this->primaryKey;
+
     if ($handle = opendir($storeDataPath)) {
 
       while (false !== ($entry = readdir($handle))) {
@@ -473,7 +485,7 @@ class Query
 
       // Check do we need to sort the data.
       $orderBy = $this->getQueryBuilderProperty("orderBy");
-      if ($orderBy['order'] !== false) {
+      if (!empty($orderBy)) {
         // Start sorting on all data.
         $order = $orderBy['order'];
         $field = $orderBy['field'];
@@ -512,7 +524,7 @@ class Query
       if (count($found) > 0 && !empty($fieldsToSelect) && count($fieldsToSelect) > 0) {
         foreach ($found as $key => $item) {
           $newItem = [];
-          $newItem['_id'] = $item['_id'];
+          $newItem[$primaryKey] = $item[$primaryKey];
           foreach ($fieldsToSelect as $fieldToSelect) {
             if (array_key_exists($fieldToSelect, $item)) {
               $newItem[$fieldToSelect] = $item[$fieldToSelect];
