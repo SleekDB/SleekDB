@@ -549,7 +549,7 @@ class Query
 
       // select specific fields
       $fieldsToSelect = $this->getQueryBuilderProperty("fieldsToSelect");
-      if (count($found) > 0 && !empty($fieldsToSelect) && count($fieldsToSelect) > 0) {
+      if (!empty($fieldsToSelect) && count($fieldsToSelect) > 0 && count($found) > 0) {
         foreach ($found as $key => $item) {
           $newItem = [];
           $newItem[$primaryKey] = $item[$primaryKey];
@@ -564,7 +564,7 @@ class Query
 
       // exclude specific fields
       $fieldsToExclude = $this->getQueryBuilderProperty("fieldsToExclude");
-      if (count($found) > 0 && !empty($fieldsToExclude) && count($fieldsToExclude) > 0) {
+      if (!empty($fieldsToExclude) && count($fieldsToExclude) > 0 && count($found) > 0) {
         foreach ($found as $key => $item) {
           foreach ($fieldsToExclude as $fieldToExclude) {
             if (array_key_exists($fieldToExclude, $item)) {
