@@ -17,7 +17,9 @@ if(false === class_exists("\Composer\Autoload\ClassLoader")) {
         require_once $exception;
     }
     foreach (glob(__DIR__ . '/*.php') as $class) {
-        if (strpos($class, 'SleekDB.php') !== false || strpos($class, 'Store.php') !== false) continue;
+        if (strpos($class, 'SleekDB.php') !== false || strpos($class, 'Store.php') !== false) {
+          continue;
+        }
         require_once $class;
     }
 }
@@ -33,7 +35,8 @@ class Store
   protected $dataDirectory = "";
 
   protected $useCache = true;
-  protected $defaultCacheLifetime = null;
+  protected $defaultCacheLifetime;
+  protected $primaryKey = "_id";
 
   /**
    * Store constructor.
@@ -44,15 +47,21 @@ class Store
    * @throws IOException
    * @throws InvalidConfigurationException
    */
-  function __construct(string $storeName, string $dataDir, array $configuration = [])
+  public function __construct(string $storeName, string $dataDir, array $configuration = [])
   {
     $storeName = trim($storeName);
-    if (empty($storeName)) throw new InvalidArgumentException('store name can not be empty');
+    if (empty($storeName)) {
+      throw new InvalidArgumentException('store name can not be empty');
+    }
     $this->storeName = $storeName;
 
     $dataDir = trim($dataDir);
-    if (empty($dataDir)) throw new InvalidArgumentException('data directory can not be empty');
-    if (substr($dataDir, -1) !== '/') $dataDir = $dataDir . '/';
+    if (empty($dataDir)) {
+      throw new InvalidArgumentException('data directory can not be empty');
+    }
+    if (substr($dataDir, -1) !== '/') {
+      $dataDir .= '/';
+    }
     $this->dataDirectory = $dataDir;
 
     $this->setConfiguration($configuration);
@@ -95,7 +104,7 @@ class Store
 
     if(array_key_exists("cache_lifetime", $configuration)){
       $defaultCacheLifetime = $configuration["cache_lifetime"];
-      if(!is_null($defaultCacheLifetime) && !is_int($defaultCacheLifetime)){
+      if(!is_int($defaultCacheLifetime) && !is_null($defaultCacheLifetime)){
         throw new InvalidConfigurationException("cache_lifetime has to be null or int");
       }
 
@@ -111,6 +120,14 @@ class Store
       $timeout = $configuration["timeout"];
     }
     set_time_limit($timeout);
+
+    if(array_key_exists("primary_key", $configuration)){
+      $primaryKey = $configuration["primary_key"];
+      if(!is_string($primaryKey)){
+        throw new InvalidConfigurationException("primary key has to be a string");
+      }
+      $this->primaryKey = $primaryKey;
+    }
   }
 
   /**
@@ -134,7 +151,9 @@ class Store
   public function insert(array $data): array
   {
     // Handle invalid data
-    if (empty($data)) throw new InvalidArgumentException('No data found to insert in the store');
+    if (empty($data)) {
+      throw new InvalidArgumentException('No data found to insert in the store');
+    }
     $data = $this->writeInStore($data);
     // Check do we need to wipe the cache for this store.
     if($this->_getUseCache() === true){
@@ -157,7 +176,9 @@ class Store
   public function insertMany(array $data): array
   {
     // Handle invalid data
-    if (empty($data)) throw new InvalidArgumentException('No data found to insert in the store');
+    if (empty($data)) {
+      throw new InvalidArgumentException('No data found to insert in the store');
+    }
     // All results.
     $results = [];
     foreach ($data as $key => $node) {
@@ -182,21 +203,22 @@ class Store
    */
   private function writeInStore(array $storeData): array
   {
-    // Cast to array
-    $storeData = (array) $storeData;
-    // Check if it has _id key
-    if (isset($storeData['_id'])) {
+    $primaryKey = $this->primaryKey;
+    // Check if it has the primary key
+    if (isset($storeData[$primaryKey])) {
       throw new IdNotAllowedException(
-        'The _id index is reserved by SleekDB, please delete the _id key and try again'
+        "The $primaryKey index is reserved by SleekDB, please delete the $primaryKey key and try again"
       );
     }
     $id = $this->getStoreId();
     // Add the system ID with the store data array.
-    $storeData['_id'] = $id;
+    $storeData[$primaryKey] = $id;
     // Prepare storable data
     $storableJSON = json_encode($storeData);
-    if ($storableJSON === false) throw new JsonException('Unable to encode the data array, 
+    if ($storableJSON === false) {
+      throw new JsonException('Unable to encode the data array, 
         please provide a valid PHP associative array');
+    }
     // Define the store path
     $dataPath = $this->getStorePath() . 'data/';
 
@@ -222,8 +244,11 @@ class Store
     $files = new RecursiveIteratorIterator($it, RecursiveIteratorIterator::CHILD_FIRST);
     foreach ($files as $file) {
       $this->_checkWrite($file);
-      if ($file->isDir()) rmdir($file->getRealPath());
-      else unlink($file->getRealPath());
+      if ($file->isDir()) {
+        rmdir($file->getRealPath());
+      } else {
+        unlink($file->getRealPath());
+      }
     }
     return rmdir($storePath);
   }
@@ -233,14 +258,12 @@ class Store
    */
   private function createDataDirectory()
   {
-    // Check if the data_directory exists.
-    if (!file_exists($this->getDataDirectory())) {
-      // The directory was not found, create one.
-      if (!mkdir($this->getDataDirectory(), 0777, true)) {
-        throw new IOException(
-          'Unable to create the data directory at ' . $this->getDataDirectory()
-        );
-      }
+    $dataDir = $this->getDataDirectory();
+    // Check if the data_directory exists or create one.
+    if (!file_exists($dataDir) && !mkdir($dataDir, 0777, true) && !is_dir($dataDir)) {
+      throw new IOException(
+        'Unable to create the data directory at ' . $this->getDataDirectory()
+      );
     }
   }
 
@@ -251,24 +274,26 @@ class Store
   {
     $storeName = $this->getStoreName();
     // Prepare store name.
-    if (substr($storeName, -1) !== '/') $storeName = $storeName . '/';
+    if (substr($storeName, -1) !== '/') {
+      $storeName .= '/';
+    }
     // Store directory path.
     $this->storePath = $this->getDataDirectory() . $storeName;
     $storePath = $this->getStorePath();
     // Check if the store exists.
     if (!file_exists($storePath)) {
       // The directory was not found, create one with cache directory.
-      if (!mkdir($storePath, 0777, true)) {
+      if (!mkdir($storePath, 0777, true) && !is_dir($storePath)) {
         throw new IOException("Unable to create the store path at \"$storePath\"");
       }
       // Create the cache directory.
       $cacheDirectory = $storePath . 'cache';
-      if (!mkdir($cacheDirectory, 0777, true)) {
+      if (!mkdir($cacheDirectory, 0777, true) && !is_dir($cacheDirectory)) {
         throw new IOException("Unable to create the store's cache directory at \"$storePath\"");
       }
       // Create the data directory.
       $dataDirectory = $storePath . 'data';
-      if (!mkdir($dataDirectory, 0777, true)) {
+      if (!mkdir($dataDirectory, 0777, true) && !is_dir($dataDirectory)) {
         throw new IOException("Unable to create the store's data directory at \"$dataDirectory\"");
       }
       // Create the store counter file.
@@ -337,7 +362,7 @@ class Store
     $counterPath = $this->getStorePath() . '_cnt.sdb';
     if (file_exists($counterPath)) {
       $this->_checkRead($counterPath);
-      $fp = fopen($counterPath, 'r+');
+      $fp = fopen($counterPath, 'rb+');
       for ($retries = 10; $retries > 0; $retries--) {
         flock($fp, LOCK_UN);
         if (flock($fp, LOCK_EX) === false) {
@@ -368,7 +393,7 @@ class Store
       $content = 0;
       $this->_checkRead($counterPath);
 
-      $fp = fopen($counterPath, 'r');
+      $fp = fopen($counterPath, 'rb');
       if(flock($fp, LOCK_SH)){
         $content = stream_get_contents($fp);
       }
@@ -401,7 +426,7 @@ class Store
   }
 
   /**
-   * Retrieve one document by its _id. Very fast because it finds the document by its file path.
+   * Retrieve one document by its primary key. Very fast because it finds the document by its file path.
    * @param int $id
    * @return array|null
    * @throws IOException
@@ -410,20 +435,24 @@ class Store
 
     $filePath = $this->getStorePath() . "data/$id.json";
 
-    if(!file_exists($filePath)) return null;
+    if(!file_exists($filePath)) {
+      return null;
+    }
 
     $this->_checkRead($filePath);
 
     // retrieve file content
     $content = false;
-    $fp = fopen($filePath, 'r');
+    $fp = fopen($filePath, 'rb');
     if(flock($fp, LOCK_SH)){
       $content = stream_get_contents($fp);
     }
     flock($fp, LOCK_UN);
     fclose($fp);
 
-    if($content === false) return null;
+    if($content === false) {
+      return null;
+    }
 
     return @json_decode($content, true);
   }
@@ -445,11 +474,17 @@ class Store
 
     $qb->where($criteria);
 
-    if($orderBy !== null) $qb->orderBy($orderBy);
+    if($orderBy !== null) {
+      $qb->orderBy($orderBy);
+    }
 
-    if($limit !== null) $qb->limit($limit);
+    if($limit !== null) {
+      $qb->limit($limit);
+    }
 
-    if($offset !== null) $qb->skip($offset);
+    if($offset !== null) {
+      $qb->skip($offset);
+    }
 
     return $qb->getQuery()->fetch();
 
@@ -484,8 +519,11 @@ class Store
    */
   public function update(array $updatable): bool
   {
+    $primaryKey = $this->primaryKey;
 
-    if(empty($updatable)) throw new InvalidArgumentException("No documents to update.");
+    if(empty($updatable)) {
+      throw new InvalidArgumentException("No documents to update.");
+    }
 
     $multipleDocuments = array_keys($updatable) === range(0, (count($updatable) - 1));
 
@@ -496,21 +534,29 @@ class Store
         $document = $updatable;
       }
 
-      if(!is_array($document)) throw new InvalidArgumentException('Documents have to be arrays.');
-      if(!array_key_exists('_id', $document)) throw new InvalidArgumentException('Documents have to have "_id".');
+      if(!is_array($document)) {
+        throw new InvalidArgumentException('Documents have to be arrays.');
+      }
+      if(!array_key_exists($primaryKey, $document)) {
+        throw new InvalidArgumentException("Documents have to have \"$primaryKey\".");
+      }
 
-      $id = $document['_id'];
+      $id = $document[$primaryKey];
       $storePath = $this->getStorePath() . "data/$id.json";
 
-      if (!file_exists($storePath)) return false;
+      if (!file_exists($storePath)) {
+        return false;
+      }
 
       // Wait until it's unlocked, then update data.
       $this->_checkWrite($storePath);
       if(file_put_contents($storePath, json_encode($document), LOCK_EX) === false){
-        throw new IOException("Could not update document with _id \"$id\". Please check permissions at: $storePath");
+        throw new IOException("Could not update document with $primaryKey \"$id\". Please check permissions at: $storePath");
       }
 
-      if($multipleDocuments === false) break;
+      if($multipleDocuments === false) {
+        break;
+      }
     }
 
     $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
@@ -537,7 +583,7 @@ class Store
   }
 
   /**
-   * Delete one document by its _id. Very fast because it deletes the document by its file path.
+   * Delete one document by its primary key. Very fast because it deletes the document by its file path.
    * @param int $id
    * @return bool true if document does not exist or deletion was successful, false otherwise
    * @throws IOException
@@ -550,6 +596,14 @@ class Store
     $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
 
     return (!file_exists($filePath) || true === @unlink($filePath));
+  }
+
+  /**
+   * @return string
+   */
+  public function getPrimaryKey(): string
+  {
+    return $this->primaryKey;
   }
 
 }

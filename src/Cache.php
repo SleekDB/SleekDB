@@ -14,7 +14,7 @@ class Cache
    * Lifetime in seconds or deletion with deleteAll
    * @var int|null
    */
-  protected $lifetime = null;
+  protected $lifetime;
 
   protected $cachePath = "";
 
@@ -69,7 +69,9 @@ class Cache
 
     if(!empty($storePath)){
 
-      if(substr($storePath, -1) !== "/") $storePath .= "/";
+      if(substr($storePath, -1) !== "/") {
+        $storePath .= "/";
+      }
 
       $cachePath = $storePath . $cacheDir;
 
@@ -120,7 +122,9 @@ class Cache
    */
   private function setCacheDir(string $cacheDir): Cache
   {
-    if(!empty($cacheDir) && substr($cacheDir, -1) !== "/") $cacheDir .= "/";
+    if(!empty($cacheDir) && substr($cacheDir, -1) !== "/") {
+      $cacheDir .= "/";
+    }
     $this->cacheDir = $cacheDir;
     return $this;
   }
@@ -197,13 +201,13 @@ class Cache
         if(is_numeric($lifetime)){
           if($lifetime === "0"){
               return json_decode(file_get_contents($cacheFile), true);
-          } else {
-            $fileExpiredAfter = filemtime($cacheFile) + (int) $lifetime;
-            if(time() <= $fileExpiredAfter){
-              return json_decode(file_get_contents($cacheFile), true);
-            }
-            $this->_delete([$cacheFile]);
           }
+
+          $fileExpiredAfter = filemtime($cacheFile) + (int) $lifetime;
+          if(time() <= $fileExpiredAfter){
+            return json_decode(file_get_contents($cacheFile), true);
+          }
+          $this->_delete([$cacheFile]);
         } else if($lifetime === self::NO_LIFETIME_FILE_STRING){
             return json_decode(file_get_contents($cacheFile), true);
         }
