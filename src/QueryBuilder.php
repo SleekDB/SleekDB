@@ -58,7 +58,6 @@ class QueryBuilder
     $this->store = $store;
     $this->useCache = $store->_getUseCache();
     $this->cacheLifetime = $store->_getDefaultCacheLifetime();
-    $this->orderBy["field"] = $store->getPrimaryKey();
   }
 
   /**
