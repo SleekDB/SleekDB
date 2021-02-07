@@ -150,7 +150,7 @@ class Cache
     $endLine = $reflectionFunction->getEndLine();
     $lineSeparator = PHP_EOL;
 
-    if($filePath === false && $startLine === false && $endLine === false){
+    if($filePath === false || $startLine === false || $endLine === false){
       return false;
     }
 
@@ -176,9 +176,8 @@ class Cache
     }
 
     $fileContentArray = explode($lineSeparator, $fileContent);
-    $fileContentArrayLength = count($fileContentArray);
 
-    if($fileContentArrayLength < $endLine){
+    if(count($fileContentArray) < $endLine){
       return false;
     }
 
