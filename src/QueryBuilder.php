@@ -24,6 +24,7 @@ class QueryBuilder
   protected $orderBy = [];
   protected $conditions = [];
   protected $orConditions = []; // two dimensional array. first dimension is "or" between each condition, second is "and".
+  protected $nestedWhere = [];
   protected $searchKeyword = "";
 
   protected $fieldsToSelect = [];
@@ -35,6 +36,7 @@ class QueryBuilder
   protected $useCache;
   protected $regenerateCache = false;
   protected $cacheLifetime;
+
 
   // will also not be used for cache token
   protected $propertiesNotUsedInConditionsArray = [
@@ -238,6 +240,34 @@ class QueryBuilder
     if(!empty($orConditionsWithAnd)){
       $this->orConditions[] = $orConditionsWithAnd;
     }
+
+    return $this;
+  }
+
+  /**
+   * @param array $conditions
+   * @return QueryBuilder
+   * @throws InvalidArgumentException
+   */
+  public function nestedWhere(array $conditions): QueryBuilder
+  {
+    if(empty($conditions)){
+      throw new InvalidArgumentException("You need to specify nested where clauses");
+    }
+
+    if(count($conditions) > 1){
+      throw new InvalidArgumentException("You are not allowed to specify multiple elements at the first depth!");
+    }
+
+    $outerMostOperation = (array_keys($conditions))[0];
+
+    $allowedOuterMostOperations = [0, "and", "or"];
+
+    if(!in_array($outerMostOperation, $allowedOuterMostOperations, true)){
+      throw new InvalidArgumentException("Outer most operation has to one of the following: ( 0 / and / or ) ");
+    }
+
+    $this->nestedWhere = $conditions;
 
     return $this;
   }
