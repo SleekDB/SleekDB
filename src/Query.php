@@ -358,7 +358,12 @@ class Query
     $storeDataPath = $this->_getStoreDataPath();
     $this->_checkRead($storeDataPath);
 
-    $primaryKey = $this->primaryKey;
+    $conditions = $this->getQueryBuilderProperty("conditions");
+    $orConditions = $this->getQueryBuilderProperty("orConditions");
+    $in = $this->getQueryBuilderProperty("in");
+    $notIn = $this->getQueryBuilderProperty("notIn");
+    $distinctFields = $this->getQueryBuilderProperty("distinctFields");
+
 
     if ($handle = opendir($storeDataPath)) {
 
@@ -389,7 +394,6 @@ class Query
         // Append only passed data from this store.
 
         // Where conditions
-        $conditions = $this->getQueryBuilderProperty("conditions");
         if(!empty($conditions)) {
           // Iterate each conditions.
           foreach ($conditions as $condition) {
@@ -409,7 +413,6 @@ class Query
 
         // where [] or ([] and [] and []) or ([] and [] and [])
         // two dimensional array. first dimension is "or" between each condition, second is "and".
-        $orConditions = $this->getQueryBuilderProperty("orConditions");
         if ($storePassed === false && !empty($orConditions)) {
           // Check if one condition will allow this document.
           foreach ($orConditions as $conditionsWithAndBetween) { // () or ()
@@ -436,7 +439,6 @@ class Query
         }
 
         // IN clause.
-        $in = $this->getQueryBuilderProperty("in");
         if ($storePassed === true && !empty($in)) {
           foreach ($in as $inClause) {
             try {
@@ -453,7 +455,6 @@ class Query
         }
 
         // notIn clause.
-        $notIn = $this->getQueryBuilderProperty("notIn");
         if ($storePassed === true && !empty($notIn)) {
           foreach ($notIn as $notInClause) {
             try {
@@ -469,7 +470,6 @@ class Query
         }
 
         // Distinct data check.
-        $distinctFields = $this->getQueryBuilderProperty("distinctFields");
         if ($storePassed === true && count($distinctFields) > 0) {
           foreach ($found as $result) {
             foreach ($distinctFields as $field) {
@@ -509,6 +509,7 @@ class Query
         $found = $this->performSearch($found);
       }
     }
+
     if(count($found) > 0){
       // sort the data.
       $this->sort($found);
@@ -529,9 +530,45 @@ class Query
       }
     }
 
-    // select specific fields
+    if(count($found) > 0){
+      // select specific fields
+      $this->selectFields($found);
+
+      // exclude specific fields
+      $this->excludeFields($found);
+    }
+
+    return $found;
+  }
+
+  /**
+   * @param array $found
+   * @throws InvalidPropertyAccessException
+   */
+  private function excludeFields(array &$found){
+    $fieldsToExclude = $this->getQueryBuilderProperty("fieldsToExclude");
+    if (!empty($fieldsToExclude) && count($fieldsToExclude) > 0) {
+      foreach ($found as $key => $item) {
+        foreach ($fieldsToExclude as $fieldToExclude) {
+          if (array_key_exists($fieldToExclude, $item)) {
+            unset($item[$fieldToExclude]);
+          }
+        }
+        $found[$key] = $item;
+      }
+    }
+  }
+
+  /**
+   * @param array $found
+   * @throws InvalidPropertyAccessException
+   */
+  private function selectFields(array &$found){
+
+    $primaryKey = $this->primaryKey;
+
     $fieldsToSelect = $this->getQueryBuilderProperty("fieldsToSelect");
-    if (!empty($fieldsToSelect) && count($fieldsToSelect) > 0 && count($found) > 0) {
+    if (!empty($fieldsToSelect) && count($fieldsToSelect) > 0) {
       foreach ($found as $key => $item) {
         $newItem = [];
         $newItem[$primaryKey] = $item[$primaryKey];
@@ -543,22 +580,6 @@ class Query
         $found[$key] = $newItem;
       }
     }
-
-    // exclude specific fields
-    $fieldsToExclude = $this->getQueryBuilderProperty("fieldsToExclude");
-    if (!empty($fieldsToExclude) && count($fieldsToExclude) > 0 && count($found) > 0) {
-      foreach ($found as $key => $item) {
-        foreach ($fieldsToExclude as $fieldToExclude) {
-          if (array_key_exists($fieldToExclude, $item)) {
-            unset($item[$fieldToExclude]);
-          }
-        }
-        $found[$key] = $item;
-      }
-      return $found;
-    }
-
-    return $found;
   }
 
   /**
@@ -586,12 +607,8 @@ class Query
         $resultSortArray[] = $arrayColumn;
 
         // Decide the order direction.
-        if ($order === 'asc') {
-          $resultSortArray[] = SORT_ASC;
-        }
-        else if ($order === 'desc') {
-          $resultSortArray[] = SORT_DESC;
-        }
+        // order will be asc or desc (check is done in QueryBuilder class)
+        $resultSortArray[] = ($order === 'asc') ? SORT_ASC : SORT_DESC;
 
       }
 
@@ -641,6 +658,9 @@ class Query
    */
   private function performSearch(array $data = []): array
   {
+
+    // TODO apply custom key -> search rank, so the user can use that in order by!
+
     $searchKeyword = $this->getQueryBuilderProperty("searchKeyword");
     if (empty($data)) {
       return $data;
