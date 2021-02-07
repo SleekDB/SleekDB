@@ -113,7 +113,76 @@ class Cache
    */
   public function getToken(): string
   {
-    return md5(json_encode($this->getTokenArray()));
+
+    $tokenArray = $this->getTokenArray();
+
+    // hash the join sub-queries instead of the function reference to generate the cache token
+    if(array_key_exists("listOfJoins", $tokenArray)){
+      $listOfJoins = $tokenArray["listOfJoins"];
+      foreach ($listOfJoins as $key => $join){
+        if(array_key_exists("joinFunction", $join)){
+          $joinFunction = $join["joinFunction"];
+          $joinFunctionString = self::getClosureAsString($joinFunction);
+          if($joinFunctionString === false){
+            continue;
+          }
+          $tokenArray["listOfJoins"][$key] = $joinFunctionString;
+        }
+      }
+    }
+
+    return md5(json_encode($tokenArray));
+  }
+
+  /**
+   * @param \Closure $closure
+   * @return false|string
+   */
+  private static function getClosureAsString(\Closure $closure)
+  {
+    try{
+      $reflectionFunction = new \ReflectionFunction($closure); // get reflection object
+    } catch (\Exception $exception){
+      return false;
+    }
+    $filePath = $reflectionFunction->getFileName();  // absolute path of php file containing function
+    $startLine = $reflectionFunction->getStartLine();
+    $endLine = $reflectionFunction->getEndLine();
+    $lineSeparator = PHP_EOL;
+
+    if($filePath === false && $startLine === false && $endLine === false){
+      return false;
+    }
+
+    $startEndDifference = $endLine - $startLine;
+
+    $startLine--; // -1 to use it with the array representation of the file
+
+    if($startLine < 0 || $startEndDifference < 0){
+      return false;
+    }
+
+    // get content of file containing function
+    $fp = fopen($filePath, 'rb');
+    $fileContent = "";
+    if(flock($fp, LOCK_SH)){
+      $fileContent = @stream_get_contents($fp);
+    }
+    flock($fp, LOCK_UN);
+    fclose($fp);
+
+    if(empty($fileContent)){
+      return false;
+    }
+
+    $fileContentArray = explode($lineSeparator, $fileContent);
+    $fileContentArrayLength = count($fileContentArray);
+
+    if($fileContentArrayLength < $endLine){
+      return false;
+    }
+
+    return implode("", array_slice($fileContentArray, $startLine, $startEndDifference + 1));
   }
 
   /**
