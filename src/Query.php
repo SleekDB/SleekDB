@@ -501,83 +501,106 @@ class Query
     }
 
     // apply additional changes to result like sort and limit
+
     if (count($found) > 0) {
-
-      // Check do we need to sort the data.
-      $orderBy = $this->getQueryBuilderProperty("orderBy");
-      if (!empty($orderBy)) {
-        // Start sorting on all data.
-        $order = $orderBy['order'];
-        $field = $orderBy['field'];
-        $dryData = [];
-        // Get value of the target field.
-        foreach ($found as $value) {
-          $dryData[] = $this->getNestedProperty($field, $value);
-        }
-        // Decide the order direction.
-        if (strtolower($order) === 'asc') {
-          asort($dryData);
-        }
-        else if (strtolower($order) === 'desc') {
-          arsort($dryData);
-        }
-        // Re arrange the array.
-        $finalArray = [];
-        foreach ($dryData as $key => $value) {
-          $finalArray[] = $found[$key];
-        }
-        $found = $finalArray;
-      }
-
       // If there was text search then we would also sort the result by search ranking.
       $searchKeyword = $this->getQueryBuilderProperty("searchKeyword");
       if (!empty($searchKeyword)) {
         $found = $this->performSearch($found);
       }
+    }
+    if(count($found) > 0){
+      // sort the data.
+      $this->sort($found);
 
       // Skip data
       $skip = $this->getQueryBuilderProperty("skip");
       if (!empty($skip) && $skip > 0) {
         $found = array_slice($found, $skip);
       }
+    }
 
+
+    if(count($found) > 0) {
       // Limit data.
       $limit = $this->getQueryBuilderProperty("limit");
       if (!empty($limit) && $limit > 0) {
         $found = array_slice($found, 0, $limit);
       }
+    }
 
-      // select specific fields
-      $fieldsToSelect = $this->getQueryBuilderProperty("fieldsToSelect");
-      if (!empty($fieldsToSelect) && count($fieldsToSelect) > 0 && count($found) > 0) {
-        foreach ($found as $key => $item) {
-          $newItem = [];
-          $newItem[$primaryKey] = $item[$primaryKey];
-          foreach ($fieldsToSelect as $fieldToSelect) {
-            if (array_key_exists($fieldToSelect, $item)) {
-              $newItem[$fieldToSelect] = $item[$fieldToSelect];
-            }
+    // select specific fields
+    $fieldsToSelect = $this->getQueryBuilderProperty("fieldsToSelect");
+    if (!empty($fieldsToSelect) && count($fieldsToSelect) > 0 && count($found) > 0) {
+      foreach ($found as $key => $item) {
+        $newItem = [];
+        $newItem[$primaryKey] = $item[$primaryKey];
+        foreach ($fieldsToSelect as $fieldToSelect) {
+          if (array_key_exists($fieldToSelect, $item)) {
+            $newItem[$fieldToSelect] = $item[$fieldToSelect];
           }
-          $found[$key] = $newItem;
         }
-      }
-
-      // exclude specific fields
-      $fieldsToExclude = $this->getQueryBuilderProperty("fieldsToExclude");
-      if (!empty($fieldsToExclude) && count($fieldsToExclude) > 0 && count($found) > 0) {
-        foreach ($found as $key => $item) {
-          foreach ($fieldsToExclude as $fieldToExclude) {
-            if (array_key_exists($fieldToExclude, $item)) {
-              unset($item[$fieldToExclude]);
-            }
-          }
-          $found[$key] = $item;
-        }
-        return $found;
+        $found[$key] = $newItem;
       }
     }
 
+    // exclude specific fields
+    $fieldsToExclude = $this->getQueryBuilderProperty("fieldsToExclude");
+    if (!empty($fieldsToExclude) && count($fieldsToExclude) > 0 && count($found) > 0) {
+      foreach ($found as $key => $item) {
+        foreach ($fieldsToExclude as $fieldToExclude) {
+          if (array_key_exists($fieldToExclude, $item)) {
+            unset($item[$fieldToExclude]);
+          }
+        }
+        $found[$key] = $item;
+      }
+      return $found;
+    }
+
     return $found;
+  }
+
+  /**
+   * @param array $found
+   * @throws InvalidArgumentException
+   * @throws InvalidPropertyAccessException
+   */
+  private function sort(array &$found){
+    $orderBy = $this->getQueryBuilderProperty("orderBy");
+    if (!empty($orderBy)) {
+
+      $resultSortArray = [];
+
+      foreach ($orderBy as $orderByClause){
+        // Start sorting on all data.
+        $order = $orderByClause['order'];
+        $fieldName = $orderByClause['fieldName'];
+
+        $arrayColumn = [];
+        // Get value of the target field.
+        foreach ($found as $value) {
+          $arrayColumn[] = $this->getNestedProperty($fieldName, $value);
+        }
+
+        $resultSortArray[] = $arrayColumn;
+
+        // Decide the order direction.
+        if ($order === 'asc') {
+          $resultSortArray[] = SORT_ASC;
+        }
+        else if ($order === 'desc') {
+          $resultSortArray[] = SORT_DESC;
+        }
+
+      }
+
+      if(!empty($resultSortArray)){
+        $resultSortArray[] = &$found;
+        array_multisort(...$resultSortArray);
+      }
+      unset($resultSortArray);
+    }
   }
 
   /**

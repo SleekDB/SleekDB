@@ -284,9 +284,6 @@ class QueryBuilder
    */
   public function orderBy( array $criteria): QueryBuilder
   {
-    // Validate order.
-    $order = "";
-    $fieldName = "";
     foreach ($criteria as $fieldName => $order){
 
       if(!is_string($order)) {
@@ -299,18 +296,16 @@ class QueryBuilder
         throw new InvalidArgumentException("Field name has to be a string");
       }
 
-      // TODO allow multiple order criteria
-      break;
+      if (!in_array($order, ['asc', 'desc'])) {
+        throw new InvalidArgumentException('Please use "asc" or "desc" only.');
+      }
+
+      $this->orderBy[] = [
+        'fieldName' => $fieldName,
+        'order' => $order
+      ];
     }
 
-    if (!in_array($order, ['asc', 'desc'])) {
-      throw new InvalidArgumentException('Please use "asc" or "desc" only.');
-    }
-
-    $this->orderBy = [
-      'field' => $fieldName,
-      'order' => $order
-    ];
     return $this;
   }
 
