@@ -340,11 +340,11 @@ class SleekDB
   }
 
   /**
-   * @param callable $joinedStore
+   * @param \Closure $joinedStore
    * @param string $dataPropertyName
    * @return SleekDB
    */
-  public function join(callable $joinedStore, string $dataPropertyName): SleekDB
+  public function join(\Closure $joinedStore, string $dataPropertyName): SleekDB
   {
     $this->setQueryBuilder($this->getQueryBuilder()->join($joinedStore, $dataPropertyName));
     return $this;

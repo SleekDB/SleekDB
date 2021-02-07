@@ -331,18 +331,16 @@ class QueryBuilder
   }
 
   /**
-   * @param callable $joinFunction
+   * @param \Closure $joinFunction
    * @param string $dataPropertyName
    * @return QueryBuilder
    */
-  public function join(callable $joinFunction, string $dataPropertyName): QueryBuilder
+  public function join(\Closure $joinFunction, string $dataPropertyName): QueryBuilder
   {
-    if (is_callable($joinFunction)) {
-      $this->listOfJoins[] = [
-        'dataPropertyName' => $dataPropertyName,
-        'joinFunction' => $joinFunction
-      ];
-    }
+    $this->listOfJoins[] = [
+      'dataPropertyName' => $dataPropertyName,
+      'joinFunction' => $joinFunction
+    ];
     return $this;
   }
 
