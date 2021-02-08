@@ -358,7 +358,12 @@ class Query
     $storeDataPath = $this->_getStoreDataPath();
     $this->_checkRead($storeDataPath);
 
-    $primaryKey = $this->primaryKey;
+    $conditions = $this->getQueryBuilderProperty("conditions");
+    $orConditions = $this->getQueryBuilderProperty("orConditions");
+    $in = $this->getQueryBuilderProperty("in");
+    $notIn = $this->getQueryBuilderProperty("notIn");
+    $distinctFields = $this->getQueryBuilderProperty("distinctFields");
+
 
     if ($handle = opendir($storeDataPath)) {
 
@@ -389,7 +394,6 @@ class Query
         // Append only passed data from this store.
 
         // Where conditions
-        $conditions = $this->getQueryBuilderProperty("conditions");
         if(!empty($conditions)) {
           // Iterate each conditions.
           foreach ($conditions as $condition) {
@@ -409,7 +413,6 @@ class Query
 
         // where [] or ([] and [] and []) or ([] and [] and [])
         // two dimensional array. first dimension is "or" between each condition, second is "and".
-        $orConditions = $this->getQueryBuilderProperty("orConditions");
         if ($storePassed === false && !empty($orConditions)) {
           // Check if one condition will allow this document.
           foreach ($orConditions as $conditionsWithAndBetween) { // () or ()
@@ -435,8 +438,9 @@ class Query
           }
         }
 
+        $storePassed = $this->handleNestedWhere($data, $storePassed);
+
         // IN clause.
-        $in = $this->getQueryBuilderProperty("in");
         if ($storePassed === true && !empty($in)) {
           foreach ($in as $inClause) {
             try {
@@ -453,7 +457,6 @@ class Query
         }
 
         // notIn clause.
-        $notIn = $this->getQueryBuilderProperty("notIn");
         if ($storePassed === true && !empty($notIn)) {
           foreach ($notIn as $notInClause) {
             try {
@@ -469,7 +472,6 @@ class Query
         }
 
         // Distinct data check.
-        $distinctFields = $this->getQueryBuilderProperty("distinctFields");
         if ($storePassed === true && count($distinctFields) > 0) {
           foreach ($found as $result) {
             foreach ($distinctFields as $field) {
@@ -501,83 +503,220 @@ class Query
     }
 
     // apply additional changes to result like sort and limit
+
     if (count($found) > 0) {
-
-      // Check do we need to sort the data.
-      $orderBy = $this->getQueryBuilderProperty("orderBy");
-      if (!empty($orderBy)) {
-        // Start sorting on all data.
-        $order = $orderBy['order'];
-        $field = $orderBy['field'];
-        $dryData = [];
-        // Get value of the target field.
-        foreach ($found as $value) {
-          $dryData[] = $this->getNestedProperty($field, $value);
-        }
-        // Decide the order direction.
-        if (strtolower($order) === 'asc') {
-          asort($dryData);
-        }
-        else if (strtolower($order) === 'desc') {
-          arsort($dryData);
-        }
-        // Re arrange the array.
-        $finalArray = [];
-        foreach ($dryData as $key => $value) {
-          $finalArray[] = $found[$key];
-        }
-        $found = $finalArray;
-      }
-
       // If there was text search then we would also sort the result by search ranking.
       $searchKeyword = $this->getQueryBuilderProperty("searchKeyword");
       if (!empty($searchKeyword)) {
         $found = $this->performSearch($found);
       }
+    }
+
+    if(count($found) > 0){
+      // sort the data.
+      $this->sort($found);
 
       // Skip data
       $skip = $this->getQueryBuilderProperty("skip");
       if (!empty($skip) && $skip > 0) {
         $found = array_slice($found, $skip);
       }
+    }
 
+
+    if(count($found) > 0) {
       // Limit data.
       $limit = $this->getQueryBuilderProperty("limit");
       if (!empty($limit) && $limit > 0) {
         $found = array_slice($found, 0, $limit);
       }
+    }
 
+    if(count($found) > 0){
       // select specific fields
-      $fieldsToSelect = $this->getQueryBuilderProperty("fieldsToSelect");
-      if (!empty($fieldsToSelect) && count($fieldsToSelect) > 0 && count($found) > 0) {
-        foreach ($found as $key => $item) {
-          $newItem = [];
-          $newItem[$primaryKey] = $item[$primaryKey];
-          foreach ($fieldsToSelect as $fieldToSelect) {
-            if (array_key_exists($fieldToSelect, $item)) {
-              $newItem[$fieldToSelect] = $item[$fieldToSelect];
-            }
-          }
-          $found[$key] = $newItem;
-        }
-      }
+      $this->selectFields($found);
 
       // exclude specific fields
-      $fieldsToExclude = $this->getQueryBuilderProperty("fieldsToExclude");
-      if (!empty($fieldsToExclude) && count($fieldsToExclude) > 0 && count($found) > 0) {
-        foreach ($found as $key => $item) {
-          foreach ($fieldsToExclude as $fieldToExclude) {
-            if (array_key_exists($fieldToExclude, $item)) {
-              unset($item[$fieldToExclude]);
-            }
-          }
-          $found[$key] = $item;
-        }
-        return $found;
-      }
+      $this->excludeFields($found);
     }
 
     return $found;
+  }
+
+  /**
+   * @param array $element
+   * @param array $data
+   * @return bool
+   * @throws InvalidArgumentException
+   */
+  private function _nestedWhereHelper(array $element, array &$data): bool
+  {
+
+    // element is a where condition
+    if(array_keys($element) === range(0, (count($element) - 1)) && is_string($element[0])){
+      if(count($element) !== 3){
+        throw new InvalidArgumentException("Where conditions have to be [fieldName, condition, value]");
+      }
+
+      $fieldValue = $this->getNestedProperty($element[0], $data);
+
+      return $this->verifyWhereConditions($element[1], $fieldValue, $element[2]);
+    }
+
+    // element is an array "brackets"
+
+    // prepare results array - example: [true, "and", false]
+    $results = [];
+    foreach ($element as $value){
+      if(is_array($value)){
+        $results[] = $this->_nestedWhereHelper($value, $data);
+      } else if (is_string($value)){
+        $results[] = $value;
+      } else {
+        $value = (!is_object($value) && !is_array($value)) ? $value : gettype($value);
+        throw new InvalidArgumentException("Invalid nested where statement element! Expected condition or operation, got: \"$value\"");
+      }
+    }
+
+    if(count($results) < 3){
+      throw new InvalidArgumentException("Malformed nested where statement! A condition consists of at least 3 elements.");
+    }
+
+    // first result as default value
+    $returnValue = array_shift($results);
+
+    // use results array to get the return value of the conditions within the bracket
+    while(!empty($results)){
+      $operation = array_shift($results);
+      $nextResult = array_shift($results);
+
+      if(((count($results) % 2) !== 0)){
+        throw new InvalidArgumentException("Malformed nested where statement!");
+      }
+
+      if(!is_string($operation) || !in_array(strtolower($operation), ["and", "or"])){
+        $operation = (!is_object($operation) && !is_array($operation)) ? $operation : gettype($operation);
+        throw new InvalidArgumentException("Expected 'and' or 'or' operator got \"$operation\"");
+      }
+
+      if(strtolower($operation) === "and"){
+        $returnValue = $returnValue && $nextResult;
+      } else {
+        $returnValue = $returnValue || $nextResult;
+      }
+    }
+
+    return $returnValue;
+  }
+
+  /**
+   * @param array $data
+   * @param bool $storePassed
+   * @return bool
+   * @throws InvalidArgumentException
+   * @throws InvalidPropertyAccessException
+   */
+  private function handleNestedWhere(array $data, bool $storePassed): bool
+  {
+    $nestedWhere = $this->getQueryBuilderProperty("nestedWhere");
+
+    if(empty($nestedWhere)){
+      return $storePassed;
+    }
+
+    // the outermost operation specify how the given conditions are connected with other conditions,
+    // like the ones that are specified using the where, orWhere, in or notIn methods
+    $outerMostOperation = (array_keys($nestedWhere))[0];
+    $nestedConditions = $nestedWhere[$outerMostOperation];
+
+    // specifying outermost is optional and defaults to "and"
+    $outerMostOperation = (is_string($outerMostOperation)) ? strtolower($outerMostOperation) : "and";
+
+    // if the document already passed the store with another condition, we dont need to check it.
+    if($outerMostOperation === "or" && $storePassed === true){
+      return true;
+    }
+
+    return $this->_nestedWhereHelper($nestedConditions, $data);
+  }
+
+  /**
+   * @param array $found
+   * @throws InvalidPropertyAccessException
+   */
+  private function excludeFields(array &$found){
+    $fieldsToExclude = $this->getQueryBuilderProperty("fieldsToExclude");
+    if (!empty($fieldsToExclude) && count($fieldsToExclude) > 0) {
+      foreach ($found as $key => $item) {
+        foreach ($fieldsToExclude as $fieldToExclude) {
+          if (array_key_exists($fieldToExclude, $item)) {
+            unset($item[$fieldToExclude]);
+          }
+        }
+        $found[$key] = $item;
+      }
+    }
+  }
+
+  /**
+   * @param array $found
+   * @throws InvalidPropertyAccessException
+   */
+  private function selectFields(array &$found){
+
+    $primaryKey = $this->primaryKey;
+
+    $fieldsToSelect = $this->getQueryBuilderProperty("fieldsToSelect");
+    if (!empty($fieldsToSelect) && count($fieldsToSelect) > 0) {
+      foreach ($found as $key => $item) {
+        $newItem = [];
+        $newItem[$primaryKey] = $item[$primaryKey];
+        foreach ($fieldsToSelect as $fieldToSelect) {
+          if (array_key_exists($fieldToSelect, $item)) {
+            $newItem[$fieldToSelect] = $item[$fieldToSelect];
+          }
+        }
+        $found[$key] = $newItem;
+      }
+    }
+  }
+
+  /**
+   * @param array $found
+   * @throws InvalidArgumentException
+   * @throws InvalidPropertyAccessException
+   */
+  private function sort(array &$found){
+    $orderBy = $this->getQueryBuilderProperty("orderBy");
+    if (!empty($orderBy)) {
+
+      $resultSortArray = [];
+
+      foreach ($orderBy as $orderByClause){
+        // Start sorting on all data.
+        $order = $orderByClause['order'];
+        $fieldName = $orderByClause['fieldName'];
+
+        $arrayColumn = [];
+        // Get value of the target field.
+        foreach ($found as $value) {
+          $arrayColumn[] = $this->getNestedProperty($fieldName, $value);
+        }
+
+        $resultSortArray[] = $arrayColumn;
+
+        // Decide the order direction.
+        // order will be asc or desc (check is done in QueryBuilder class)
+        $resultSortArray[] = ($order === 'asc') ? SORT_ASC : SORT_DESC;
+
+      }
+
+      if(!empty($resultSortArray)){
+        $resultSortArray[] = &$found;
+        array_multisort(...$resultSortArray);
+      }
+      unset($resultSortArray);
+    }
   }
 
   /**
@@ -618,6 +757,9 @@ class Query
    */
   private function performSearch(array $data = []): array
   {
+
+    // TODO apply custom key -> search rank, so the user can use that in order by!
+
     $searchKeyword = $this->getQueryBuilderProperty("searchKeyword");
     if (empty($data)) {
       return $data;

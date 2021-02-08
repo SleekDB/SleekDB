@@ -340,11 +340,11 @@ class SleekDB
   }
 
   /**
-   * @param callable $joinedStore
+   * @param \Closure $joinedStore
    * @param string $dataPropertyName
    * @return SleekDB
    */
-  public function join(callable $joinedStore, string $dataPropertyName): SleekDB
+  public function join(\Closure $joinedStore, string $dataPropertyName): SleekDB
   {
     $this->setQueryBuilder($this->getQueryBuilder()->join($joinedStore, $dataPropertyName));
     return $this;
@@ -572,6 +572,18 @@ class SleekDB
   public function deleteById($id): bool
   {
     return $this->getStore()->deleteById($id);
+  }
+
+  /**
+   * Add a where statement that is nested. ( $x or ($y and $z) )
+   * @param array $conditions
+   * @return $this
+   * @throws InvalidArgumentException
+   */
+  public function nestedWhere(array $conditions): SleekDB
+  {
+    $this->setQueryBuilder($this->getQueryBuilder()->nestedWhere($conditions));
+    return $this;
   }
 
 }
