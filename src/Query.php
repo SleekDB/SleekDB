@@ -594,12 +594,12 @@ class Query
         throw new InvalidArgumentException("Malformed nested where statement!");
       }
 
-      if(!is_string($operation) || !in_array($operation, ["and", "or"])){
+      if(!is_string($operation) || !in_array(strtolower($operation), ["and", "or"])){
         $operation = (!is_object($operation) && !is_array($operation)) ? $operation : gettype($operation);
         throw new InvalidArgumentException("Expected 'and' or 'or' operator got \"$operation\"");
       }
 
-      if($operation === "and"){
+      if(strtolower($operation) === "and"){
         $returnValue = $returnValue && $nextResult;
       } else {
         $returnValue = $returnValue || $nextResult;
@@ -631,6 +631,8 @@ class Query
 
     // specifying outermost is optional and defaults to "and"
     $outerMostOperation = (is_string($outerMostOperation)) ? strtolower($outerMostOperation) : "and";
+
+    // if the document already passed the store with another condition, we dont need to check it.
     if($outerMostOperation === "or" && $storePassed === true){
       return true;
     }

@@ -261,6 +261,7 @@ class QueryBuilder
     }
 
     $outerMostOperation = (array_keys($conditions))[0];
+    $outerMostOperation = (is_string($outerMostOperation)) ? strtolower($outerMostOperation) : $outerMostOperation;
 
     $allowedOuterMostOperations = [0, "and", "or"];
 
