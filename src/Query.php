@@ -543,68 +543,99 @@ class Query
     return $found;
   }
 
-
-  private function _nestedWhereHelper(string $depthOperation, array $conditions, array &$data): bool
+  /**
+   * @param array $element
+   * @param array $data
+   * @return bool
+   * @throws InvalidArgumentException
+   */
+  private function _nestedWhereHelper(array $element, array &$data): bool
   {
 
-    $depthOperationLower = strtolower($depthOperation);
-    if(!in_array($depthOperationLower, ["and", "or"])){
-      throw new InvalidArgumentException("Operations for nested where clauses has to be \"and\" or \"or\"");
-    }
-
-    if(empty($conditions)){
-      throw new InvalidArgumentException("A conditions array (brackets) have to have at least one condition inside");
-    }
-
-    $returnValue = ($depthOperation === "and");
-
-    foreach ($conditions as $nextOperation => $condition){
-
-      // it is a condition
-      if(array_keys($condition) === range(0, (count($condition) - 1)) && is_string($condition[0])){
-        if(count($condition) !== 3){
-          throw new InvalidArgumentException("Where clause has to be [fieldName, condition, value]");
-        }
-
-        $fieldValue = $this->getNestedProperty($condition[0], $data);
-
-        $result = $this->verifyWhereConditions($condition[1], $fieldValue, $condition[2]);
-      } else {
-        // it is "brackets array" containing conditions and/ or new depth
-
-
-        $result = $this->_nestedWhereHelper($nextOperation, $condition, $data);
+    // element is a where condition
+    if(array_keys($element) === range(0, (count($element) - 1)) && is_string($element[0])){
+      if(count($element) !== 3){
+        throw new InvalidArgumentException("Where conditions have to be [fieldName, condition, value]");
       }
 
-      if($depthOperation === "or" && $result === true){
-        return true;
+      $fieldValue = $this->getNestedProperty($element[0], $data);
+
+      return $this->verifyWhereConditions($element[1], $fieldValue, $element[2]);
+    }
+
+    // element is an array "brackets"
+
+    // prepare results array - example: [true, "and", false]
+    $results = [];
+    foreach ($element as $value){
+      if(is_array($value)){
+        $results[] = $this->_nestedWhereHelper($value, $data);
+      } else if (is_string($value)){
+        $results[] = $value;
+      } else {
+        $value = (!is_object($value) && !is_array($value)) ? $value : gettype($value);
+        throw new InvalidArgumentException("Invalid nested where statement element! Expected condition or operation, got: \"$value\"");
+      }
+    }
+
+    if(count($results) < 3){
+      throw new InvalidArgumentException("Malformed nested where statement! A condition consists of at least 3 elements.");
+    }
+
+    // first result as default value
+    $returnValue = array_shift($results);
+
+    // use results array to get the return value of the conditions within the bracket
+    while(!empty($results)){
+      $operation = array_shift($results);
+      $nextResult = array_shift($results);
+
+      if(((count($results) % 2) !== 0)){
+        throw new InvalidArgumentException("Malformed nested where statement!");
       }
 
-      if($depthOperation === "and"){
-        $returnValue = $returnValue && $result;
+      if(!is_string($operation) || !in_array($operation, ["and", "or"])){
+        $operation = (!is_object($operation) && !is_array($operation)) ? $operation : gettype($operation);
+        throw new InvalidArgumentException("Expected 'and' or 'or' operator got \"$operation\"");
+      }
+
+      if($operation === "and"){
+        $returnValue = $returnValue && $nextResult;
       } else {
-        $returnValue = $returnValue || $result;
+        $returnValue = $returnValue || $nextResult;
       }
     }
 
     return $returnValue;
   }
 
+  /**
+   * @param array $data
+   * @param bool $storePassed
+   * @return bool
+   * @throws InvalidArgumentException
+   * @throws InvalidPropertyAccessException
+   */
   private function handleNestedWhere(array $data, bool $storePassed): bool
   {
     $nestedWhere = $this->getQueryBuilderProperty("nestedWhere");
 
+    if(empty($nestedWhere)){
+      return $storePassed;
+    }
+
+    // the outermost operation specify how the given conditions are connected with other conditions,
+    // like the ones that are specified using the where, orWhere, in or notIn methods
     $outerMostOperation = (array_keys($nestedWhere))[0];
     $nestedConditions = $nestedWhere[$outerMostOperation];
 
+    // specifying outermost is optional and defaults to "and"
     $outerMostOperation = (is_string($outerMostOperation)) ? strtolower($outerMostOperation) : "and";
     if($outerMostOperation === "or" && $storePassed === true){
       return true;
     }
 
-    $firstDepthOperation = (array_keys($nestedConditions))[0];
-
-    return $this->_nestedWhereHelper($firstDepthOperation, $nestedConditions[$firstDepthOperation], $data);
+    return $this->_nestedWhereHelper($nestedConditions, $data);
   }
 
   /**

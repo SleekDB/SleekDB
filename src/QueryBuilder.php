@@ -245,6 +245,7 @@ class QueryBuilder
   }
 
   /**
+   * Add a where statement that is nested. ( $x or ($y and $z) )
    * @param array $conditions
    * @return QueryBuilder
    * @throws InvalidArgumentException
