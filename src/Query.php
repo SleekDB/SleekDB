@@ -572,17 +572,34 @@ class Query
       throw new InvalidArgumentException("Malformed where statement! First part of the statement have to be a condition.");
     }
 
+    // used to prioritize the "and" operation.
+    $orResults = [];
+
     // use results array to get the return value of the conditions within the bracket
-    while(!empty($results)){
+    while(!empty($results) || !empty($orResults)){
+
+      if(empty($results)) {
+        // $orResults is not empty.
+        $nextResult = array_shift($orResults);
+        $returnValue = $returnValue || $nextResult;
+        // we need to check anymore, because the result of true || false is true
+        if($returnValue === true){
+          break;
+        }
+        continue;
+      }
+
       $operationOrNextResult = array_shift($results);
 
       if(is_string($operationOrNextResult)){
         $operation = $operationOrNextResult;
+
         if(empty($results)){
           throw new InvalidArgumentException("Malformed where statement! Last part of a condition can not be a operation.");
         }
         $nextResult = array_shift($results);
-        if(is_bool($nextResult) === false){
+
+        if(!is_bool($nextResult)){
           throw new InvalidArgumentException("Malformed where statement! Two operations in a row are not allowed.");
         }
       } else if(is_bool($operationOrNextResult)){
@@ -592,17 +609,20 @@ class Query
         throw new InvalidArgumentException("Malformed where statement! A where statement have to contain just operations and conditions.");
       }
 
-
       if(!in_array(strtolower($operation), ["and", "or"])){
         $operation = (!is_object($operation) && !is_array($operation)) ? $operation : gettype($operation);
         throw new InvalidArgumentException("Expected 'and' or 'or' operator got \"$operation\"");
       }
 
-      if(strtolower($operation) === "and"){
-        $returnValue = $returnValue && $nextResult;
-      } else {
-        $returnValue = $returnValue || $nextResult;
+      // prepare $orResults execute after all "and" are done.
+      if(strtolower($operation) === "or"){
+        $orResults[] = $returnValue;
+        $returnValue = $nextResult;
+        continue;
       }
+
+      $returnValue = $returnValue && $nextResult;
+
     }
 
     return $returnValue;
