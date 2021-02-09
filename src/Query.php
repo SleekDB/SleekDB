@@ -310,7 +310,8 @@ class Query
    */
   private function verifyWhereConditions(string $condition, $fieldValue, $value): bool
   {
-    switch (strtolower(trim($condition))){
+    $condition = strtolower(trim($condition));
+    switch ($condition){
       case "=":
         return ($fieldValue === $value);
       case "!=":
@@ -323,6 +324,7 @@ class Query
         return ($fieldValue < $value);
       case "<=":
         return ($fieldValue <= $value);
+      case "not like":
       case "like":
 
         // escape characters that are part of regular expression syntax
@@ -337,8 +339,17 @@ class Query
 
         $value = str_replace(array('%', '_'), array('.*', '.{1}'), $value); // (zero or more characters) and (single character)
         $pattern = "/^" . $value . "$/i";
-        return (preg_match($pattern, $fieldValue) === 1);
+        $result = (preg_match($pattern, $fieldValue) === 1);
+        return ($condition === "not like") ? !$result : $result;
 
+      case "not in":
+      case "in":
+        if(!is_array($value)){
+          $value = (!is_object($value) && !is_array($value) && !is_null($value)) ? $value : gettype($value);
+          throw new InvalidArgumentException("When using \"in\" and \"not in\" you have to check against an array. Got: $value");
+        }
+        $result = in_array($fieldValue, $value, true);
+        return ($condition === "not in") ? !$result : $result;
       default:
         throw new InvalidArgumentException("Condition \"$condition\" is not allowed.");
     }
@@ -359,11 +370,7 @@ class Query
     $this->_checkRead($storeDataPath);
 
     $conditions = $this->getQueryBuilderProperty("conditions");
-    $orConditions = $this->getQueryBuilderProperty("orConditions");
-    $in = $this->getQueryBuilderProperty("in");
-    $notIn = $this->getQueryBuilderProperty("notIn");
     $distinctFields = $this->getQueryBuilderProperty("distinctFields");
-
 
     if ($handle = opendir($storeDataPath)) {
 
@@ -393,61 +400,10 @@ class Query
 
         // Append only passed data from this store.
 
-        // IN clause.
-        if ($storePassed === true && !empty($in)) {
-          foreach ($in as $inClause) {
-            try {
-              $fieldValue = $this->getNestedProperty($inClause['fieldName'], $data);
-            } catch (Exception $e) {
-              $storePassed = false;
-              break;
-            }
-            if (!in_array($fieldValue, $inClause['value'])) {
-              $storePassed = false;
-              break;
-            }
-          }
-        }
-
-        // notIn clause.
-        if ($storePassed === true && !empty($notIn)) {
-          foreach ($notIn as $notInClause) {
-            try {
-              $fieldValue = $this->getNestedProperty($notInClause['fieldName'], $data);
-            } catch (Exception $e) {
-              break;
-            }
-            if (in_array($fieldValue, $notInClause['value'])) {
-              $storePassed = false;
-              break;
-            }
-          }
-        }
-
-        // Where conditions
-        if(!empty($conditions) && ($storePassed === true)) {
+        // Process conditions
+        if(!empty($conditions)) {
           // Iterate each conditions.
-          foreach ($conditions as $condition) {
-            // Check for valid data from data source.
-            $storePassed = $this->handleWhere($condition, $data);
-            if ($storePassed === false) {
-              break;
-            }
-          }
-        }
-
-        // OR WHERE conditions
-        if ($storePassed === false && !empty($orConditions)) {
-          // Check if one condition will allow this document.
-          foreach ($orConditions as $orCondition) { // () or ()
-            // Check if a all conditions will allow this document.
-            $storePassed = $this->handleWhere($orCondition, $data);
-
-            // one condition block was true, that means that we dont have to look into the other conditions
-            if($storePassed === true) {
-              break;
-            }
-          }
+          $storePassed = $this->handleConditions($conditions, $data);
         }
 
         // TODO remove nested where with version 3.0
@@ -531,7 +487,7 @@ class Query
    * @return bool
    * @throws InvalidArgumentException
    */
-  private function handleWhere(array $element, array &$data): bool
+  private function handleConditions(array $element, array &$data): bool
   {
     if(empty($element)){
       throw new InvalidArgumentException("Malformed where statement! Where statements can not contain empty arrays.");
@@ -556,11 +512,11 @@ class Query
     $results = [];
     foreach ($element as $value){
       if(is_array($value)){
-        $results[] = $this->handleWhere($value, $data);
+        $results[] = $this->handleConditions($value, $data);
       } else if (is_string($value)){
         $results[] = $value;
       } else {
-        $value = (!is_object($value) && !is_array($value)) ? $value : gettype($value);
+        $value = (!is_object($value) && !is_array($value) && !is_null($value)) ? $value : gettype($value);
         throw new InvalidArgumentException("Invalid nested where statement element! Expected condition or operation, got: \"$value\"");
       }
     }
@@ -579,13 +535,13 @@ class Query
     while(!empty($results) || !empty($orResults)){
 
       if(empty($results)) {
+        if($returnValue === true){
+          // we need to check anymore, because the result of true || false is true
+          break;
+        }
         // $orResults is not empty.
         $nextResult = array_shift($orResults);
         $returnValue = $returnValue || $nextResult;
-        // we need to check anymore, because the result of true || false is true
-        if($returnValue === true){
-          break;
-        }
         continue;
       }
 
@@ -610,7 +566,7 @@ class Query
       }
 
       if(!in_array(strtolower($operation), ["and", "or"])){
-        $operation = (!is_object($operation) && !is_array($operation)) ? $operation : gettype($operation);
+        $operation = (!is_object($operation) && !is_array($operation) && !is_null($operation)) ? $operation : gettype($operation);
         throw new InvalidArgumentException("Expected 'and' or 'or' operator got \"$operation\"");
       }
 
@@ -703,7 +659,7 @@ class Query
    * @return bool
    * @throws InvalidArgumentException
    * @throws InvalidPropertyAccessException
-   * @deprecated since version 2.3, use handleWhere instead.
+   * @deprecated since version 2.3, use handleConditions instead.
    */
   private function handleNestedWhere(array $data, bool $storePassed): bool
   {
