@@ -16,15 +16,12 @@ class QueryBuilder
    */
   protected $cache;
 
+  protected $conditions = [];
 
-  protected $in = [];
   protected $skip = 0;
-  protected $notIn = [];
   protected $limit = 0;
   protected $orderBy = [];
-  protected $conditions = [];
-  protected $orConditions = []; // two dimensional array. first dimension is "or" between each condition, second is "and".
-  protected $nestedWhere = [];
+  protected $nestedWhere = []; // TODO remove with version 3.0
   protected $searchKeyword = "";
 
   protected $fieldsToSelect = [];
@@ -133,10 +130,9 @@ class QueryBuilder
     if (empty($fieldName)) {
       throw new InvalidArgumentException('Field name for in clause can not be empty.');
     }
-    $this->in[] = [
-      'fieldName' => $fieldName,
-      'value'     => $values
-    ];
+
+    // Add to conditions with "AND" operation
+    $this->conditions[] = [$fieldName, "in", $values];
     return $this;
   }
 
@@ -152,10 +148,9 @@ class QueryBuilder
     if (empty($fieldName)) {
       throw new InvalidArgumentException('Field name for notIn clause can not be empty.');
     }
-    $this->notIn[] = [
-      'fieldName' => $fieldName,
-      'value'     => $values
-    ];
+
+    // Add to conditions with "AND" operation
+    $this->conditions[] = [$fieldName, "not in", $values];
     return $this;
   }
 
@@ -172,7 +167,8 @@ class QueryBuilder
       throw new InvalidArgumentException("You need to specify a where clause");
     }
 
-    $this->orConditions[] = $conditions;
+    $this->conditions[] = "or";
+    $this->conditions[] = $conditions;
 
     return $this;
   }
