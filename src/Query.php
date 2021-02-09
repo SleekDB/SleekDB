@@ -340,7 +340,7 @@ class Query
         return (preg_match($pattern, $fieldValue) === 1);
 
       default:
-        throw new InvalidArgumentException("Condition \"$condition\" is not allowed");
+        throw new InvalidArgumentException("Condition \"$condition\" is not allowed.");
     }
   }
 
@@ -393,53 +393,6 @@ class Query
 
         // Append only passed data from this store.
 
-        // Where conditions
-        if(!empty($conditions)) {
-          // Iterate each conditions.
-          foreach ($conditions as $condition) {
-            // Check for valid data from data source.
-            try {
-              $fieldValue = $this->getNestedProperty($condition['fieldName'], $data);
-            } catch (Exception $e) {
-              $storePassed = false;
-              break;
-            }
-            $storePassed = $this->verifyWhereConditions($condition['condition'], $fieldValue, $condition['value']);
-            if ($storePassed === false) {
-              break;
-            }
-          }
-        }
-
-        // where [] or ([] and [] and []) or ([] and [] and [])
-        // two dimensional array. first dimension is "or" between each condition, second is "and".
-        if ($storePassed === false && !empty($orConditions)) {
-          // Check if one condition will allow this document.
-          foreach ($orConditions as $conditionsWithAndBetween) { // () or ()
-            // Check if a all conditions will allow this document.
-            foreach ($conditionsWithAndBetween as $condition){ // () and ()
-              try {
-                $fieldValue = $this->getNestedProperty($condition['fieldName'], $data);
-              } catch (Exception $e) {
-                $storePassed = false;
-                break;
-              }
-              $storePassed = $this->verifyWhereConditions($condition['condition'], $fieldValue, $condition['value']);
-              if ($storePassed === true) {
-                continue;
-              }
-              break; // one where was false
-            }
-
-            // one condition block was true, that means that we dont have to look into the other conditions
-            if($storePassed === true) {
-              break;
-            }
-          }
-        }
-
-        $storePassed = $this->handleNestedWhere($data, $storePassed);
-
         // IN clause.
         if ($storePassed === true && !empty($in)) {
           foreach ($in as $inClause) {
@@ -470,6 +423,35 @@ class Query
             }
           }
         }
+
+        // Where conditions
+        if(!empty($conditions) && ($storePassed === true)) {
+          // Iterate each conditions.
+          foreach ($conditions as $condition) {
+            // Check for valid data from data source.
+            $storePassed = $this->handleWhere($condition, $data);
+            if ($storePassed === false) {
+              break;
+            }
+          }
+        }
+
+        // OR WHERE conditions
+        if ($storePassed === false && !empty($orConditions)) {
+          // Check if one condition will allow this document.
+          foreach ($orConditions as $orCondition) { // () or ()
+            // Check if a all conditions will allow this document.
+            $storePassed = $this->handleWhere($orCondition, $data);
+
+            // one condition block was true, that means that we dont have to look into the other conditions
+            if($storePassed === true) {
+              break;
+            }
+          }
+        }
+
+        // TODO remove nested where with version 3.0
+        $storePassed = $this->handleNestedWhere($data, $storePassed);
 
         // Distinct data check.
         if ($storePassed === true && count($distinctFields) > 0) {
@@ -544,14 +526,98 @@ class Query
   }
 
   /**
-   * @param array $element
+   * @param array $element condition or operation
    * @param array $data
    * @return bool
    * @throws InvalidArgumentException
    */
+  private function handleWhere(array $element, array &$data): bool
+  {
+    if(empty($element)){
+      throw new InvalidArgumentException("Malformed where statement! Where statements can not contain empty arrays.");
+    }
+    if(array_keys($element) !== range(0, (count($element) - 1))){
+      throw new InvalidArgumentException("Malformed where statement! Associative arrays are not allowed.");
+    }
+    // element is a where condition
+    if(is_string($element[0]) && is_string($element[1])){
+      if(count($element) !== 3){
+        throw new InvalidArgumentException("Where conditions have to be [fieldName, condition, value]");
+      }
+
+      $fieldValue = $this->getNestedProperty($element[0], $data);
+
+      return $this->verifyWhereConditions($element[1], $fieldValue, $element[2]);
+    }
+
+    // element is an array "brackets"
+
+    // prepare results array - example: [true, "and", false]
+    $results = [];
+    foreach ($element as $value){
+      if(is_array($value)){
+        $results[] = $this->handleWhere($value, $data);
+      } else if (is_string($value)){
+        $results[] = $value;
+      } else {
+        $value = (!is_object($value) && !is_array($value)) ? $value : gettype($value);
+        throw new InvalidArgumentException("Invalid nested where statement element! Expected condition or operation, got: \"$value\"");
+      }
+    }
+
+    // first result as default value
+    $returnValue = array_shift($results);
+
+    if(is_bool($returnValue) === false){
+      throw new InvalidArgumentException("Malformed where statement! First part of the statement have to be a condition.");
+    }
+
+    // use results array to get the return value of the conditions within the bracket
+    while(!empty($results)){
+      $operationOrNextResult = array_shift($results);
+
+      if(is_string($operationOrNextResult)){
+        $operation = $operationOrNextResult;
+        if(empty($results)){
+          throw new InvalidArgumentException("Malformed where statement! Last part of a condition can not be a operation.");
+        }
+        $nextResult = array_shift($results);
+        if(is_bool($nextResult) === false){
+          throw new InvalidArgumentException("Malformed where statement! Two operations in a row are not allowed.");
+        }
+      } else if(is_bool($operationOrNextResult)){
+        $operation = "AND";
+        $nextResult = $operationOrNextResult;
+      } else {
+        throw new InvalidArgumentException("Malformed where statement! A where statement have to contain just operations and conditions.");
+      }
+
+
+      if(!in_array(strtolower($operation), ["and", "or"])){
+        $operation = (!is_object($operation) && !is_array($operation)) ? $operation : gettype($operation);
+        throw new InvalidArgumentException("Expected 'and' or 'or' operator got \"$operation\"");
+      }
+
+      if(strtolower($operation) === "and"){
+        $returnValue = $returnValue && $nextResult;
+      } else {
+        $returnValue = $returnValue || $nextResult;
+      }
+    }
+
+    return $returnValue;
+  }
+
+  /**
+   * @param array $element
+   * @param array $data
+   * @return bool
+   * @throws InvalidArgumentException
+   * @deprecated since version 2.3. use _handleWhere instead
+   */
   private function _nestedWhereHelper(array $element, array &$data): bool
   {
-
+    // TODO remove nested where with v3.0
     // element is a where condition
     if(array_keys($element) === range(0, (count($element) - 1)) && is_string($element[0])){
       if(count($element) !== 3){
@@ -609,15 +675,19 @@ class Query
     return $returnValue;
   }
 
+
+
   /**
    * @param array $data
    * @param bool $storePassed
    * @return bool
    * @throws InvalidArgumentException
    * @throws InvalidPropertyAccessException
+   * @deprecated since version 2.3, use handleWhere instead.
    */
   private function handleNestedWhere(array $data, bool $storePassed): bool
   {
+    // TODO remove nested where with v3.0
     $nestedWhere = $this->getQueryBuilderProperty("nestedWhere");
 
     if(empty($nestedWhere)){
