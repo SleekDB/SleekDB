@@ -124,6 +124,7 @@ class QueryBuilder
    * @param array $values
    * @return QueryBuilder
    * @throws InvalidArgumentException
+   * @deprecated since version 2.4, use where and orWhere instead.
    */
   public function in(string $fieldName, array $values = []): QueryBuilder
   {
@@ -142,6 +143,7 @@ class QueryBuilder
    * @param array $values
    * @return QueryBuilder
    * @throws InvalidArgumentException
+   * @deprecated since version 2.4, use where and orWhere instead.
    */
   public function notIn(string $fieldName, array $values = []): QueryBuilder
   {
