@@ -16,15 +16,12 @@ class QueryBuilder
    */
   protected $cache;
 
+  protected $conditions = [];
 
-  protected $in = [];
   protected $skip = 0;
-  protected $notIn = [];
   protected $limit = 0;
   protected $orderBy = [];
-  protected $conditions = [];
-  protected $orConditions = []; // two dimensional array. first dimension is "or" between each condition, second is "and".
-  protected $nestedWhere = [];
+  protected $nestedWhere = []; // TODO remove with version 3.0
   protected $searchKeyword = "";
 
   protected $fieldsToSelect = [];
@@ -105,37 +102,6 @@ class QueryBuilder
   }
 
   /**
-   * Validates condition and returns a correctly formatted associative array
-   * @param $condition
-   * @return array
-   * @throws InvalidArgumentException
-   */
-  private function validateCondition($condition): array
-  {
-    if(!array_key_exists(0, $condition) || !array_key_exists(1, $condition)
-      || !array_key_exists(2, $condition) || count($condition) !== 3){
-      throw new InvalidArgumentException("Invalid condition structure.");
-    }
-
-    $fieldName = $condition[0];
-    $whereCondition = trim($condition[1]);
-    $value = $condition[2];
-
-    if (!is_string($fieldName) || $fieldName === "") {
-      throw new InvalidArgumentException("fieldName has to be a string and can not be empty");
-    }
-    if (!is_string($whereCondition) || $whereCondition === "") {
-      throw new InvalidArgumentException("condition has to be a string and can not be empty");
-    }
-
-    return [
-      "fieldName" => $fieldName,
-      "condition" => $whereCondition,
-      "value" => $value
-    ];
-  }
-
-  /**
    * Add conditions to filter data.
    * @param array $conditions
    * @return QueryBuilder
@@ -147,22 +113,7 @@ class QueryBuilder
       throw new InvalidArgumentException("You need to specify a where clause");
     }
 
-    $justOneCondition = false; // the user provided one where condition
-
-    foreach ($conditions as $condition) {
-
-      if (!is_array($condition)) {
-        // the user provided just one where clause
-        $condition = $conditions;
-        $justOneCondition = true;
-      }
-
-      $this->conditions[] = $this->validateCondition($condition);
-
-      if($justOneCondition === true) {
-        break;
-      }
-    }
+    $this->conditions[] = $conditions;
 
     return $this;
   }
@@ -179,10 +130,9 @@ class QueryBuilder
     if (empty($fieldName)) {
       throw new InvalidArgumentException('Field name for in clause can not be empty.');
     }
-    $this->in[] = [
-      'fieldName' => $fieldName,
-      'value'     => $values
-    ];
+
+    // Add to conditions with "AND" operation
+    $this->conditions[] = [$fieldName, "in", $values];
     return $this;
   }
 
@@ -198,10 +148,9 @@ class QueryBuilder
     if (empty($fieldName)) {
       throw new InvalidArgumentException('Field name for notIn clause can not be empty.');
     }
-    $this->notIn[] = [
-      'fieldName' => $fieldName,
-      'value'     => $values
-    ];
+
+    // Add to conditions with "AND" operation
+    $this->conditions[] = [$fieldName, "not in", $values];
     return $this;
   }
 
@@ -218,28 +167,8 @@ class QueryBuilder
       throw new InvalidArgumentException("You need to specify a where clause");
     }
 
-    $orConditionsWithAnd = [];
-
-    $justOneCondition = false; // the user provided one where condition
-
-    foreach ($conditions as $condition) {
-
-      // the user provided just one where clause
-      if (!is_array($condition)) {
-        $condition = $conditions;
-        $justOneCondition = true;
-      }
-
-      $orConditionsWithAnd[] = $this->validateCondition($condition);
-
-      if($justOneCondition === true) {
-        break;
-      }
-    }
-
-    if(!empty($orConditionsWithAnd)){
-      $this->orConditions[] = $orConditionsWithAnd;
-    }
+    $this->conditions[] = "or";
+    $this->conditions[] = $conditions;
 
     return $this;
   }
@@ -249,6 +178,7 @@ class QueryBuilder
    * @param array $conditions
    * @return QueryBuilder
    * @throws InvalidArgumentException
+   * @deprecated since version 2.3, use where or orWhere instead.
    */
   public function nestedWhere(array $conditions): QueryBuilder
   {

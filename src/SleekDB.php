@@ -579,6 +579,7 @@ class SleekDB
    * @param array $conditions
    * @return $this
    * @throws InvalidArgumentException
+   * @deprecated since version 2.3, use where and orWhere instead.
    */
   public function nestedWhere(array $conditions): SleekDB
   {
