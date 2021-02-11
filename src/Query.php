@@ -310,6 +310,35 @@ class Query
    */
   private function verifyWhereConditions(string $condition, $fieldValue, $value): bool
   {
+
+    if($value instanceof \DateTime){
+
+      // compare timestamps
+
+      // null, false or an empty string will convert to current date and time.
+      // That is not what we want.
+      if(empty($fieldValue)){
+        return false;
+      }
+
+      $fieldValue = (is_string($fieldValue)) ? trim($fieldValue) : $fieldValue;
+
+      $value = $value->getTimestamp();
+
+      try{
+        $fieldValue = (new \DateTime($fieldValue))->getTimestamp();
+      } catch (Exception $exception){
+        $fieldValue = (!is_object($fieldValue) && !is_array($fieldValue))
+          ? $fieldValue
+          : gettype($fieldValue);
+        throw new InvalidArgumentException(
+          "DateTime object given as value to check against. "
+          . "Could not convert value of field stored in the database into DateTime. "
+          . "Value of field: $fieldValue"
+        );
+      }
+    }
+
     $condition = strtolower(trim($condition));
     switch ($condition){
       case "=":
@@ -327,13 +356,17 @@ class Query
       case "not like":
       case "like":
 
+        if(!is_string($value)){
+          throw new InvalidArgumentException("When using \"LIKE\" or \"NOT LIKE\" the value has to be a string.");
+        }
+
         // escape characters that are part of regular expression syntax
         // https://www.php.net/manual/en/function.preg-quote.php
         // We can not use preg_quote because the following characters are also wildcard characters in sql
         // so we will not escape them: [ ^ ] -
         $charactersToEscape = [".", "\\", "+", "*", "?", "$", "(", ")", "{", "}", "=", "!", "<", ">", "|", ":",  "#"];
         foreach ($charactersToEscape as $characterToEscape){
-          $value = str_replace($characterToEscape, "\\".$characterToEscape, $value); // zero or more characters
+          $value = str_replace($characterToEscape, "\\".$characterToEscape, $value);
         }
 
 
@@ -348,8 +381,63 @@ class Query
           $value = (!is_object($value) && !is_array($value) && !is_null($value)) ? $value : gettype($value);
           throw new InvalidArgumentException("When using \"in\" and \"not in\" you have to check against an array. Got: $value");
         }
+        if(!empty($value)){
+          (list($firstElement) = $value);
+          if($firstElement instanceof \DateTime){
+            // if the user wants to use DateTime, every element of the array has to be an DateTime object.
+
+            // compare timestamps
+
+            // null, false or an empty string will convert to current date and time.
+            // That is not what we want.
+            if(empty($fieldValue)){
+              return false;
+            }
+
+            $fieldValue = (is_string($fieldValue)) ? trim($fieldValue) : $fieldValue;
+
+            foreach ($value as $key => $item){
+              if(!($item instanceof \DateTime)){
+                throw new InvalidArgumentException("If one DateTime object is given in an \"IN\" or \"NOT IN\" comparison, every element has to be a DateTime object!");
+              }
+              $value[$key] = $item->getTimestamp();
+            }
+
+            try{
+              $fieldValue = (new \DateTime($fieldValue))->getTimestamp();
+            } catch (Exception $exception){
+              $fieldValue = (!is_object($fieldValue) && !is_array($fieldValue))
+                ? $fieldValue
+                : gettype($fieldValue);
+              throw new InvalidArgumentException(
+                "DateTime object given as value to check against. "
+                . "Could not convert value of field stored in the database into DateTime. "
+                . "Value of field: $fieldValue"
+              );
+            }
+          }
+        }
         $result = in_array($fieldValue, $value, true);
         return ($condition === "not in") ? !$result : $result;
+      case "not between":
+      case "between":
+
+        if(!is_array($value) || ($valueLength = count($value)) !== 2){
+          $value = (!is_object($value) && !is_array($value) && !is_null($value)) ? $value : gettype($value);
+          if(isset($valueLength)){
+            $value .= " | Length: $valueLength";
+          }
+          throw new InvalidArgumentException("When using \"between\" you have to check against an array with a length of 2. Got: $value");
+        }
+
+        list($startValue, $endValue) = $value;
+
+        $result = (
+          $this->verifyWhereConditions(">=", $fieldValue, $startValue)
+          && $this->verifyWhereConditions("<=", $fieldValue, $endValue)
+        );
+
+        return ($condition === "not between") ? !$result : $result;
       default:
         throw new InvalidArgumentException("Condition \"$condition\" is not allowed.");
     }
