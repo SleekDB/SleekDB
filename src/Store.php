@@ -217,7 +217,7 @@ class Store
    */
   private function writeInStore(array $storeData): array
   {
-    $primaryKey = $this->primaryKey;
+    $primaryKey = $this->getPrimaryKey();
     // Check if it has the primary key
     if (isset($storeData[$primaryKey])) {
       throw new IdNotAllowedException(
@@ -533,7 +533,7 @@ class Store
    */
   public function update(array $updatable): bool
   {
-    $primaryKey = $this->primaryKey;
+    $primaryKey = $this->getPrimaryKey();
 
     if(empty($updatable)) {
       throw new InvalidArgumentException("No documents to update.");
@@ -604,7 +604,7 @@ class Store
   {
     $filePath = $this->getStorePath() . "data/$id.json";
 
-    $primaryKey = $this->primaryKey;
+    $primaryKey = $this->getPrimaryKey();
 
     if(array_key_exists($primaryKey, $updatable)) {
       throw new InvalidArgumentException("You can not update the primary key \"$primaryKey\" of documents.");
