@@ -527,9 +527,8 @@ class Store
 
     $multipleDocuments = array_keys($updatable) === range(0, (count($updatable) - 1));
 
-    // multiple documents to update
-    foreach ($updatable as $document)
-    {
+    // Check if all documents exist before updating any
+    foreach ($updatable as $document){
       if($multipleDocuments === false){
         $document = $updatable;
       }
@@ -540,13 +539,27 @@ class Store
       if(!array_key_exists($primaryKey, $document)) {
         throw new InvalidArgumentException("Documents have to have \"$primaryKey\".");
       }
-
       $id = $document[$primaryKey];
       $storePath = $this->getStorePath() . "data/$id.json";
 
       if (!file_exists($storePath)) {
         return false;
       }
+
+      if($multipleDocuments === false) {
+        break;
+      }
+    }
+
+    // One or multiple documents to update
+    foreach ($updatable as $document)
+    {
+      if($multipleDocuments === false){
+        $document = $updatable;
+      }
+
+      $id = $document[$primaryKey];
+      $storePath = $this->getStorePath() . "data/$id.json";
 
       // Wait until it's unlocked, then update data.
       $this->_checkWrite($storePath);
