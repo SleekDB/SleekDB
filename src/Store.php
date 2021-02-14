@@ -81,8 +81,11 @@ class Store
    * @throws InvalidArgumentException
    * @throws InvalidConfigurationException
    */
-  public function changeStore(string $storeName, string $dataDir, array $configuration = [])
+  public function changeStore(string $storeName, string $dataDir = null, array $configuration = [])
   {
+    if(empty($dataDir)){
+      $dataDir = $this->getDataDirectory();
+    }
     $this->__construct($storeName, $dataDir, $configuration);
   }
 
