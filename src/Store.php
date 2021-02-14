@@ -561,8 +561,8 @@ class Store
       $id = $document[$primaryKey];
       $storePath = $this->getStorePath() . "data/$id.json";
 
-      // Wait until it's unlocked, then update data.
       $this->_checkWrite($storePath);
+      // Wait until it's unlocked, then update data.
       if(file_put_contents($storePath, json_encode($document), LOCK_EX) === false){
         throw new IOException("Could not update document with $primaryKey \"$id\". Please check permissions at: $storePath");
       }
@@ -575,6 +575,69 @@ class Store
     $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
 
     return true;
+  }
+
+  /**
+   * @param int $id
+   * @param array $updatable
+   * @return bool|array
+   */
+  /**
+   * @param int $id
+   * @param array $updatable
+   * @return array|false Updated document or false if document does not exist.
+   * @throws IOException If document could not be read or written.
+   * @throws InvalidArgumentException If one key to update is primary key.
+   * @throws JsonException If content of document file could not be decoded.
+   */
+  public function updateById(int $id, array $updatable)
+  {
+    $filePath = $this->getStorePath() . "data/$id.json";
+
+    $primaryKey = $this->primaryKey;
+
+    if(array_key_exists($primaryKey, $updatable)) {
+      throw new InvalidArgumentException("You can not update the primary key \"$primaryKey\" of documents.");
+    }
+
+    if(!file_exists($filePath)){
+      return false;
+    }
+
+    $this->_checkRead($filePath);
+
+    // retrieve file content
+    $content = false;
+    $fp = fopen($filePath, 'rb');
+    if(flock($fp, LOCK_SH)){
+      $content = stream_get_contents($fp);
+    }
+    flock($fp, LOCK_UN);
+    fclose($fp);
+
+    if($content === false) {
+      throw new IOException("Could not get content of document to update with $primaryKey \"$id\". Please check permissions at: $filePath");
+    }
+
+    $content = @json_decode($content, true);
+
+    if(!is_array($content)){
+      throw new JsonException("Could not decode content of \"$filePath\" with json_decode.");
+    }
+
+    foreach ($updatable as $key => $value){
+      $content[$key] = $value;
+    }
+
+    $this->_checkWrite($filePath);
+    // Wait until it's unlocked, then update data.
+    if(file_put_contents($filePath, json_encode($content), LOCK_EX) === false){
+      throw new IOException("Could not update document with $primaryKey \"$id\". Please check permissions at: $filePath");
+    }
+
+    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
+
+    return $content;
   }
 
   /**
