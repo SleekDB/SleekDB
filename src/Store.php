@@ -37,6 +37,7 @@ class Store
   protected $useCache = true;
   protected $defaultCacheLifetime;
   protected $primaryKey = "_id";
+  protected $timeout = 120;
 
   /**
    * Store constructor.
@@ -126,14 +127,13 @@ class Store
     }
 
     // Set timeout.
-    $timeout = 120;
     if (array_key_exists("timeout", $configuration)) {
       if (!is_int($configuration['timeout']) || $configuration['timeout'] <= 0){
         throw new InvalidConfigurationException("timeout has to an int > 0");
       }
-      $timeout = $configuration["timeout"];
+      $this->timeout = $configuration["timeout"];
     }
-    set_time_limit($timeout);
+    set_time_limit($this->timeout);
 
     if(array_key_exists("primary_key", $configuration)){
       $primaryKey = $configuration["primary_key"];
