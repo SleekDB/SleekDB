@@ -75,7 +75,7 @@ class Store
   /**
    * Change the destination of the store object.
    * @param string $storeName
-   * @param string $dataDir
+   * @param string|null $dataDir If dataDir is empty, previous database directory path will be used.
    * @param array $configuration
    * @throws IOException
    * @throws InvalidArgumentException
