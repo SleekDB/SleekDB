@@ -72,6 +72,20 @@ class Store
   }
 
   /**
+   * Change the destination of the store object.
+   * @param $storeName
+   * @param $dataDir
+   * @param array $configuration
+   * @throws IOException
+   * @throws InvalidArgumentException
+   * @throws InvalidConfigurationException
+   */
+  public function changeStore($storeName, $dataDir, $configuration = [])
+  {
+    $this->__construct($storeName, $dataDir, $configuration);
+  }
+
+  /**
    * @return string
    */
   public function getStoreName(): string
