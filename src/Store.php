@@ -592,11 +592,7 @@ class Store
   }
 
   /**
-   * @param int $id
-   * @param array $updatable
-   * @return bool|array
-   */
-  /**
+   * Update properties of one document.
    * @param int $id
    * @param array $updatable
    * @return array|false Updated document or false if document does not exist.
