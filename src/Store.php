@@ -37,6 +37,7 @@ class Store
   protected $useCache = true;
   protected $defaultCacheLifetime;
   protected $primaryKey = "_id";
+  protected $timeout = 120;
 
   /**
    * Store constructor.
@@ -69,6 +70,23 @@ class Store
     // boot store
     $this->createDataDirectory();
     $this->createStore();
+  }
+
+  /**
+   * Change the destination of the store object.
+   * @param string $storeName
+   * @param string|null $dataDir If dataDir is empty, previous database directory path will be used.
+   * @param array $configuration
+   * @throws IOException
+   * @throws InvalidArgumentException
+   * @throws InvalidConfigurationException
+   */
+  public function changeStore(string $storeName, string $dataDir = null, array $configuration = [])
+  {
+    if(empty($dataDir)){
+      $dataDir = $this->getDataDirectory();
+    }
+    $this->__construct($storeName, $dataDir, $configuration);
   }
 
   /**
@@ -112,14 +130,13 @@ class Store
     }
 
     // Set timeout.
-    $timeout = 120;
     if (array_key_exists("timeout", $configuration)) {
       if (!is_int($configuration['timeout']) || $configuration['timeout'] <= 0){
         throw new InvalidConfigurationException("timeout has to an int > 0");
       }
-      $timeout = $configuration["timeout"];
+      $this->timeout = $configuration["timeout"];
     }
-    set_time_limit($timeout);
+    set_time_limit($this->timeout);
 
     if(array_key_exists("primary_key", $configuration)){
       $primaryKey = $configuration["primary_key"];
@@ -203,7 +220,7 @@ class Store
    */
   private function writeInStore(array $storeData): array
   {
-    $primaryKey = $this->primaryKey;
+    $primaryKey = $this->getPrimaryKey();
     // Check if it has the primary key
     if (isset($storeData[$primaryKey])) {
       throw new IdNotAllowedException(
@@ -519,7 +536,7 @@ class Store
    */
   public function update(array $updatable): bool
   {
-    $primaryKey = $this->primaryKey;
+    $primaryKey = $this->getPrimaryKey();
 
     if(empty($updatable)) {
       throw new InvalidArgumentException("No documents to update.");
@@ -527,9 +544,8 @@ class Store
 
     $multipleDocuments = array_keys($updatable) === range(0, (count($updatable) - 1));
 
-    // multiple documents to update
-    foreach ($updatable as $document)
-    {
+    // Check if all documents exist before updating any
+    foreach ($updatable as $document){
       if($multipleDocuments === false){
         $document = $updatable;
       }
@@ -540,7 +556,6 @@ class Store
       if(!array_key_exists($primaryKey, $document)) {
         throw new InvalidArgumentException("Documents have to have \"$primaryKey\".");
       }
-
       $id = $document[$primaryKey];
       $storePath = $this->getStorePath() . "data/$id.json";
 
@@ -548,8 +563,23 @@ class Store
         return false;
       }
 
-      // Wait until it's unlocked, then update data.
+      if($multipleDocuments === false) {
+        break;
+      }
+    }
+
+    // One or multiple documents to update
+    foreach ($updatable as $document)
+    {
+      if($multipleDocuments === false){
+        $document = $updatable;
+      }
+
+      $id = $document[$primaryKey];
+      $storePath = $this->getStorePath() . "data/$id.json";
+
       $this->_checkWrite($storePath);
+      // Wait until it's unlocked, then update data.
       if(file_put_contents($storePath, json_encode($document), LOCK_EX) === false){
         throw new IOException("Could not update document with $primaryKey \"$id\". Please check permissions at: $storePath");
       }
@@ -562,6 +592,65 @@ class Store
     $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
 
     return true;
+  }
+
+  /**
+   * Update properties of one document.
+   * @param int $id
+   * @param array $updatable
+   * @return array|false Updated document or false if document does not exist.
+   * @throws IOException If document could not be read or written.
+   * @throws InvalidArgumentException If one key to update is primary key.
+   * @throws JsonException If content of document file could not be decoded.
+   */
+  public function updateById(int $id, array $updatable)
+  {
+    $filePath = $this->getStorePath() . "data/$id.json";
+
+    $primaryKey = $this->getPrimaryKey();
+
+    if(array_key_exists($primaryKey, $updatable)) {
+      throw new InvalidArgumentException("You can not update the primary key \"$primaryKey\" of documents.");
+    }
+
+    if(!file_exists($filePath)){
+      return false;
+    }
+
+    $this->_checkRead($filePath);
+
+    // retrieve file content
+    $content = false;
+    $fp = fopen($filePath, 'rb');
+    if(flock($fp, LOCK_SH)){
+      $content = stream_get_contents($fp);
+    }
+    flock($fp, LOCK_UN);
+    fclose($fp);
+
+    if($content === false) {
+      throw new IOException("Could not get content of document to update with $primaryKey \"$id\". Please check permissions at: $filePath");
+    }
+
+    $content = @json_decode($content, true);
+
+    if(!is_array($content)){
+      throw new JsonException("Could not decode content of \"$filePath\" with json_decode.");
+    }
+
+    foreach ($updatable as $key => $value){
+      $content[$key] = $value;
+    }
+
+    $this->_checkWrite($filePath);
+    // Wait until it's unlocked, then update data.
+    if(file_put_contents($filePath, json_encode($content), LOCK_EX) === false){
+      throw new IOException("Could not update document with $primaryKey \"$id\". Please check permissions at: $filePath");
+    }
+
+    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
+
+    return $content;
   }
 
   /**
