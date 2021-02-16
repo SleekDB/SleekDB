@@ -321,8 +321,7 @@ class Store
     }
 
     $counter = self::updateFileContent($counterPath, function ($counter){
-      $counter = (int) $counter;
-      return $counter++;
+      return ((int) $counter) + 1;
     });
 
     return $counter;
