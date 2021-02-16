@@ -7,9 +7,12 @@ use SleekDB\Exceptions\InvalidPropertyAccessException;
 use SleekDB\Exceptions\IOException;
 use Exception;
 use Throwable;
+use SleekDB\Traits\IoHelperTrait;
 
 class Query
 {
+
+  use IoHelperTrait;
 
   protected $storePath;
 
@@ -28,6 +31,8 @@ class Query
   const DELETE_RETURN_COUNT = 1;
 
   protected $primaryKey;
+
+  protected $retrieveOneDocument;
 
   /**
    * Query constructor.
@@ -68,21 +73,8 @@ class Query
    */
   public function fetch(): array
   {
-    $this->updateCacheTokenArray(['oneDocument' => false]);
-
-    $results = $this->getCacheContent();
-
-    if($results !== null) {
-      return $results;
-    }
-
-    $results = $this->findStoreDocuments();
-
-    $this->joinData($results);
-
-    $this->setCacheContent($results);
-
-    return $results;
+    $this->setRetrieveOneDocument(false);
+    return $this->getResults();
   }
 
   /**
@@ -107,18 +99,28 @@ class Query
    */
   public function first(): array
   {
-    $this->updateCacheTokenArray(['oneDocument' => true]);
+    $this->setRetrieveOneDocument(true);
+    return $this->getResults();
+  }
 
+  /**
+   * @return array
+   * @throws IOException
+   * @throws InvalidArgumentException
+   * @throws InvalidPropertyAccessException
+   */
+  private function getResults(): array
+  {
     $results = $this->getCacheContent();
     if($results !== null) {
       return $results;
     }
 
-    $results = $this->findStoreDocuments(true);
+    $results = $this->findStoreDocuments();
 
     $this->joinData($results);
 
-    if (count($results) > 0) {
+    if ($this->retrieveOneDocument === true && count($results) > 0) {
       list($item) = $results;
       $results = $item;
     }
@@ -138,27 +140,30 @@ class Query
    */
   public function update(array $updatable): bool
   {
+    $this->setRetrieveOneDocument(false);
     $results = $this->findStoreDocuments();
+
+    $primaryKey = $this->primaryKey;
+
     // If no documents found return false.
     if (empty($results)) {
       return false;
     }
-
-    $primaryKey = $this->primaryKey;
-
     foreach ($results as $data) {
+      $filePath = $this->_getStoreDataPath() . $data[$primaryKey] . '.json';
+      if(!file_exists($filePath)){
+        return false;
+      }
+    }
+    foreach ($results as $data){
+      $filePath = $this->_getStoreDataPath() . $data[$primaryKey] . '.json';
       foreach ($updatable as $key => $value) {
         // Do not update the primary key reserved index of a store.
         if ($key !== $primaryKey) {
           $data[$key] = $value;
         }
       }
-      $storePath = $this->_getStoreDataPath() . $data[$primaryKey] . '.json';
-      if (file_exists($storePath)) {
-        // Wait until it's unlocked, then update data.
-        $this->_checkWrite($storePath);
-        file_put_contents($storePath, json_encode($data), LOCK_EX);
-      }
+      self::writeContentToFile($filePath, json_encode($data));
     }
     $this->cache->deleteAllWithNoLifetime();
     return true;
@@ -174,8 +179,8 @@ class Query
    */
   public function delete(int $returnOption = self::DELETE_RETURN_BOOL)
   {
+    $this->setRetrieveOneDocument(false);
     $results = $this->findStoreDocuments();
-    $returnValue = null;
 
     $primaryKey = $this->primaryKey;
 
@@ -190,25 +195,24 @@ class Query
         $returnValue = $results;
         break;
       default:
-        throw new InvalidArgumentException("return option \"$returnOption\" is not supported");
+        throw new InvalidArgumentException("Return option \"$returnOption\" is not supported");
     }
 
-    if (!empty($results)) {
-      foreach ($results as $key => $data) {
-        $filePath = $this->_getStoreDataPath() . $data[$primaryKey] . '.json';
-        if (file_exists($filePath) && false === @unlink($filePath)) {
-          throw new IOException(
-            'Unable to delete document! 
+    if (empty($results)) {
+      return $returnValue;
+    }
+
+    foreach ($results as $key => $data) {
+      $filePath = $this->_getStoreDataPath() . $data[$primaryKey] . '.json';
+      if(false === self::deleteFile($filePath)){
+        throw new IOException(
+          'Unable to delete document! 
             Already deleted documents: '.$key.'. 
             Location: "' . $filePath .'"'
-          );
-        }
+        );
       }
     }
-
-
-    $this->cache->deleteAllWithNoLifetime();
-
+    $this->getCache()->deleteAllWithNoLifetime();
     return $returnValue;
   }
 
@@ -236,15 +240,10 @@ class Query
     $regenerateCache = $this->getQueryBuilderProperty("regenerateCache");
 
     if($useCache === true){
-      $cache = $this->getCache();
-
-
       if($regenerateCache === true) {
-        $cache->delete();
+        $this->getCache()->delete();
       }
-
-      $cacheResults = $cache->get();
-
+      $cacheResults = $this->getCache()->get();
       if(is_array($cacheResults)) {
         return $cacheResults;
       }
@@ -262,8 +261,7 @@ class Query
   {
     $useCache = $this->getQueryBuilderProperty("useCache");
     if($useCache === true){
-      $cache = $this->getCache();
-      $cache->set($results);
+      $this->getCache()->set($results);
     }
   }
 
@@ -292,12 +290,30 @@ class Query
           throw new InvalidArgumentException("Invalid join query.");
         }
 
-        // TODO discuss if that is a good idea -> would be inconsistent
-        //  if(count($joinResult) === 1) $joinResult = $joinResult[0];
-
         // Add child documents with the current document.
         $results[$key][$dataPropertyName] = $joinResult;
       }
+    }
+  }
+
+  /**
+   * @param $value
+   * @return int
+   * @throws InvalidArgumentException
+   */
+  private static function convertValueToTimeStamp($value){
+    $value = (is_string($value)) ? trim($value) : $value;
+    try{
+      return (new \DateTime($value))->getTimestamp();
+    } catch (Exception $exception){
+      $value = (!is_object($value) && !is_array($value))
+        ? $value
+        : gettype($value);
+      throw new InvalidArgumentException(
+        "DateTime object given as value to check against. "
+        . "Could not convert value of field stored in the database into DateTime. "
+        . "Value of field: $value"
+      );
     }
   }
 
@@ -312,7 +328,6 @@ class Query
   {
 
     if($value instanceof \DateTime){
-
       // compare timestamps
 
       // null, false or an empty string will convert to current date and time.
@@ -320,23 +335,8 @@ class Query
       if(empty($fieldValue)){
         return false;
       }
-
-      $fieldValue = (is_string($fieldValue)) ? trim($fieldValue) : $fieldValue;
-
       $value = $value->getTimestamp();
-
-      try{
-        $fieldValue = (new \DateTime($fieldValue))->getTimestamp();
-      } catch (Exception $exception){
-        $fieldValue = (!is_object($fieldValue) && !is_array($fieldValue))
-          ? $fieldValue
-          : gettype($fieldValue);
-        throw new InvalidArgumentException(
-          "DateTime object given as value to check against. "
-          . "Could not convert value of field stored in the database into DateTime. "
-          . "Value of field: $fieldValue"
-        );
-      }
+      $fieldValue = self::convertValueToTimeStamp($fieldValue);
     }
 
     $condition = strtolower(trim($condition));
@@ -369,7 +369,6 @@ class Query
           $value = str_replace($characterToEscape, "\\".$characterToEscape, $value);
         }
 
-
         $value = str_replace(array('%', '_'), array('.*', '.{1}'), $value); // (zero or more characters) and (single character)
         $pattern = "/^" . $value . "$/i";
         $result = (preg_match($pattern, $fieldValue) === 1);
@@ -394,8 +393,6 @@ class Query
               return false;
             }
 
-            $fieldValue = (is_string($fieldValue)) ? trim($fieldValue) : $fieldValue;
-
             foreach ($value as $key => $item){
               if(!($item instanceof \DateTime)){
                 throw new InvalidArgumentException("If one DateTime object is given in an \"IN\" or \"NOT IN\" comparison, every element has to be a DateTime object!");
@@ -403,18 +400,7 @@ class Query
               $value[$key] = $item->getTimestamp();
             }
 
-            try{
-              $fieldValue = (new \DateTime($fieldValue))->getTimestamp();
-            } catch (Exception $exception){
-              $fieldValue = (!is_object($fieldValue) && !is_array($fieldValue))
-                ? $fieldValue
-                : gettype($fieldValue);
-              throw new InvalidArgumentException(
-                "DateTime object given as value to check against. "
-                . "Could not convert value of field stored in the database into DateTime. "
-                . "Value of field: $fieldValue"
-              );
-            }
+            $fieldValue = self::convertValueToTimeStamp($fieldValue);
           }
         }
         $result = in_array($fieldValue, $value, true);
@@ -450,12 +436,13 @@ class Query
    * @throws InvalidPropertyAccessException
    * @throws IOException
    */
-  private function findStoreDocuments(bool $getOneDocument = false): array
+  private function findStoreDocuments(): array
   {
+    $getOneDocument = $this->retrieveOneDocument;
     $found = [];
     // Start collecting and filtering data.
     $storeDataPath = $this->_getStoreDataPath();
-    $this->_checkRead($storeDataPath);
+    self::_checkRead($storeDataPath);
 
     $conditions = $this->getQueryBuilderProperty("conditions");
     $distinctFields = $this->getQueryBuilderProperty("distinctFields");
@@ -470,17 +457,13 @@ class Query
 
         $documentPath = $storeDataPath . $entry;
 
-        $this->_checkRead($documentPath);
-
-        $data = "";
-        $fp = fopen($documentPath, 'rb');
-        if(flock($fp, LOCK_SH)){
-          $data = @json_decode(@stream_get_contents($fp), true); // get document by path
+        try{
+          $data = self::getFileContent($documentPath);
+        } catch (Exception $exception){
+          continue;
         }
-        flock($fp, LOCK_UN);
-        fclose($fp);
-
-        if (empty($data)) {
+        $data = @json_decode($data, true);
+        if (!is_array($data)) {
           continue;
         }
 
@@ -739,8 +722,6 @@ class Query
     return $returnValue;
   }
 
-
-
   /**
    * @param array $data
    * @param bool $storePassed
@@ -862,24 +843,19 @@ class Query
    */
   private function getNestedProperty(string $fieldName, array $data)
   {
-
     $fieldName = trim($fieldName);
     if (empty($fieldName)) {
       throw new InvalidArgumentException('fieldName is not allowed to be empty');
     }
-
     // Dive deep step by step.
     foreach (explode('.', $fieldName) as $i) {
-
       // If the field does not exists we return null;
       if (!isset($data[$i])) {
         return null;
       }
-
       // The index is valid, collect the data.
       $data = $data[$i];
     }
-
     return $data;
   }
 
@@ -941,34 +917,6 @@ class Query
   }
 
   /**
-   * @param string $path
-   * @throws IOException
-   */
-  private function _checkWrite(string $path)
-  {
-    // Check if PHP has write permission
-    if (!is_writable($path)) {
-      throw new IOException(
-        "Document or directory is not writable at \"$path\". Please change permission."
-      );
-    }
-  }
-
-  /**
-   * @param string $path
-   * @throws IOException
-   */
-  private function _checkRead(string $path)
-  {
-    // Check if PHP has read permission
-    if (!is_readable($path)) {
-      throw new IOException(
-        "Document or directory is not readable at \"$path\". Please change permission."
-      );
-    }
-  }
-
-  /**
    * @return string
    */
   private function _getStorePath(): string
@@ -1014,14 +962,19 @@ class Query
     if(empty($tokenUpdate)) {
       return;
     }
-
     $cacheTokenArray = $this->_getCacheTokenArray();
-
     foreach ($tokenUpdate as $key => $value){
       $cacheTokenArray[$key] = $value;
     }
-
     $this->cacheTokenArray = $cacheTokenArray;
+  }
+
+  /**
+   * @param bool $oneDocument
+   */
+  private function setRetrieveOneDocument(bool $oneDocument){
+    $this->retrieveOneDocument = $oneDocument;
+    $this->updateCacheTokenArray(['oneDocument' => $oneDocument]);
   }
 
 }
