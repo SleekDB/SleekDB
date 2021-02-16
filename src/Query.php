@@ -518,6 +518,8 @@ class Query
       }
     }
 
+    $this->joinData($found);
+
     if(count($found) > 0){
       // sort the data.
       $this->sort($found);
@@ -536,8 +538,6 @@ class Query
         $found = array_slice($found, 0, $limit);
       }
     }
-
-    $this->joinData($found);
 
     if(count($found) > 0){
       $groupBy = $this->getQueryBuilderProperty("groupBy");
@@ -662,6 +662,7 @@ class Query
    * @param $data
    * @return array
    * @throws InvalidPropertyAccessException
+   * @throws InvalidArgumentException
    */
   private function handleGroupBy(array $data): array
   {

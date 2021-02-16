@@ -438,12 +438,13 @@ class QueryBuilder
   }
 
   /**
-   * @param array $having
+   * Filter result data of groupBy
+   * @param array $criteria
    * @return QueryBuilder
    */
-  public function having(array $having): QueryBuilder
+  public function having(array $criteria): QueryBuilder
   {
-    $this->having = $having;
+    $this->having = $criteria;
     return $this;
   }
 }
