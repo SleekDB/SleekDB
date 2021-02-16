@@ -26,6 +26,8 @@ class QueryBuilder
 
   protected $fieldsToSelect = [];
   protected $fieldsToExclude = [];
+  protected $groupBy = [];
+  protected $having = [];
 
   protected $listOfJoins = [];
   protected $distinctFields = [];
@@ -67,15 +69,12 @@ class QueryBuilder
    */
   public function select(array $fieldNames): QueryBuilder
   {
-    $errorMsg = "If select is used an array containing strings with fieldNames has to be given";
-    foreach ($fieldNames as $fieldName) {
-      if (empty($fieldName)) {
-        continue;
+    foreach ($fieldNames as $key => $fieldName) {
+      if(is_string($key)){
+        $this->fieldsToSelect[$key] = $fieldName;
+      } else {
+        $this->fieldsToSelect[] = $fieldName;
       }
-      if (!is_string($fieldName)) {
-        throw new InvalidArgumentException($errorMsg);
-      }
-      $this->fieldsToSelect[] = $fieldName;
     }
     return $this;
   }
@@ -420,5 +419,31 @@ class QueryBuilder
 
   public function _getStore(): Store{
       return $this->store;
+  }
+
+  /**
+   * @param array $groupByFields
+   * @param string|null $countKeyName
+   * @param bool $allowEmpty
+   * @return QueryBuilder
+   */
+  public function groupBy(array $groupByFields, string $countKeyName = null, bool $allowEmpty = false): QueryBuilder
+  {
+    $this->groupBy = [
+      "groupByFields" => $groupByFields,
+      "countKeyName" => $countKeyName,
+      "allowEmpty" => $allowEmpty
+    ];
+    return $this;
+  }
+
+  /**
+   * @param array $having
+   * @return QueryBuilder
+   */
+  public function having(array $having): QueryBuilder
+  {
+    $this->having = $having;
+    return $this;
   }
 }

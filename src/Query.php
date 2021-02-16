@@ -118,8 +118,6 @@ class Query
 
     $results = $this->findStoreDocuments();
 
-    $this->joinData($results);
-
     if ($this->retrieveOneDocument === true && count($results) > 0) {
       list($item) = $results;
       $results = $item;
@@ -430,7 +428,6 @@ class Query
   }
 
   /**
-   * @param bool $getOneDocument
    * @return array
    * @throws InvalidArgumentException
    * @throws InvalidPropertyAccessException
@@ -532,7 +529,6 @@ class Query
       }
     }
 
-
     if(count($found) > 0) {
       // Limit data.
       $limit = $this->getQueryBuilderProperty("limit");
@@ -541,12 +537,19 @@ class Query
       }
     }
 
-    if(count($found) > 0){
-      // select specific fields
-      $this->selectFields($found);
+    $this->joinData($found);
 
-      // exclude specific fields
-      $this->excludeFields($found);
+    if(count($found) > 0){
+      $groupBy = $this->getQueryBuilderProperty("groupBy");
+      if (!empty($groupBy)) {
+        $found = $this->handleGroupBy($found);
+      } else{
+        // select specific fields
+        $this->selectFields($found);
+
+        // exclude specific fields
+        $this->excludeFields($found);
+      }
     }
 
     return $found;
@@ -653,6 +656,223 @@ class Query
     }
 
     return $returnValue;
+  }
+
+  /**
+   * @param $data
+   * @return array
+   * @throws InvalidPropertyAccessException
+   */
+  private function handleGroupBy(array $data): array
+  {
+    $groupBy = $this->getQueryBuilderProperty("groupBy");
+    if(!(count($groupBy) > 0)){
+      return $data;
+    }
+    $groupByFields = $groupBy["groupByFields"];
+    $countKeyName = $groupBy["countKeyName"];
+    $select = $this->getQueryBuilderProperty("fieldsToSelect");
+    $having = $this->getQueryBuilderProperty("having");
+    $allowEmpty = $groupBy["allowEmpty"];
+
+    $pattern = (!empty($select))? $select : $groupByFields;
+
+    if(!empty($countKeyName) && empty($select)){
+      $pattern[] = $countKeyName;
+    }
+
+    // remove duplicates
+    $patternWithOutDuplicates = [];
+    foreach ($pattern as $key => $item){
+      if(!array_key_exists($key, $patternWithOutDuplicates) || !in_array($item, $patternWithOutDuplicates, true)){
+        $patternWithOutDuplicates[$key] = $item;
+      }
+    }
+    $pattern = $patternWithOutDuplicates;
+    unset($patternWithOutDuplicates);
+
+    // validate pattern
+    foreach ($pattern as $key => $value){
+      if(!is_string($key) && !is_string($value)){
+        throw new InvalidArgumentException("You need to format the select correctly when using Group By.");
+      }
+      if(!is_string($value)) {
+        if (!is_array($value) || empty($value)) {
+          throw new InvalidArgumentException("You need to format the select correctly when using Group By.");
+        }
+
+        list($function) = array_keys($value);
+        $field = $value[$function];
+        if(!is_string($function) || !in_array(strtolower($function), ["sum", "min", "max", "avg"])){
+          throw new InvalidArgumentException("The given function \"$function\" is not supported in Group By.");
+        }
+        if(!is_string($field)){
+          throw new InvalidArgumentException("You need to format the select correctly when using Group By.");
+        }
+
+      } else if($value !== $countKeyName && !in_array($value, $groupByFields, true)) {
+        throw new InvalidArgumentException("You can not select a field that is not grouped by.");
+      }
+    }
+
+    $groupedResult = [];
+    foreach ($data as $document){
+      $values = [];
+      $isEmptyAndEmptyNotAllowed = false;
+      foreach ($groupByFields as $groupByField){
+        $value = $this->getNestedProperty($groupByField, $document);
+        if($allowEmpty === false && is_null($value)){
+          $isEmptyAndEmptyNotAllowed = true;
+          break;
+        }
+        $values[$groupByField] = $value;
+      }
+      if($isEmptyAndEmptyNotAllowed === true){
+        continue;
+      }
+      $valueHash = md5(json_encode($values));
+
+      // new entry
+      if(!array_key_exists($valueHash, $groupedResult)){
+        $resultDocument = [];
+        foreach ($pattern as $key => $patternValue){
+          $resultFieldName = (is_string($key)) ? $key : $patternValue;
+
+          if($resultFieldName === $countKeyName){
+            $resultDocument[$resultFieldName] = 1;
+            continue;
+          }
+
+          if(!is_string($patternValue)){
+            list($function) = array_keys($patternValue);
+            $fieldNameToHandle = $patternValue[$function];
+            $currentFieldValue = $this->getNestedProperty($fieldNameToHandle, $document);
+            if(!is_numeric($currentFieldValue)){
+              $resultDocument[$resultFieldName] = [$function => [null]];
+            } else {
+              $resultDocument[$resultFieldName] = [$function => [$currentFieldValue]];
+            }
+            continue;
+          }
+          $resultDocument[$resultFieldName] = $this->getNestedProperty($patternValue, $document);
+        }
+        $groupedResult[$valueHash] = $resultDocument;
+        continue;
+      }
+
+      // entry exists
+      $currentResult = $groupedResult[$valueHash];
+      foreach ($pattern as $key => $patternValue){
+        $resultFieldName = (is_string($key)) ? $key : $patternValue;
+
+        if($resultFieldName === $countKeyName){
+          $currentResult[$resultFieldName] += 1;
+          continue;
+        }
+
+        if(!is_string($patternValue)){
+          list($function) = array_keys($patternValue);
+          $fieldNameToHandle = $patternValue[$function];
+          $currentFieldValue = $this->getNestedProperty($fieldNameToHandle, $document);
+          $currentFieldValue = is_numeric($currentFieldValue) ? $currentFieldValue : null;
+          $currentResult[$resultFieldName][$function][] = $currentFieldValue;
+        }
+      }
+      $groupedResult[$valueHash] = $currentResult;
+    }
+
+    // reduce and format result
+    $resultArray = [];
+    foreach ($groupedResult as $result){
+      foreach ($pattern as $key => $patternValue){
+        $resultFieldName = (is_string($key)) ? $key : $patternValue;
+        if(is_array($patternValue)){
+          list($function) = array_keys($patternValue);
+          $resultValue = $result[$resultFieldName][$function];
+          switch (strtolower($function)){
+            case "sum":
+              $currentResult = 0;
+              $allEntriesNull = true;
+              foreach ($resultValue as $currentValue){
+                if(!is_null($currentValue)){
+                  $currentResult += $currentValue;
+                  $allEntriesNull = false;
+                }
+              }
+              if($allEntriesNull === true){
+                $currentResult = null;
+              }
+              break;
+            case "min":
+              $currentResult = PHP_INT_MAX;
+              if(empty($resultValue)){
+                $currentResult = null;
+                break;
+              }
+              $allEntriesNull = true;
+              foreach ($resultValue as $currentValue){
+                if(!is_null($currentValue)){
+                  if($currentValue < $currentResult){
+                    $currentResult = $currentValue;
+                  }
+                  $allEntriesNull = false;
+                }
+              }
+              if($allEntriesNull === true){
+                $currentResult = null;
+              }
+              break;
+            case "max":
+              $currentResult = PHP_INT_MIN;
+              if(empty($resultValue)){
+                $currentResult = null;
+                break;
+              }
+              $allEntriesNull = true;
+              foreach ($resultValue as $currentValue){
+                if(!is_null($currentValue)){
+                  if($currentValue > $currentResult){
+                    $currentResult = $currentValue;
+                    $allEntriesNull = false;
+                  }
+                }
+              }
+              if($allEntriesNull === true){
+                $currentResult = null;
+              }
+              break;
+            case "avg":
+              if(empty($resultValue)){
+                $currentResult = null;
+                break;
+              }
+              $currentResult = 0;
+              $resultValueAmount = $resultValue;
+              $allEntriesNull = true;
+              foreach ($resultValue as $currentValue){
+                if(!is_null($currentValue)){
+                  $currentResult += $currentValue;
+                  $allEntriesNull = false;
+                }
+              }
+              if($allEntriesNull === true){
+                $currentResult = null;
+              } else {
+                $currentResult /= $resultValueAmount;
+              }
+              break;
+            default:
+              throw new InvalidArgumentException("The given function \"$function\" is not supported in Group By.");
+          }
+          $result[$resultFieldName] = $currentResult;
+        }
+      }
+      if(empty($having) || true === $this->handleConditions($having, $result)){
+        $resultArray[] = $result;
+      }
+    }
+
+    return $resultArray;
   }
 
   /**
@@ -767,6 +987,16 @@ class Query
           if (array_key_exists($fieldToExclude, $item)) {
             unset($item[$fieldToExclude]);
           }
+          $temp = null;
+          $fieldNameArray = explode('.', $fieldToExclude);
+          $fieldNameArrayCount = count($fieldNameArray);
+          foreach ($fieldNameArray as $index => $i) {
+            if(($fieldNameArrayCount - 1) === $index){
+              unset($temp[$i], $temp);
+            } else {
+              $temp = &$item[$i];
+            }
+          }
         }
         $found[$key] = $item;
       }
@@ -776,6 +1006,7 @@ class Query
   /**
    * @param array $found
    * @throws InvalidPropertyAccessException
+   * @throws InvalidArgumentException
    */
   private function selectFields(array &$found){
 
@@ -783,13 +1014,28 @@ class Query
 
     $fieldsToSelect = $this->getQueryBuilderProperty("fieldsToSelect");
     if (!empty($fieldsToSelect) && count($fieldsToSelect) > 0) {
-      foreach ($found as $key => $item) {
+      foreach ($found as $key => $document) {
         $newItem = [];
-        $newItem[$primaryKey] = $item[$primaryKey];
-        foreach ($fieldsToSelect as $fieldToSelect) {
-          if (array_key_exists($fieldToSelect, $item)) {
-            $newItem[$fieldToSelect] = $item[$fieldToSelect];
+        $newItem[$primaryKey] = $document[$primaryKey];
+        foreach ($fieldsToSelect as $alternativeFieldName => $fieldToSelect) {
+          $fieldName = (!is_int($alternativeFieldName))? $alternativeFieldName : $fieldToSelect;
+          if(!is_string($fieldToSelect) && !is_int($fieldToSelect)){
+            $errorMsg = "If select is used an array containing strings with fieldNames has to be given";
+            throw new InvalidArgumentException($errorMsg);
           }
+          $fieldValue = $this->getNestedProperty($fieldToSelect, $document);
+
+          $temp = [];
+          $fieldNameArray = explode('.', $fieldName);
+          $fieldNameArrayReverse = array_reverse($fieldNameArray);
+          foreach ($fieldNameArrayReverse as $index => $i) {
+            if($index === 0){
+              $temp = array($i => $fieldValue);
+            } else {
+              $temp = array($i => $temp);
+            }
+          }
+          $newItem[$fieldNameArray[0]] = $temp[$fieldNameArray[0]];
         }
         $found[$key] = $newItem;
       }
