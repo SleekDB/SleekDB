@@ -14,88 +14,96 @@ final class QueryTest extends SleekDBTestCase
   public function fillStores(){
     foreach ($this->stores as $storeName => $store){
       $store->insertMany(self::DATABASE_DATA[$storeName]);
-
     }
   }
 
   public function testCanGetResultWithWhere(){
     $userStore = $this->stores["users"];
+    $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $users = $userStore->where("_id", "=", 1)->fetch();
+    $users = $userQueryBuilder->where(["_id", "=", 1])->getQuery()->fetch();
 
-    $this->assertCount(1, $users);
+    self::assertCount(1, $users);
   }
 
   public function testCanGetResultWithOrWhere(){
     $userStore = $this->stores["users"];
+    $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $users = $userStore->where("_id", "=", 1)->orWhere("_id", "=", 2)->fetch();
+    $users = $userQueryBuilder->where(["_id", "=", 1])->orWhere(["_id", "=", 2])->getQuery()->fetch();
 
-    $this->assertCount(2, $users);
+    self::assertCount(2, $users);
   }
 
   public function testCanGetResultWithAndConditionBetweenOrWhere(){
     $userStore = $this->stores["users"];
+    $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $users = $userStore->where("_id", "=", 1)->orWhere(["_id", "=", 2], ["_id", "=", 3])->fetch();
+    $users = $userQueryBuilder->where(["_id", "=", 1])->orWhere([["_id", "=", 2], ["_id", "=", 3]])->getQuery()->fetch();
 
-    $this->assertCount(1, $users);
+    self::assertCount(1, $users);
   }
 
   public function testCanGetResultWithMultipleWhere(){
     $userStore = $this->stores["users"];
+    $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $users = $userStore->where("_id", "=", 1)->where("_id", "=", 2)->fetch();
+    $users = $userQueryBuilder->where(["_id", "=", 1])->where(["_id", "=", 2])->getQuery()->fetch();
 
-    $this->assertCount(0, $users);
+    self::assertCount(0, $users);
   }
 
   public function testCanGetResultWithoutSomeFields(){
     $userStore = $this->stores["users"];
+    $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $users = $userStore->except(["_id", "name"])->where("_id", "=", 1)->fetch();
+    $users = $userQueryBuilder->except(["_id", "name"])->where(["_id", "=", 1])->getQuery()->fetch();
 
     foreach ($users as $user){
-      $this->assertArrayNotHasKey("_id", $user);
-      $this->assertArrayNotHasKey("name", $user);
+      self::assertArrayNotHasKey("_id", $user);
+      self::assertArrayNotHasKey("name", $user);
     }
   }
 
   public function testCanGetResultWithSpecificFields(){
     $userStore = $this->stores["users"];
+    $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $users = $userStore->select(["_id", "price"])->where("_id", "=", 1)->fetch();
+    $users = $userQueryBuilder->select(["_id", "price"])->where(["_id", "=", 1])->getQuery()->fetch();
 
     foreach ($users as $user){
-      $this->assertArrayHasKey("_id", $user);
-      $this->assertArrayHasKey("price", $user);
-      $this->assertArrayNotHasKey("name", $user);
+      self::assertArrayHasKey("_id", $user);
+      self::assertArrayHasKey("price", $user);
+      self::assertArrayNotHasKey("name", $user);
     }
   }
 
-  public function testCanGetResultWithInMethod(){
+  public function testCanGetResultWithInCondition(){
     $userStore = $this->stores["users"];
+    $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $users = $userStore->in("_id",[1,2])->fetch();
+    $users = $userQueryBuilder->where(["_id","in",[1,2]])->getQuery()->fetch();
 
-    $this->assertCount(2, $users);
+    self::assertCount(2, $users);
   }
 
-  public function testCanGetResultWithNotInMethod(){
+  public function testCanGetResultWithNotInCondition(){
     $userStore = $this->stores["users"];
+    $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $users = $userStore->notIn("_id",[1,2])->fetch();
+    $users = $userQueryBuilder->where(["_id", "not in", [1,2]])->getQuery()->fetch();
 
-    $this->assertCount(count(self::DATABASE_DATA["users"]) - 2, $users);
+    self::assertCount(count(self::DATABASE_DATA["users"]) - 2, $users);
   }
 
   public function testCanGetFirstResult(){
     $userStore = $this->stores["users"];
+    $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $user1 = $userStore->limit(1)->fetch();
-    $user2 = $userStore->first();
+    $user1 = $userQueryBuilder->limit(1)->getQuery()->fetch();
+    $user2 = $userQueryBuilder->getQuery()->first();
 
-    $this->assertSame($user1[0], $user2);
+    self::assertSame($user1[0], $user2);
   }
 
 //  public function testCanGetFirstResultAfterOrderBy(){
@@ -109,112 +117,120 @@ final class QueryTest extends SleekDBTestCase
 
   public function testCanLimitResults(){
     $userStore = $this->stores["users"];
+    $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $users = $userStore->limit(3)->fetch();
+    $users = $userQueryBuilder->limit(3)->getQuery()->fetch();
 
-    $this->assertCount(3, $users);
+    self::assertCount(3, $users);
   }
 
   public function testCanOrderBy(){
     $userStore = $this->stores["users"];
+    $userQueryBuilder = $userStore->createQueryBuilder();
 
     $orderByKey = "_id";
 
-    $users = $userStore->orderBy("ASC", $orderByKey)->fetch();
+    $users = $userQueryBuilder->orderBy([$orderByKey => "asc"])->getQuery()->fetch();
 
     $usersLength = count($users);
     for($index = 1; $index < $usersLength; $index++){
-      $this->assertGreaterThan($users[$index - 1][$orderByKey], $users[$index][$orderByKey]);
+      self::assertGreaterThan($users[$index - 1][$orderByKey], $users[$index][$orderByKey]);
     }
 
-    $users = $userStore->orderBy("DESC", $orderByKey)->fetch();
+    $userQueryBuilder = $userStore->createQueryBuilder();
+
+    $users = $userQueryBuilder->orderBy([$orderByKey => "DESC"])->getQuery()->fetch();
 
     $usersLength = count($users);
     for($index = 1; $index < $usersLength; $index++){
-      $this->assertLessThan($users[$index - 1][$orderByKey], $users[$index][$orderByKey]);
+      self::assertLessThan($users[$index - 1][$orderByKey], $users[$index][$orderByKey]);
     }
   }
 
   public function testResultExists(){
-
     $userStore = $this->stores["users"];
+    $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $userExists = $userStore->where("_id", "=", 1)->exists();
+    $userExists = $userQueryBuilder->where(["_id", "=", 1])->getQuery()->exists();
 
-    $this->assertTrue($userExists);
+    self::assertTrue($userExists);
 
-    $userExists = $userStore->where("_id", "=", 2)->where("_id", "=", 1)->exists();
+    $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $this->assertFalse($userExists);
+    $userExists = $userQueryBuilder->where(["_id", "=", 2])->where(["_id", "=", 1])->getQuery()->exists();
+
+    self::assertFalse($userExists);
   }
 
   public function testCanUseCacheWithNoParameter(){
-      $userStore = $this->stores["users"];
+    $userStore = $this->stores["users"];
+    $userQueryBuilder = $userStore->createQueryBuilder();
 
-      $query = $userStore->where("_id", "=", 1)->useCache()->getQuery();
+    $query = $userQueryBuilder->where(["_id", "=", 1])->useCache()->getQuery();
 
-      $userCache = $query->getCache();
+    $userCache = $query->getCache();
 
-      $result = $query->fetch();
+    $result = $query->fetch();
 
-      $cacheResult = $userCache->get();
+    $cacheResult = $userCache->get();
 
-      $this->assertSame($result, $cacheResult);
+    self::assertSame($result, $cacheResult);
   }
 
-    public function testCanUseCacheWithLifetimeNull(){
-        $userStore = $this->stores["users"];
+  public function testCanUseCacheWithLifetimeNull(){
+    $userStore = $this->stores["users"];
+    $userQueryBuilder = $userStore->createQueryBuilder();
 
-        $query = $userStore->where("_id", "=", 1)->useCache(null)->getQuery();
+    $query = $userQueryBuilder->where(["_id", "=", 1])->useCache(null)->getQuery();
 
-        $userCache = $query->getCache();
+    $userCache = $query->getCache();
 
-        $result = $query->fetch();
+    $result = $query->fetch();
 
-        $cacheResult = $userCache->get();
+    $cacheResult = $userCache->get();
 
-        $this->assertSame($result, $cacheResult);
-    }
+    self::assertSame($result, $cacheResult);
+  }
 
-    public function testCanUseCacheWithLifetimeZero(){
-        $userStore = $this->stores["users"];
+  public function testCanUseCacheWithLifetimeZero(){
+    $userStore = $this->stores["users"];
+    $userQueryBuilder = $userStore->createQueryBuilder();
 
-        $query = $userStore->where("_id", "=", 1)->useCache(0)->getQuery();
+    $query = $userQueryBuilder->where(["_id", "=", 1])->useCache(0)->getQuery();
 
-        $userCache = $query->getCache();
+    $userCache = $query->getCache();
 
-        $result = $query->fetch();
+    $result = $query->fetch();
 
-        $userCache->deleteAllWithNoLifetime();
+    $userCache->deleteAllWithNoLifetime();
 
-        sleep(1);
+    sleep(1);
 
-        $cacheResult = $userCache->get();
+    $cacheResult = $userCache->get();
 
-        $this->assertSame($result, $cacheResult);
-    }
+    self::assertSame($result, $cacheResult);
+  }
 
-    public function testCanUseCacheWithLifetimeInt(){
-        $userStore = $this->stores["users"];
+  public function testCanUseCacheWithLifetimeInt(){
+    $userStore = $this->stores["users"];
+    $userQueryBuilder = $userStore->createQueryBuilder();
 
-        $query = $userStore->where("_id", "=", 1)->useCache(1)->getQuery();
+    $query = $userQueryBuilder->where(["_id", "=", 1])->useCache(1)->getQuery();
 
-        $userCache = $query->getCache();
+    $userCache = $query->getCache();
 
-        $result = $query->fetch();
+    $result = $query->fetch();
 
-        sleep(1);
+    sleep(1);
 
-        $cacheResult = $userCache->get();
+    $cacheResult = $userCache->get();
 
-        $this->assertSame($result, $cacheResult);
+    self::assertSame($result, $cacheResult);
 
-        sleep(1);
+    sleep(1);
 
-        $cacheResult = $userCache->get();
+    $cacheResult = $userCache->get();
 
-        $this->assertNotSame($result, $cacheResult);
-    }
-
-
+    self::assertNotSame($result, $cacheResult);
+  }
 }
