@@ -2,6 +2,7 @@
 
 namespace SleekDB\Tests;
 
+use SleekDB\Exceptions\IdNotAllowedException;
 use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Tests\TestCases\SleekDBTestCase;
 
@@ -14,18 +15,18 @@ final class InsertingTest extends SleekDBTestCase
     $usersData = self::DATABASE_DATA['users'][0];
     $userStore->insert($usersData);
 
-    $users = $userStore->fetch();
-    $this->assertCount(1, $users);
+    $users = $userStore->findAll();
+    self::assertCount(1, $users);
   }
 
   public function testCanInsertMultipleData(){
     $userStore = $this->stores["users"];
 
     $usersData = self::DATABASE_DATA['users'];
-    $userStore->insertMany($usersData);
-
-    $users = $userStore->fetch();
-    $this->assertSameSize($usersData, $users);
+    $users = $userStore->insertMany($usersData);
+    $usersFetched = $userStore->findAll();
+    self::assertSameSize($usersData, $users);
+    self::assertSameSize($usersFetched, $users);
   }
 
   public function testCannotInsertSingleEmptyData(){
@@ -63,5 +64,14 @@ final class InsertingTest extends SleekDBTestCase
     $usersData = "This is a String";
     $userStore->insertMany($usersData);
   }
+
+  public function testCannotInsertDocumentWithPrimaryKey(){
+
+    $userStore = $this->stores["users"];
+
+    $this->expectException(IdNotAllowedException::class);
+    $userStore->insert(["_id" => 3, "test" => "test"]);
+  }
+
 
 }
