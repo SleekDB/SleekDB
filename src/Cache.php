@@ -3,9 +3,12 @@
 namespace SleekDB;
 
 use SleekDB\Exceptions\IOException;
+use SleekDB\Traits\IoHelperTrait;
 
 class Cache
 {
+
+  use IoHelperTrait;
 
   const DEFAULT_CACHE_DIR = "cache/";
   const NO_LIFETIME_FILE_STRING = "no_lifetime";
@@ -210,7 +213,7 @@ class Cache
    * @throws IOException
    */
   public function deleteAll(){
-    $this->_delete(glob($this->getCachePath()."*"));
+    self::deleteFiles(glob($this->getCachePath()."*"));
   }
 
   /**
@@ -219,7 +222,7 @@ class Cache
    */
   public function deleteAllWithNoLifetime(){
     $noLifetimeFileString = self::NO_LIFETIME_FILE_STRING;
-    $this->_delete(glob($this->getCachePath()."*.$noLifetimeFileString.json"));
+    self::deleteFiles(glob($this->getCachePath()."*.$noLifetimeFileString.json"));
   }
 
   /**
@@ -232,8 +235,6 @@ class Cache
     $cachePath = $this->getCachePath();
     $token = $this->getToken();
 
-    $this->_checkWrite($cachePath);
-
     $noLifetimeFileString = self::NO_LIFETIME_FILE_STRING;
     $cacheFile = $cachePath . $token . ".$noLifetimeFileString.json";
 
@@ -241,7 +242,7 @@ class Cache
       $cacheFile = $cachePath . $token . ".$lifetime.json";
     }
 
-    file_put_contents($cacheFile, json_encode($content));
+    self::writeContentToFile($cacheFile, json_encode($content));
   }
 
   /**
@@ -261,77 +262,32 @@ class Cache
     }
 
     if(!empty($cacheFile)){
-      $this->_checkRead($cacheFile);
       $cacheParts = explode(".", $cacheFile);
-
       if(count($cacheParts) >= 3){
         $lifetime = $cacheParts[count($cacheParts) - 2];
         if(is_numeric($lifetime)){
           if($lifetime === "0"){
-              return json_decode(file_get_contents($cacheFile), true);
+            return json_decode(self::getFileContent($cacheFile), true);
           }
-
           $fileExpiredAfter = filemtime($cacheFile) + (int) $lifetime;
           if(time() <= $fileExpiredAfter){
-            return json_decode(file_get_contents($cacheFile), true);
+            return json_decode(self::getFileContent($cacheFile), true);
           }
-          $this->_delete([$cacheFile]);
+          self::deleteFile($cacheFile);
         } else if($lifetime === self::NO_LIFETIME_FILE_STRING){
-            return json_decode(file_get_contents($cacheFile), true);
+            return json_decode(self::getFileContent($cacheFile), true);
         }
       }
     }
-
     return null;
   }
 
   /**
    * Delete cache file/s for current query.
-   * @throws IOException
+   * @return bool
    */
-  public function delete()
+  public function delete(): bool
   {
-    $this->_delete(glob($this->getCachePath().$this->getToken()."*.json"));
+    return self::deleteFiles(glob($this->getCachePath().$this->getToken()."*.json"));
   }
-
-  /**
-   * @param array $cacheFiles
-   * @throws IOException
-   */
-  private function _delete(array $cacheFiles){
-    foreach ($cacheFiles as $cacheFile){
-      $this->_checkWrite($cacheFile);
-    }
-    array_map("unlink", $cacheFiles);
-  }
-
-
-  /**
-   * @param string $path
-   * @throws IOException
-   */
-  private function _checkWrite(string $path)
-  {
-    // Check if PHP has write permission
-    if (!is_writable($path)) {
-      throw new IOException(
-        "Cache directory or file is not writable at \"$path\". Please change permission."
-      );
-    }
-  }
-
-  /**
-   * @param string $path
-   * @throws IOException
-   */
-  private function _checkRead(string $path)
-  {
-    // Check if PHP has read permission
-    if (!is_readable($path)) {
-      throw new IOException(
-        "Cache directory or file is not readable at \"$path\". Please change permission."
-      );
-    }
-  }
-
 }

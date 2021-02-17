@@ -2,13 +2,13 @@
 
 namespace SleekDB\Tests\TestCases;
 
-use SleekDB\SleekDB;
+use SleekDB\Store;
 
 class SleekDBTestCase extends SleekDBTestCasePlain
 {
 
   /**
-   * @var SleekDB[]
+   * @var Store[]
    */
   protected $stores = [];
 
@@ -17,7 +17,7 @@ class SleekDBTestCase extends SleekDBTestCasePlain
    */
   public function createStore(){
     foreach (self::DATABASE_DATA as $storeName => $databaseData){
-      $this->stores[$storeName] = SleekDB::store($storeName, self::DATA_DIR);
+      $this->stores[$storeName] = new Store($storeName, self::DATA_DIR);
     }
   }
 
