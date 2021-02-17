@@ -33,6 +33,7 @@ class Query
   protected $primaryKey;
 
   protected $retrieveOneDocument;
+  protected $reduceResultAndJoinPossible;
 
   /**
    * Query constructor.
@@ -116,6 +117,7 @@ class Query
       return $results;
     }
 
+    $this->setReduceResultAndJoinPossible(true);
     $results = $this->findStoreDocuments();
 
     if ($this->retrieveOneDocument === true && count($results) > 0) {
@@ -139,10 +141,8 @@ class Query
    */
   public function update(array $updatable, bool $returnUpdatedDocuments = false)
   {
-    $warn = "isPremiumFoo is deprecated and will be removed in a future release";
-    trigger_error($warn, E_USER_NOTICE);
-
     $this->setRetrieveOneDocument(false);
+    $this->setReduceResultAndJoinPossible(false);
     $results = $this->findStoreDocuments();
 
     $primaryKey = $this->primaryKey;
@@ -219,6 +219,7 @@ class Query
   public function delete(int $returnOption = self::DELETE_RETURN_BOOL)
   {
     $this->setRetrieveOneDocument(false);
+    $this->setReduceResultAndJoinPossible(false);
     $results = $this->findStoreDocuments();
 
     $primaryKey = $this->primaryKey;
@@ -485,6 +486,7 @@ class Query
 
     $conditions = $this->getQueryBuilderProperty("conditions");
     $distinctFields = $this->getQueryBuilderProperty("distinctFields");
+    $reduceResultAndJoinPossible = $this->reduceResultAndJoinPossible;
 
     if ($handle = opendir($storeDataPath)) {
 
@@ -560,7 +562,9 @@ class Query
       }
     }
 
-    $this->joinData($found);
+    if($reduceResultAndJoinPossible === true){
+      $this->joinData($found);
+    }
 
     if(count($found) > 0){
       // sort the data.
@@ -581,7 +585,7 @@ class Query
       }
     }
 
-    if(count($found) > 0){
+    if($reduceResultAndJoinPossible === true && count($found) > 0){
       $groupBy = $this->getQueryBuilderProperty("groupBy");
       if (!empty($groupBy)) {
         $found = $this->handleGroupBy($found);
@@ -1264,6 +1268,10 @@ class Query
   private function setRetrieveOneDocument(bool $oneDocument){
     $this->retrieveOneDocument = $oneDocument;
     $this->updateCacheTokenArray(['oneDocument' => $oneDocument]);
+  }
+
+  private function setReduceResultAndJoinPossible(bool $reduceResultAndJoinPossible){
+    $this->reduceResultAndJoinPossible = $reduceResultAndJoinPossible;
   }
 
 }
