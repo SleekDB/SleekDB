@@ -441,9 +441,13 @@ class QueryBuilder
    * Filter result data of groupBy
    * @param array $criteria
    * @return QueryBuilder
+   * @throws InvalidArgumentException
    */
   public function having(array $criteria): QueryBuilder
   {
+    if (empty($criteria)) {
+      throw new InvalidArgumentException("You need to specify a having clause");
+    }
     $this->having = $criteria;
     return $this;
   }

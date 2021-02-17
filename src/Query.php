@@ -153,12 +153,48 @@ class Query
         return false;
       }
     }
+
+    $updateNestedValue = static function (array $keysArray, $oldData, $newValue, int $originalKeySize) use (&$updateNestedValue){
+      if(empty($keysArray)){
+        return $newValue;
+      }
+      $currentKey = $keysArray[0];
+      $result[$currentKey] = $oldData;
+      if(!is_array($oldData) || !array_key_exists($currentKey, $oldData)){
+        $result[$currentKey] = $updateNestedValue(array_slice($keysArray, 1), $oldData, $newValue, $originalKeySize);
+        if(count($keysArray) !== $originalKeySize){
+          return $result;
+        }
+      }
+      foreach ($oldData as $key => $item){
+        if($key !== $currentKey){
+          $result[$key] = $oldData[$key];
+        } else {
+          $result[$currentKey] = $updateNestedValue(array_slice($keysArray, 1), $oldData[$currentKey], $newValue, $originalKeySize);
+        }
+      }
+      return $result;
+    };
+
     foreach ($results as $data){
       $filePath = $this->_getStoreDataPath() . $data[$primaryKey] . '.json';
       foreach ($updatable as $key => $value) {
         // Do not update the primary key reserved index of a store.
         if ($key !== $primaryKey) {
-          $data[$key] = $value;
+          $fieldNameArray = explode(".", $key);
+          if(count($fieldNameArray) > 1){
+            if(array_key_exists($fieldNameArray[0], $data)){
+              $oldData = $data[$fieldNameArray[0]];
+              $fieldNameArraySliced = array_slice($fieldNameArray, 1);
+              $value = $updateNestedValue($fieldNameArraySliced, $oldData, $value, count($fieldNameArraySliced));
+            } else {
+              $oldData = $data;
+              $value = $updateNestedValue($fieldNameArray, $oldData, $value, count($fieldNameArray));
+              $data = $value;
+              continue;
+            }
+          }
+          $data[$fieldNameArray[0]] = $value;
         }
       }
       self::writeContentToFile($filePath, json_encode($data));
@@ -299,7 +335,8 @@ class Query
    * @return int
    * @throws InvalidArgumentException
    */
-  private static function convertValueToTimeStamp($value){
+  private static function convertValueToTimeStamp($value): int
+  {
     $value = (is_string($value)) ? trim($value) : $value;
     try{
       return (new \DateTime($value))->getTimestamp();

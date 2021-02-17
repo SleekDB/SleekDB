@@ -81,16 +81,18 @@ class Store
    * @param string $storeName
    * @param string|null $dataDir If dataDir is empty, previous database directory path will be used.
    * @param array $configuration
+   * @return Store
    * @throws IOException
    * @throws InvalidArgumentException
    * @throws InvalidConfigurationException
    */
-  public function changeStore(string $storeName, string $dataDir = null, array $configuration = [])
+  public function changeStore(string $storeName, string $dataDir = null, array $configuration = []): Store
   {
     if(empty($dataDir)){
       $dataDir = $this->getDataDirectory();
     }
     $this->__construct($storeName, $dataDir, $configuration);
+    return $this;
   }
 
   /**
@@ -502,13 +504,48 @@ class Store
       return false;
     }
 
-    $content = self::updateFileContent($filePath, function($content) use ($filePath, $updatable){
+    $updateNestedValue = static function (array $keysArray, $oldData, $newValue, int $originalKeySize) use (&$updateNestedValue){
+      if(empty($keysArray)){
+        return $newValue;
+      }
+      $currentKey = $keysArray[0];
+      $result[$currentKey] = $oldData;
+      if(!is_array($oldData) || !array_key_exists($currentKey, $oldData)){
+        $result[$currentKey] = $updateNestedValue(array_slice($keysArray, 1), $oldData, $newValue, $originalKeySize);
+        if(count($keysArray) !== $originalKeySize){
+          return $result;
+        }
+      }
+      foreach ($oldData as $key => $item){
+        if($key !== $currentKey){
+          $result[$key] = $oldData[$key];
+        } else {
+          $result[$currentKey] = $updateNestedValue(array_slice($keysArray, 1), $oldData[$currentKey], $newValue, $originalKeySize);
+        }
+      }
+      return $result;
+    };
+
+    $content = self::updateFileContent($filePath, function($content) use ($filePath, $updatable, &$updateNestedValue){
       $content = @json_decode($content, true);
       if(!is_array($content)){
         throw new JsonException("Could not decode content of \"$filePath\" with json_decode.");
       }
       foreach ($updatable as $key => $value){
-        $content[$key] = $value;
+        $fieldNameArray = explode(".", $key);
+        if(count($fieldNameArray) > 1){
+          if(array_key_exists($fieldNameArray[0], $content)){
+            $oldData = $content[$fieldNameArray[0]];
+            $fieldNameArraySliced = array_slice($fieldNameArray, 1);
+            $value = $updateNestedValue($fieldNameArraySliced, $oldData, $value, count($fieldNameArraySliced));
+          } else {
+            $oldData = $content;
+            $value = $updateNestedValue($fieldNameArray, $oldData, $value, count($fieldNameArray));
+            $content = $value;
+            continue;
+          }
+        }
+        $content[$fieldNameArray[0]] = $value;
       }
 
       return json_encode($content);

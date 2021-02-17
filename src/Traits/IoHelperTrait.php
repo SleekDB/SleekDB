@@ -5,6 +5,7 @@ namespace SleekDB\Traits;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SleekDB\Exceptions\IOException;
+use SleekDB\Exceptions\JsonException;
 
 trait IoHelperTrait {
 
@@ -123,23 +124,33 @@ trait IoHelperTrait {
 
     $content = false;
 
-    $fp = fopen($filePath, 'rb+');
-    flock($fp, LOCK_UN);
-    if (flock($fp, LOCK_EX)) {
-      $content = fgets($fp);
-      if($content === false){
-        throw new IOException("Could not retrieve content of file: $filePath");
-      }
-      $content = $updateContentFunction($content);
-      rewind($fp);
-      fwrite($fp, (string) $content);
+    $fp = fopen($filePath, 'rb');
+    if(flock($fp, LOCK_SH)){
+      $content = stream_get_contents($fp);
     }
     flock($fp, LOCK_UN);
     fclose($fp);
 
     if($content === false){
-      throw new IOException("Could not get exclusive lock for file: $filePath");
+      throw new IOException("Could not get shared lock for file: $filePath");
     }
+
+    $content = $updateContentFunction($content);
+
+    if(!is_string($content)){
+      $encodedContent = json_encode($content);
+      if($encodedContent === false){
+        $content = (!is_object($content) && !is_array($content) && !is_null($content)) ? $content : gettype($content);
+        throw new JsonException("Could not encode content with json_encode. Content: \"$content\".");
+      }
+      $content = $encodedContent;
+    }
+
+
+    if(file_put_contents($filePath, $content, LOCK_EX) === false){
+      throw new IOException("Could not write content to file. Please check permissions at: $filePath");
+    }
+
 
     return $content;
   }
