@@ -131,13 +131,17 @@ class Query
   /**
    * Update one or multiple documents, based on current query
    * @param array $updatable
-   * @return bool
+   * @param bool $returnUpdatedDocuments
+   * @return array|bool
    * @throws InvalidArgumentException
    * @throws IOException
    * @throws InvalidPropertyAccessException
    */
-  public function update(array $updatable): bool
+  public function update(array $updatable, bool $returnUpdatedDocuments = false)
   {
+    $warn = "isPremiumFoo is deprecated and will be removed in a future release";
+    trigger_error($warn, E_USER_NOTICE);
+
     $this->setRetrieveOneDocument(false);
     $results = $this->findStoreDocuments();
 
@@ -176,9 +180,9 @@ class Query
       return $result;
     };
 
-    foreach ($results as $data){
+    foreach ($results as $key => $data){
       $filePath = $this->_getStoreDataPath() . $data[$primaryKey] . '.json';
-      foreach ($updatable as $key => $value) {
+      foreach ($updatable as $value) {
         // Do not update the primary key reserved index of a store.
         if ($key !== $primaryKey) {
           $fieldNameArray = explode(".", $key);
@@ -198,9 +202,10 @@ class Query
         }
       }
       self::writeContentToFile($filePath, json_encode($data));
+      $results[$key] = $data;
     }
     $this->cache->deleteAllWithNoLifetime();
-    return true;
+    return ($returnUpdatedDocuments === true) ? $results : true;
   }
 
   /**
