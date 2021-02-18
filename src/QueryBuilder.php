@@ -2,6 +2,7 @@
 
 namespace SleekDB;
 
+use Closure;
 use SleekDB\Exceptions\InvalidArgumentException;
 
 class QueryBuilder
@@ -26,7 +27,8 @@ class QueryBuilder
   protected $searchOptions = [
     "minLength" => 2,
     "scoreKey" => "searchScore",
-    "mode" => "or"
+    "mode" => "or",
+    "algorithm" => Query::SEARCH_ALGORITHM["hits"]
   ];
 
   protected $fieldsToSelect = [];
@@ -71,7 +73,6 @@ class QueryBuilder
    * Select specific fields
    * @param string[] $fieldNames
    * @return QueryBuilder
-   * @throws InvalidArgumentException
    */
   public function select(array $fieldNames): QueryBuilder
   {
@@ -322,17 +323,20 @@ class QueryBuilder
         if(array_key_exists("scoreKey", $options) && (is_string($options["scoreKey"]) || is_null($options["scoreKey"]))){
           $this->searchOptions["scoreKey"] = $options["scoreKey"];
         }
+        if(array_key_exists("algorithm", $options) && in_array($options["algorithm"], Query::SEARCH_ALGORITHM, true)){
+          $this->searchOptions["algorithm"] = $options["algorithm"];
+        }
       }
     }
     return $this;
   }
 
   /**
-   * @param \Closure $joinFunction
+   * @param Closure $joinFunction
    * @param string $dataPropertyName
    * @return QueryBuilder
    */
-  public function join(\Closure $joinFunction, string $dataPropertyName): QueryBuilder
+  public function join(Closure $joinFunction, string $dataPropertyName): QueryBuilder
   {
     $this->listOfJoins[] = [
       'dataPropertyName' => $dataPropertyName,
@@ -408,7 +412,7 @@ class QueryBuilder
     $conditionsArray = $this->_getConditionProperties();
 
     foreach ($conditionsArray as $propertyName => $propertyValue){
-      if(!in_array($propertyName, $this->propertiesNotUsedForCacheToken)){
+      if(!in_array($propertyName, $this->propertiesNotUsedForCacheToken, true)){
         $properties[$propertyName] = $propertyValue;
       }
     }
@@ -425,7 +429,7 @@ class QueryBuilder
     $properties = [];
 
     foreach ($allProperties as $propertyName => $propertyValue){
-      if(!in_array($propertyName, $this->propertiesNotUsedInConditionsArray)){
+      if(!in_array($propertyName, $this->propertiesNotUsedInConditionsArray, true)){
         $properties[$propertyName] = $propertyValue;
       }
     }
