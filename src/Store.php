@@ -42,6 +42,11 @@ class Store
   protected $defaultCacheLifetime;
   protected $primaryKey = "_id";
   protected $timeout = 120;
+  protected $searchOptions = [
+    "minLength" => 2,
+    "scoreKey" => "searchScore",
+    "mode" => "or"
+  ];
 
   /**
    * Store constructor.
@@ -150,6 +155,34 @@ class Store
         throw new InvalidConfigurationException("primary key has to be a string");
       }
       $this->primaryKey = $primaryKey;
+    }
+
+    if(array_key_exists("search", $configuration)){
+      $searchConfig = $configuration["search"];
+
+      if(array_key_exists("min_length", $searchConfig)){
+        $searchMinLength = $searchConfig["min_length"];
+        if(!is_int($searchMinLength) || $searchMinLength <= 0){
+          throw new InvalidConfigurationException("min length for searching has to be an int >= 0");
+        }
+        $this->searchOptions["minLength"] = $searchMinLength;
+      }
+
+      if(array_key_exists("mode", $searchConfig)){
+        $searchMode = $searchConfig["search_mode"];
+        if(!is_string($searchMode) || !in_array(strtolower(trim($searchMode)), ["and", "or"])){
+          throw new InvalidConfigurationException("search mode can just be \"and\" or \"or\"");
+        }
+        $this->searchOptions["mode"] = strtolower(trim($searchMode));
+      }
+
+      if(array_key_exists("score_key", $searchConfig)){
+        $searchScoreKey = $searchConfig["score_key"];
+        if((!is_string($searchScoreKey) && !is_null($searchScoreKey))){
+          throw new InvalidConfigurationException("search score key for search has to be a not empty string or null");
+        }
+        $this->searchOptions["scoreKey"] = $searchScoreKey;
+      }
     }
   }
 
@@ -410,7 +443,6 @@ class Store
     }
 
     return $qb->getQuery()->fetch();
-
   }
 
   /**
@@ -590,12 +622,41 @@ class Store
     return (!file_exists($filePath) || true === @unlink($filePath));
   }
 
+  public function search(array $fields, string $query, array $orderBy = null, int $limit = null, int $offset = null){
+
+    $qb = $this->createQueryBuilder();
+
+    $qb->search($fields, $query);
+
+    if($orderBy !== null) {
+      $qb->orderBy($orderBy);
+    }
+
+    if($limit !== null) {
+      $qb->limit($limit);
+    }
+
+    if($offset !== null) {
+      $qb->skip($offset);
+    }
+
+    return $qb->getQuery()->fetch();
+  }
+
   /**
    * @return string
    */
   public function getPrimaryKey(): string
   {
     return $this->primaryKey;
+  }
+
+  /**
+   * @return array
+   */
+  public function _getSearchOptions(): array
+  {
+    return $this->searchOptions;
   }
 
 }

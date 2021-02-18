@@ -22,7 +22,8 @@
     ],
     "require": {
         "php": ">=7.0",
-        "ext-json": "*"
+        "ext-json": "*",
+        "ext-mbstring": "*"
     },
     "require-dev": {
         "phpunit/phpunit": "^6.5",
