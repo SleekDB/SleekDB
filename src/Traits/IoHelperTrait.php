@@ -2,6 +2,7 @@
 
 namespace SleekDB\Traits;
 
+use Closure;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SleekDB\Exceptions\IOException;
@@ -114,11 +115,13 @@ trait IoHelperTrait {
 
   /**
    * @param string $filePath
-   * @param \Closure $updateContentFunction
-   * @return mixed
+   * @param Closure $updateContentFunction
+   * @return string
    * @throws IOException
+   * @throws JsonException
    */
-  private static function updateFileContent(string $filePath, \Closure $updateContentFunction){
+  private static function updateFileContent(string $filePath, Closure $updateContentFunction): string
+  {
     self::_checkRead($filePath);
     self::_checkWrite($filePath);
 

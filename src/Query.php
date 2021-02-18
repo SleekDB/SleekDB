@@ -27,8 +27,15 @@ class Query
 
 
   const DELETE_RETURN_BOOL = 1;
-  const DELETE_RETURN_RESULTS = 1;
-  const DELETE_RETURN_COUNT = 1;
+  const DELETE_RETURN_RESULTS = 2;
+  const DELETE_RETURN_COUNT = 3;
+
+  const SEARCH_ALGORITHM = [
+    "hits" => 1,
+    "hits_prioritize" => 2,
+    "prioritize" => 3,
+    "prioritize_position" => 4,
+  ];
 
   protected $primaryKey;
 
@@ -1167,6 +1174,7 @@ class Query
     $minLength = $searchOptions["minLength"];
     $searchScoreKey = $searchOptions["scoreKey"];
     $searchMode = $searchOptions["mode"];
+    $searchAlgorithm = $searchOptions["algorithm"];
 
     $scoreMultiplier = 64;
     $encoding = "UTF-8";
@@ -1176,11 +1184,21 @@ class Query
     $lowerQuery = mb_strtolower($query, $encoding);
     $exactQuery  = preg_quote($query, "/");
 
-    $highestScore = $scoreMultiplier ** count($fields);
+    $fieldsLength = count($fields);
+
+    $highestScore = $scoreMultiplier ** $fieldsLength;
 
     // split query
     $searchWords = preg_replace('/(\s)/u', ',', $query);
     $searchWords = explode(",", $searchWords);
+
+    $prioritizeAlgorithm = (in_array($searchAlgorithm, [
+      self::SEARCH_ALGORITHM["prioritize"],
+      self::SEARCH_ALGORITHM["prioritize_position"]
+    ], true));
+
+    $positionAlgorithm = ($searchAlgorithm === self::SEARCH_ALGORITHM["prioritize_position"]);
+
 
     // apply min word length
     $temp = [];
@@ -1208,32 +1226,50 @@ class Query
       $searchHits = 0;
       $searchScore = 0;
       foreach ($fields as $key => $field) {
-        $score = $highestScore / ($scoreMultiplier ** $key);
+        if($prioritizeAlgorithm){
+          $score = $highestScore / ($scoreMultiplier ** $key);
+        } else {
+          $score = $scoreMultiplier;
+        }
         $value = $this->getNestedProperty($field, $document);
-        if ($value === null) {
+
+        if (!is_string($value) || $value === "") {
           continue;
         }
 
-        $lowerValue = (is_string($value)) ? mb_strtolower($value, $encoding) : $value;
+        $lowerValue = mb_strtolower($value, $encoding);
 
-        if ($lowerQuery == $lowerValue) {
+        $hitPosition = mb_strpos($lowerValue, $lowerQuery, 0, $encoding);
+
+        if ($lowerQuery === $lowerValue) {
           // exact match
           $searchHits++;
           $searchScore += 16 * $score;
-        } elseif (mb_strpos($lowerValue, $lowerQuery, 0, $encoding) === 0) {
+        } elseif ($positionAlgorithm && $hitPosition === 0) {
           // exact beginning match
           $searchHits++;
           $searchScore += 8 * $score;
         } elseif ($matches = preg_match_all('!' . $exactQuery . '!i', $value)) {
           // exact query match
           $searchHits += $matches;
-          $searchScore += 2 * $score;
+//          $searchScore += 2 * $score;
+          $searchScore += $matches * 2 * $score;
+          if($searchAlgorithm === self::SEARCH_ALGORITHM["hits_prioritize"]){
+            $searchScore += $matches * ($fieldsLength - $key);
+          }
         }
 
-        if ($matches = preg_match_all($preg, $value)) {
+        if ($matches = preg_match_all($preg, $value, $r)) {
           // any match
           $searchHits += $matches;
           $searchScore += $matches * $score;
+          if($searchAlgorithm === self::SEARCH_ALGORITHM["hits_prioritize"]) {
+            $searchScore += $matches * ($fieldsLength - $key);
+          }
+        }
+
+        if($positionAlgorithm && $hitPosition > 0){
+          $searchScore += ($score / $highestScore) * ($hitPosition / ($hitPosition * $hitPosition));
         }
       }
 

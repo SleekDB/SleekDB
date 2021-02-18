@@ -2,6 +2,7 @@
 
 namespace SleekDB;
 
+use Exception;
 use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\IdNotAllowedException;
 use SleekDB\Exceptions\InvalidConfigurationException;
@@ -45,7 +46,8 @@ class Store
   protected $searchOptions = [
     "minLength" => 2,
     "scoreKey" => "searchScore",
-    "mode" => "or"
+    "mode" => "or",
+    "algorithm" => Query::SEARCH_ALGORITHM["hits"]
   ];
 
   /**
@@ -182,6 +184,15 @@ class Store
           throw new InvalidConfigurationException("search score key for search has to be a not empty string or null");
         }
         $this->searchOptions["scoreKey"] = $searchScoreKey;
+      }
+
+      if(array_key_exists("algorithm", $searchConfig)){
+        $searchAlgorithm = $searchConfig["algorithm"];
+        if(!in_array($searchAlgorithm, Query::SEARCH_ALGORITHM, true)){
+          $searchAlgorithm = implode(', ', $searchAlgorithm);
+          throw new InvalidConfigurationException("The search algorithm has to be one of the following integer values ($searchAlgorithm)");
+        }
+        $this->searchOptions["algorithm"] = $searchAlgorithm;
       }
     }
   }
@@ -346,6 +357,7 @@ class Store
    * Increments the store wide unique store object ID and returns it.
    * @return int
    * @throws IOException
+   * @throws JsonException
    */
   private function getStoreId(): int
   {
@@ -355,11 +367,9 @@ class Store
       throw new IOException("File $counterPath does not exist.");
     }
 
-    $counter = self::updateFileContent($counterPath, function ($counter){
-      return ((int) $counter) + 1;
+    return (int) self::updateFileContent($counterPath, function ($counter){
+      return (string)(((int) $counter) + 1);
     });
-
-    return $counter;
   }
 
   /**
@@ -398,7 +408,6 @@ class Store
    * Retrieve one document by its primary key. Very fast because it finds the document by its file path.
    * @param int $id
    * @return array|null
-   * @throws IOException
    */
   public function findById(int $id){
 
@@ -406,7 +415,7 @@ class Store
 
     try{
       $content = self::getFileContent($filePath);
-    } catch (\Exception $exception){
+    } catch (Exception $exception){
       return null;
     }
 
