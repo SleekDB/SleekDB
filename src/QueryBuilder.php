@@ -279,7 +279,7 @@ class QueryBuilder
   }
 
   /**
-   * Do a fulltext like search against more than one field.
+   * Do a fulltext like search against one or multiple fields.
    * @param string|array $fields one or multiple fieldNames as an array
    * @param string $query
    * @param array $options
@@ -288,12 +288,25 @@ class QueryBuilder
    */
   public function search($fields, string $query, array $options = []): QueryBuilder
   {
+    if(!is_array($fields) && !is_string($fields)){
+      throw new InvalidArgumentException("Fields to search through have to be either a string or an array.");
+    }
+
+    if(!is_array($fields)){
+      $fields = (array)$fields;
+    }
+
     if (empty($fields)) {
       throw new InvalidArgumentException('Cant perform search due to no field name was provided');
     }
+
+    if(count($fields) > 100){
+      throw new InvalidArgumentException('Searching through more than 100 fields is not supported.');
+    }
+
     if (!empty($query)) {
       $this->search = [
-        'fields' => (array)$fields,
+        'fields' => $fields,
         'query' => $query
       ];
       if(!empty($options)){

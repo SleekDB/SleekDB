@@ -1153,6 +1153,7 @@ class Query
    * @param array $data
    * @return array
    * @throws InvalidPropertyAccessException
+   * @throws InvalidArgumentException
    */
   private function performSearch(array $data = []): array
   {
@@ -1173,7 +1174,7 @@ class Query
     $fields = $search["fields"];
     $query = $search["query"];
     $lowerQuery = mb_strtolower($query, $encoding);
-    $exactQuery  = preg_quote($query, null);
+    $exactQuery  = preg_quote($query, "/");
 
     $highestScore = $scoreMultiplier ** count($fields);
 
@@ -1191,15 +1192,17 @@ class Query
     $searchWords = $temp;
     unset($temp);
     $searchWords = array_map(function($value){
-      return preg_quote($value, null);
+      return preg_quote($value, "/");
     }, $searchWords);
 
+    // apply mode
     if($searchMode === "and"){
       $preg = '!(' . implode('.*', $searchWords) . ')!i';
     } else {
       $preg = '!(' . implode('|', $searchWords) . ')!i';
     }
 
+    // search
     $result = [];
     foreach ($data as $document) {
       $searchHits = 0;
@@ -1236,7 +1239,6 @@ class Query
 
       if($searchHits > 0){
         if(!is_null($searchScoreKey)){
-          $document["searchHits"] = $searchHits;
           $document[$searchScoreKey] = $searchScore;
         }
         $result[] = $document;

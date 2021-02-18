@@ -622,7 +622,20 @@ class Store
     return (!file_exists($filePath) || true === @unlink($filePath));
   }
 
-  public function search(array $fields, string $query, array $orderBy = null, int $limit = null, int $offset = null){
+  /**
+   * Do a fulltext like search against one or multiple fields.
+   * @param array $fields
+   * @param string $query
+   * @param array|null $orderBy
+   * @param int|null $limit
+   * @param int|null $offset
+   * @return array
+   * @throws IOException
+   * @throws InvalidArgumentException
+   * @throws InvalidPropertyAccessException
+   */
+  public function search(array $fields, string $query, array $orderBy = null, int $limit = null, int $offset = null): array
+  {
 
     $qb = $this->createQueryBuilder();
 
