@@ -390,7 +390,13 @@ class Query
     $condition = strtolower(trim($condition));
     switch ($condition){
       case "=":
+      case "===":
         return ($fieldValue === $value);
+      case "==":
+        return ($fieldValue == $value);
+      case "<>":
+        return ($fieldValue != $value);
+      case "!==":
       case "!=":
         return ($fieldValue !== $value);
       case ">":
@@ -1199,7 +1205,6 @@ class Query
 
     $positionAlgorithm = ($searchAlgorithm === self::SEARCH_ALGORITHM["prioritize_position"]);
 
-
     // apply min word length
     $temp = [];
     foreach ($searchWords as $searchWord){
@@ -1209,13 +1214,18 @@ class Query
     }
     $searchWords = $temp;
     unset($temp);
-    $searchWords = array_map(function($value){
+    $searchWords = array_map(static function($value){
       return preg_quote($value, "/");
     }, $searchWords);
 
     // apply mode
     if($searchMode === "and"){
-      $preg = '!(' . implode('.*', $searchWords) . ')!i';
+      $preg = "";
+      foreach ($searchWords as $searchWord){
+        $preg .= "(?=.*".$searchWord.")";
+      }
+      $preg = '/^' . $preg . '.*/im';
+      $pregOr = '!(' . implode('|', $searchWords) . ')!i';
     } else {
       $preg = '!(' . implode('|', $searchWords) . ')!i';
     }
@@ -1259,15 +1269,23 @@ class Query
           }
         }
 
-        if ($matches = preg_match_all($preg, $value, $r)) {
+        $matches = ($searchMode === "and") ? preg_match($preg, $value) : preg_match_all($preg, $value);
+
+        if ($matches) {
           // any match
           $searchHits += $matches;
           $searchScore += $matches * $score;
           if($searchAlgorithm === self::SEARCH_ALGORITHM["hits_prioritize"]) {
             $searchScore += $matches * ($fieldsLength - $key);
           }
+          // because the "and" search algorithm at most finds one match we also use the amount of word occurrences
+          if($searchMode === "and" && isset($pregOr) && ($matches = preg_match_all($pregOr, $value))){
+            $searchHits += $matches;
+            $searchScore += $matches * $score;
+          }
         }
 
+        // we apply a small very small number to the score to differentiate the distance from the beginning
         if($positionAlgorithm && $hitPosition > 0){
           $searchScore += ($score / $highestScore) * ($hitPosition / ($hitPosition * $hitPosition));
         }

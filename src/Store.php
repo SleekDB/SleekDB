@@ -171,7 +171,7 @@ class Store
       }
 
       if(array_key_exists("mode", $searchConfig)){
-        $searchMode = $searchConfig["search_mode"];
+        $searchMode = $searchConfig["mode"];
         if(!is_string($searchMode) || !in_array(strtolower(trim($searchMode)), ["and", "or"])){
           throw new InvalidConfigurationException("search mode can just be \"and\" or \"or\"");
         }
