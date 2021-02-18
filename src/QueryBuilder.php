@@ -22,7 +22,12 @@ class QueryBuilder
   protected $limit = 0;
   protected $orderBy = [];
   protected $nestedWhere = []; // TODO remove with version 3.0
-  protected $searchKeyword = "";
+  protected $search = [];
+  protected $searchOptions = [
+    "minLength" => 2,
+    "scoreKey" => "searchScore",
+    "mode" => "or"
+  ];
 
   protected $fieldsToSelect = [];
   protected $fieldsToExclude = [];
@@ -59,6 +64,7 @@ class QueryBuilder
     $this->store = $store;
     $this->useCache = $store->_getUseCache();
     $this->cacheLifetime = $store->_getDefaultCacheLifetime();
+    $this->searchOptions = $store->_getSearchOptions();
   }
 
   /**
@@ -273,22 +279,50 @@ class QueryBuilder
   }
 
   /**
-   * Do a fulltext like search against more than one field.
-   * @param string|array $field one fieldName or multiple fieldNames as an array
-   * @param string $keyword
+   * Do a fulltext like search against one or multiple fields.
+   * @param string|array $fields one or multiple fieldNames as an array
+   * @param string $query
+   * @param array $options
    * @return QueryBuilder
    * @throws InvalidArgumentException
    */
-  public function search($field, string $keyword): QueryBuilder
+  public function search($fields, string $query, array $options = []): QueryBuilder
   {
-    if (empty($field)) {
+    if(!is_array($fields) && !is_string($fields)){
+      throw new InvalidArgumentException("Fields to search through have to be either a string or an array.");
+    }
+
+    if(!is_array($fields)){
+      $fields = (array)$fields;
+    }
+
+    if (empty($fields)) {
       throw new InvalidArgumentException('Cant perform search due to no field name was provided');
     }
-    if (!empty($keyword)) {
-      $this->searchKeyword = [
-        'field' => (array)$field,
-        'keyword' => $keyword
+
+    if(count($fields) > 100){
+      throw new InvalidArgumentException('Searching through more than 100 fields is not supported.');
+    }
+
+    if (!empty($query)) {
+      $this->search = [
+        'fields' => $fields,
+        'query' => $query
       ];
+      if(!empty($options)){
+        if(array_key_exists("minLength", $options) && is_int($options["minLength"]) && $options["minLength"] > 0){
+          $this->searchOptions["minLength"] = $options["minLength"];
+        }
+        if(array_key_exists("mode", $options) && is_string($options["mode"])){
+          $searchMode = strtolower(trim($options["mode"]));
+          if(in_array($searchMode, ["and", "or"])){
+            $this->searchOptions["mode"] = $searchMode;
+          }
+        }
+        if(array_key_exists("scoreKey", $options) && (is_string($options["scoreKey"]) || is_null($options["scoreKey"]))){
+          $this->searchOptions["scoreKey"] = $options["scoreKey"];
+        }
+      }
     }
     return $this;
   }

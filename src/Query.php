@@ -554,16 +554,12 @@ class Query
 
     // apply additional changes to result like sort and limit
 
-    if (count($found) > 0) {
-      // If there was text search then we would also sort the result by search ranking.
-      $searchKeyword = $this->getQueryBuilderProperty("searchKeyword");
-      if (!empty($searchKeyword)) {
-        $found = $this->performSearch($found);
-      }
-    }
-
     if($reduceResultAndJoinPossible === true){
       $this->joinData($found);
+    }
+
+    if (count($found) > 0) {
+      $found = $this->performSearch($found);
     }
 
     if(count($found) > 0){
@@ -1157,56 +1153,100 @@ class Query
    * @param array $data
    * @return array
    * @throws InvalidPropertyAccessException
+   * @throws InvalidArgumentException
    */
   private function performSearch(array $data = []): array
   {
 
-    // TODO apply custom key -> search rank, so the user can use that in order by!
-
-    $searchKeyword = $this->getQueryBuilderProperty("searchKeyword");
-    if (empty($data)) {
+    $search = $this->getQueryBuilderProperty("search");
+    if(empty($search)){
       return $data;
     }
-    $nodesRank = [];
-    // Looping on each store data.
-    foreach ($data as $key => $value) {
-      // Looping on each field name of search-able fields.
-      if(!is_array($searchKeyword)) {
-        break;
+
+    $searchOptions = $this->getQueryBuilderProperty("searchOptions");
+    $minLength = $searchOptions["minLength"];
+    $searchScoreKey = $searchOptions["scoreKey"];
+    $searchMode = $searchOptions["mode"];
+
+    $scoreMultiplier = 64;
+    $encoding = "UTF-8";
+
+    $fields = $search["fields"];
+    $query = $search["query"];
+    $lowerQuery = mb_strtolower($query, $encoding);
+    $exactQuery  = preg_quote($query, "/");
+
+    $highestScore = $scoreMultiplier ** count($fields);
+
+    // split query
+    $searchWords = preg_replace('/(\s)/u', ',', $query);
+    $searchWords = explode(",", $searchWords);
+
+    // apply min word length
+    $temp = [];
+    foreach ($searchWords as $searchWord){
+      if(strlen($searchWord) >= $minLength){
+        $temp[] = $searchWord;
       }
-      foreach ($searchKeyword['field'] as $field) {
-        try {
-          $nodeValue = $this->getNestedProperty($field, $value);
-          // The searchable field was found, do comparison against search keyword.
-          $percent = 0;
-          if(is_string($nodeValue)){
-            similar_text(strtolower($nodeValue), strtolower($searchKeyword['keyword']), $percent);
-          }
-          if ($percent > 50) {
-            // Check if current store object already has a value, if so then add the new value.
-            if (isset($nodesRank[$key])) {
-              $nodesRank[$key] += $percent;
-            } else {
-              $nodesRank[$key] = $percent;
-            }
-          }
-        } catch (Exception $e) {
+    }
+    $searchWords = $temp;
+    unset($temp);
+    $searchWords = array_map(function($value){
+      return preg_quote($value, "/");
+    }, $searchWords);
+
+    // apply mode
+    if($searchMode === "and"){
+      $preg = '!(' . implode('.*', $searchWords) . ')!i';
+    } else {
+      $preg = '!(' . implode('|', $searchWords) . ')!i';
+    }
+
+    // search
+    $result = [];
+    foreach ($data as $document) {
+      $searchHits = 0;
+      $searchScore = 0;
+      foreach ($fields as $key => $field) {
+        $score = $highestScore / ($scoreMultiplier ** $key);
+        $value = $this->getNestedProperty($field, $document);
+        if ($value === null) {
           continue;
         }
+
+        $lowerValue = (is_string($value)) ? mb_strtolower($value, $encoding) : $value;
+
+        if ($lowerQuery == $lowerValue) {
+          // exact match
+          $searchHits++;
+          $searchScore += 16 * $score;
+        } elseif (mb_strpos($lowerValue, $lowerQuery, 0, $encoding) === 0) {
+          // exact beginning match
+          $searchHits++;
+          $searchScore += 8 * $score;
+        } elseif ($matches = preg_match_all('!' . $exactQuery . '!i', $value)) {
+          // exact query match
+          $searchHits += $matches;
+          $searchScore += 2 * $score;
+        }
+
+        if ($matches = preg_match_all($preg, $value)) {
+          // any match
+          $searchHits += $matches;
+          $searchScore += $matches * $score;
+        }
+      }
+
+      if($searchHits > 0){
+        if(!is_null($searchScoreKey)){
+          $document[$searchScoreKey] = $searchScore;
+        }
+        $result[] = $document;
       }
     }
-    if (empty($nodesRank)) {
-      // No matched store was found against the search keyword.
-      return [];
-    }
-    // Sort nodes in descending order by the rank.
-    arsort($nodesRank);
-    // Map original nodes by the rank.
-    $nodes = [];
-    foreach ($nodesRank as $key => $value) {
-      $nodes[] = $data[$key];
-    }
-    return $nodes;
+
+    return $result;
+
   }
 
   /**
