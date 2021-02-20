@@ -611,6 +611,43 @@ class Store
   }
 
   /**
+   * @param int|string $id
+   * @param array $fieldsToRemove
+   * @return false|array
+   * @throws IOException
+   * @throws InvalidArgumentException
+   * @throws JsonException
+   */
+  public function removeFieldsById($id, array $fieldsToRemove)
+  {
+    $id = $this->checkAndStripId($id);
+    $filePath = $this->getDataPath() . "$id.json";
+    $primaryKey = $this->getPrimaryKey();
+
+    if(in_array($primaryKey, $fieldsToRemove, false)) {
+      throw new InvalidArgumentException("You can not remove the primary key \"$primaryKey\" of documents.");
+    }
+    if(!file_exists($filePath)){
+      return false;
+    }
+
+    $content = IoHelper::updateFileContent($filePath, function($content) use ($filePath, $fieldsToRemove){
+      $content = @json_decode($content, true);
+      if(!is_array($content)){
+        throw new JsonException("Could not decode content of \"$filePath\" with json_decode.");
+      }
+      foreach ($fieldsToRemove as $fieldToRemove){
+        NestedHelper::removeNestedField($content, $fieldToRemove);
+      }
+      return $content;
+    });
+
+    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
+
+    return json_decode($content, true);
+  }
+
+  /**
    * Do a fulltext like search against one or multiple fields.
    * @param array $fields
    * @param string $query
