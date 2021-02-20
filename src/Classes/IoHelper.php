@@ -220,4 +220,13 @@ class IoHelper {
   {
     return (str_replace(array(".", "/", "\\"), "", $string));
   }
+
+  /**
+   * @param string $directory
+   */
+  public static function normalizeDirectory(string &$directory){
+    if(!empty($directory) && substr($directory, -1) !== "/") {
+      $directory .= "/";
+    }
+  }
 }

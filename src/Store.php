@@ -71,9 +71,8 @@ class Store
     if (empty($databasePath)) {
       throw new InvalidArgumentException('data directory can not be empty');
     }
-    if (substr($databasePath, -1) !== '/') {
-      $databasePath .= '/';
-    }
+
+    IoHelper::normalizeDirectory($databasePath);
     $this->databasePath = $databasePath;
 
     $this->setConfiguration($configuration);
@@ -324,9 +323,7 @@ class Store
   {
     $storeName = $this->getStoreName();
     // Prepare store name.
-    if (substr($storeName, -1) !== '/') {
-      $storeName .= '/';
-    }
+    IoHelper::normalizeDirectory($storeName);
     // Store directory path.
     $this->storePath = $this->getDatabasePath() . $storeName;
     $storePath = $this->getStorePath();

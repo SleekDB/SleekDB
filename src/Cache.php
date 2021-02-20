@@ -65,13 +65,8 @@ class Cache
     $cacheDir = $this->getCacheDir();
 
     if(!empty($storePath)){
-
-      if(substr($storePath, -1) !== "/") {
-        $storePath .= "/";
-      }
-
+      IoHelper::normalizeDirectory($storePath);
       $cachePath = $storePath . $cacheDir;
-
     }
 
     $this->cachePath = $cachePath;
@@ -187,9 +182,7 @@ class Cache
    */
   private function setCacheDir(string $cacheDir): Cache
   {
-    if(!empty($cacheDir) && substr($cacheDir, -1) !== "/") {
-      $cacheDir .= "/";
-    }
+    IoHelper::normalizeDirectory($cacheDir);
     $this->cacheDir = $cacheDir;
     return $this;
   }
