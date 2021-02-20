@@ -17,7 +17,7 @@ class QueryBuilder
    */
   protected $cache;
 
-  protected $conditions = [];
+  protected $whereConditions = [];
 
   protected $skip = 0;
   protected $limit = 0;
@@ -119,7 +119,7 @@ class QueryBuilder
       throw new InvalidArgumentException("You need to specify a where clause");
     }
 
-    $this->conditions[] = $conditions;
+    $this->whereConditions[] = $conditions;
 
     return $this;
   }
@@ -139,7 +139,7 @@ class QueryBuilder
     }
 
     // Add to conditions with "AND" operation
-    $this->conditions[] = [$fieldName, "in", $values];
+    $this->whereConditions[] = [$fieldName, "in", $values];
     return $this;
   }
 
@@ -158,7 +158,7 @@ class QueryBuilder
     }
 
     // Add to conditions with "AND" operation
-    $this->conditions[] = [$fieldName, "not in", $values];
+    $this->whereConditions[] = [$fieldName, "not in", $values];
     return $this;
   }
 
@@ -175,8 +175,8 @@ class QueryBuilder
       throw new InvalidArgumentException("You need to specify a where clause");
     }
 
-    $this->conditions[] = "or";
-    $this->conditions[] = $conditions;
+    $this->whereConditions[] = "or";
+    $this->whereConditions[] = $conditions;
 
     return $this;
   }
@@ -190,6 +190,7 @@ class QueryBuilder
    */
   public function nestedWhere(array $conditions): QueryBuilder
   {
+    // TODO remove with version 3.0
     if(empty($conditions)){
       throw new InvalidArgumentException("You need to specify nested where clauses");
     }

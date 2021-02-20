@@ -2,13 +2,14 @@
 
 namespace SleekDB;
 
+use Closure;
+use Exception;
+use ReflectionFunction;
+use SleekDB\Classes\IoHelper;
 use SleekDB\Exceptions\IOException;
-use SleekDB\Traits\IoHelperTrait;
 
 class Cache
 {
-
-  use IoHelperTrait;
 
   const DEFAULT_CACHE_DIR = "cache/";
   const NO_LIFETIME_FILE_STRING = "no_lifetime";
@@ -27,10 +28,11 @@ class Cache
 
   /**
    * Cache constructor.
-   * @param Query $query
    * @param string $storePath
+   * @param array $cacheTokenArray
+   * @param int|null $cacheLifetime
    */
-  public function __construct(Query $query, string $storePath)
+  public function __construct(string $storePath, array &$cacheTokenArray, $cacheLifetime)
   {
     // TODO make it possible to define custom cache directory.
     $cacheDir = "";
@@ -38,17 +40,9 @@ class Cache
 
     $this->setCachePath($storePath);
 
-    $this->setTokenArray($query->_getCacheTokenArray());
-  }
+    $this->setTokenArray($cacheTokenArray);
 
-  /**
-   * @param int|null $lifetime
-   * @return $this
-   */
-  public function setLifetime($lifetime): Cache
-  {
-    $this->lifetime = $lifetime;
-    return $this;
+    $this->lifetime = $cacheLifetime;
   }
 
   /**
@@ -138,14 +132,14 @@ class Cache
   }
 
   /**
-   * @param \Closure $closure
+   * @param Closure $closure
    * @return false|string
    */
-  private static function getClosureAsString(\Closure $closure)
+  private static function getClosureAsString(Closure $closure)
   {
     try{
-      $reflectionFunction = new \ReflectionFunction($closure); // get reflection object
-    } catch (\Exception $exception){
+      $reflectionFunction = new ReflectionFunction($closure); // get reflection object
+    } catch (Exception $exception){
       return false;
     }
     $filePath = $reflectionFunction->getFileName();  // absolute path of php file containing function
@@ -210,19 +204,19 @@ class Cache
 
   /**
    * Delete all cache files for current store.
-   * @throws IOException
    */
-  public function deleteAll(){
-    self::deleteFiles(glob($this->getCachePath()."*"));
+  public function deleteAll(): bool
+  {
+    return IoHelper::deleteFiles(glob($this->getCachePath()."*"));
   }
 
   /**
    * Delete all cache files with no lifetime in current store.
-   * @throws IOException
    */
-  public function deleteAllWithNoLifetime(){
+  public function deleteAllWithNoLifetime(): bool
+  {
     $noLifetimeFileString = self::NO_LIFETIME_FILE_STRING;
-    self::deleteFiles(glob($this->getCachePath()."*.$noLifetimeFileString.json"));
+    return IoHelper::deleteFiles(glob($this->getCachePath()."*.$noLifetimeFileString.json"));
   }
 
   /**
@@ -242,7 +236,7 @@ class Cache
       $cacheFile = $cachePath . $token . ".$lifetime.json";
     }
 
-    self::writeContentToFile($cacheFile, json_encode($content));
+    IoHelper::writeContentToFile($cacheFile, json_encode($content));
   }
 
   /**
@@ -267,15 +261,15 @@ class Cache
         $lifetime = $cacheParts[count($cacheParts) - 2];
         if(is_numeric($lifetime)){
           if($lifetime === "0"){
-            return json_decode(self::getFileContent($cacheFile), true);
+            return json_decode(IoHelper::getFileContent($cacheFile), true);
           }
           $fileExpiredAfter = filemtime($cacheFile) + (int) $lifetime;
           if(time() <= $fileExpiredAfter){
-            return json_decode(self::getFileContent($cacheFile), true);
+            return json_decode(IoHelper::getFileContent($cacheFile), true);
           }
-          self::deleteFile($cacheFile);
+          IoHelper::deleteFile($cacheFile);
         } else if($lifetime === self::NO_LIFETIME_FILE_STRING){
-            return json_decode(self::getFileContent($cacheFile), true);
+            return json_decode(IoHelper::getFileContent($cacheFile), true);
         }
       }
     }
@@ -288,6 +282,6 @@ class Cache
    */
   public function delete(): bool
   {
-    return self::deleteFiles(glob($this->getCachePath().$this->getToken()."*.json"));
+    return IoHelper::deleteFiles(glob($this->getCachePath().$this->getToken()."*.json"));
   }
 }

@@ -3,13 +3,13 @@
 namespace SleekDB;
 
 use Exception;
+use SleekDB\Classes\IoHelper;
+use SleekDB\Classes\NestedHelper;
 use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\IdNotAllowedException;
 use SleekDB\Exceptions\InvalidConfigurationException;
-use SleekDB\Exceptions\InvalidPropertyAccessException;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Exceptions\JsonException;
-use SleekDB\Traits\IoHelperTrait;
 
 // To provide usage without composer, we need to require all files.
 if(false === class_exists("\Composer\Autoload\ClassLoader")) {
@@ -29,8 +29,6 @@ if(false === class_exists("\Composer\Autoload\ClassLoader")) {
 
 class Store
 {
-
-  use IoHelperTrait;
 
   protected $root = __DIR__;
 
@@ -282,7 +280,7 @@ class Store
     // Define the store path
     $filePath = $this->getStorePath() . "data/$id.json";
 
-    self::writeContentToFile($filePath, $storableJSON);
+    IoHelper::writeContentToFile($filePath, $storableJSON);
 
     return $storeData;
   }
@@ -295,7 +293,7 @@ class Store
   public function deleteStore(): bool
   {
     $storePath = $this->getStorePath();
-    return self::deleteFolder($storePath);
+    return IoHelper::deleteFolder($storePath);
   }
 
   /**
@@ -304,7 +302,7 @@ class Store
   private function createDataDirectory()
   {
     $dataDir = $this->getDataDirectory();
-    self::createFolder($dataDir);
+    IoHelper::createFolder($dataDir);
   }
 
   /**
@@ -320,20 +318,20 @@ class Store
     // Store directory path.
     $this->storePath = $this->getDataDirectory() . $storeName;
     $storePath = $this->getStorePath();
-    self::createFolder($storePath);
+    IoHelper::createFolder($storePath);
 
     // Create the cache directory.
     $cacheDirectory = $storePath . 'cache';
-    self::createFolder($cacheDirectory);
+    IoHelper::createFolder($cacheDirectory);
 
     // Create the data directory.
     $dataDirectory = $storePath . 'data';
-    self::createFolder($dataDirectory);
+    IoHelper::createFolder($dataDirectory);
 
     // Create the store counter file.
     $counterFile = $storePath . '_cnt.sdb';
     if(!file_exists($counterFile)){
-      self::writeContentToFile($counterFile, '0');
+      IoHelper::writeContentToFile($counterFile, '0');
     }
   }
 
@@ -367,7 +365,7 @@ class Store
       throw new IOException("File $counterPath does not exist.");
     }
 
-    return (int) self::updateFileContent($counterPath, function ($counter){
+    return (int) IoHelper::updateFileContent($counterPath, function ($counter){
       return (string)(((int) $counter) + 1);
     });
   }
@@ -381,7 +379,7 @@ class Store
   {
     $counterPath = $this->getStorePath() . '_cnt.sdb';
 
-    return (int) self::getFileContent($counterPath);
+    return (int) IoHelper::getFileContent($counterPath);
   }
 
   /**
@@ -395,7 +393,6 @@ class Store
   /**
    * Retrieve all documents.
    * @return array
-   * @throws InvalidPropertyAccessException
    * @throws IOException
    * @throws InvalidArgumentException
    */
@@ -406,15 +403,18 @@ class Store
 
   /**
    * Retrieve one document by its primary key. Very fast because it finds the document by its file path.
-   * @param int $id
+   * @param int|string $id
    * @return array|null
+   * @throws InvalidArgumentException
    */
-  public function findById(int $id){
+  public function findById($id){
+
+    $id = $this->checkAndStripId($id);
 
     $filePath = $this->getStorePath() . "data/$id.json";
 
     try{
-      $content = self::getFileContent($filePath);
+      $content = IoHelper::getFileContent($filePath);
     } catch (Exception $exception){
       return null;
     }
@@ -431,7 +431,6 @@ class Store
    * @return array
    * @throws IOException
    * @throws InvalidArgumentException
-   * @throws InvalidPropertyAccessException
    */
   public function findBy(array $criteria, array $orderBy = null, int $limit = null, int $offset = null): array
   {
@@ -460,7 +459,6 @@ class Store
    * @return array|null single document or NULL if no document can be found
    * @throws IOException
    * @throws InvalidArgumentException
-   * @throws InvalidPropertyAccessException
    */
   public function findOneBy(array $criteria)
   {
@@ -496,13 +494,17 @@ class Store
     }
 
     // Check if all documents exist and have the primary key before updating any
-    foreach ($updatable as $document){
+    foreach ($updatable as $key => $document){
       if(!is_array($document)) {
         throw new InvalidArgumentException('Documents have to be an arrays.');
       }
       if(!array_key_exists($primaryKey, $document)) {
         throw new InvalidArgumentException("Documents have to have the primary key \"$primaryKey\".");
       }
+
+      $document[$primaryKey] = $this->checkAndStripId($document[$primaryKey]);
+      // after the stripping and checking we apply it back to the updatable array.
+      $updatable[$key] = $document;
 
       $storePath = $this->getStorePath() . "data/$document[$primaryKey].json";
 
@@ -513,8 +515,9 @@ class Store
 
     // One or multiple documents to update
     foreach ($updatable as $document) {
+      // save to access file with primary key value because we secured it above
       $storePath = $this->getStorePath() . "data/$document[$primaryKey].json";
-      self::writeContentToFile($storePath, json_encode($document));
+      IoHelper::writeContentToFile($storePath, json_encode($document));
     }
 
     $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
@@ -524,15 +527,18 @@ class Store
 
   /**
    * Update properties of one document.
-   * @param int $id
+   * @param int|string $id
    * @param array $updatable
    * @return array|false Updated document or false if document does not exist.
    * @throws IOException If document could not be read or written.
-   * @throws InvalidArgumentException If one key to update is primary key.
+   * @throws InvalidArgumentException If one key to update is primary key or $id is not int or string.
    * @throws JsonException If content of document file could not be decoded.
    */
-  public function updateById(int $id, array $updatable)
+  public function updateById($id, array $updatable)
   {
+
+    $id = $this->checkAndStripId($id);
+
     $filePath = $this->getStorePath() . "data/$id.json";
 
     $primaryKey = $this->getPrimaryKey();
@@ -545,50 +551,14 @@ class Store
       return false;
     }
 
-    $updateNestedValue = static function (array $keysArray, $oldData, $newValue, int $originalKeySize) use (&$updateNestedValue){
-      if(empty($keysArray)){
-        return $newValue;
-      }
-      $currentKey = $keysArray[0];
-      $result[$currentKey] = $oldData;
-      if(!is_array($oldData) || !array_key_exists($currentKey, $oldData)){
-        $result[$currentKey] = $updateNestedValue(array_slice($keysArray, 1), $oldData, $newValue, $originalKeySize);
-        if(count($keysArray) !== $originalKeySize){
-          return $result;
-        }
-      }
-      foreach ($oldData as $key => $item){
-        if($key !== $currentKey){
-          $result[$key] = $oldData[$key];
-        } else {
-          $result[$currentKey] = $updateNestedValue(array_slice($keysArray, 1), $oldData[$currentKey], $newValue, $originalKeySize);
-        }
-      }
-      return $result;
-    };
-
-    $content = self::updateFileContent($filePath, function($content) use ($filePath, $updatable, &$updateNestedValue){
+    $content = IoHelper::updateFileContent($filePath, function($content) use ($filePath, $updatable){
       $content = @json_decode($content, true);
       if(!is_array($content)){
         throw new JsonException("Could not decode content of \"$filePath\" with json_decode.");
       }
       foreach ($updatable as $key => $value){
-        $fieldNameArray = explode(".", $key);
-        if(count($fieldNameArray) > 1){
-          if(array_key_exists($fieldNameArray[0], $content)){
-            $oldData = $content[$fieldNameArray[0]];
-            $fieldNameArraySliced = array_slice($fieldNameArray, 1);
-            $value = $updateNestedValue($fieldNameArraySliced, $oldData, $value, count($fieldNameArraySliced));
-          } else {
-            $oldData = $content;
-            $value = $updateNestedValue($fieldNameArray, $oldData, $value, count($fieldNameArray));
-            $content = $value;
-            continue;
-          }
-        }
-        $content[$fieldNameArray[0]] = $value;
+        NestedHelper::updateNestedValue($key, $content, $value);
       }
-
       return json_encode($content);
     });
 
@@ -604,7 +574,6 @@ class Store
    * @return array|bool|int
    * @throws IOException
    * @throws InvalidArgumentException
-   * @throws InvalidPropertyAccessException
    */
   public function deleteBy(array $criteria, int $returnOption = Query::DELETE_RETURN_BOOL){
 
@@ -617,12 +586,14 @@ class Store
 
   /**
    * Delete one document by its primary key. Very fast because it deletes the document by its file path.
-   * @param int $id
+   * @param int|string $id
    * @return bool true if document does not exist or deletion was successful, false otherwise
-   * @throws IOException
+   * @throws InvalidArgumentException
    */
-  public function deleteById(int $id): bool
+  public function deleteById($id): bool
   {
+
+    $id = $this->checkAndStripId($id);
 
     $filePath = $this->getStorePath() . "data/$id.json";
 
@@ -641,7 +612,6 @@ class Store
    * @return array
    * @throws IOException
    * @throws InvalidArgumentException
-   * @throws InvalidPropertyAccessException
    */
   public function search(array $fields, string $query, array $orderBy = null, int $limit = null, int $offset = null): array
   {
@@ -679,6 +649,28 @@ class Store
   public function _getSearchOptions(): array
   {
     return $this->searchOptions;
+  }
+
+  /**
+   * @param string|int $id
+   * @return int
+   * @throws InvalidArgumentException
+   */
+  private function checkAndStripId($id): int
+  {
+    if(!is_string($id) && !is_int($id)){
+      throw new InvalidArgumentException("The id of the document has to be an integer or string");
+    }
+
+    if(is_string($id)){
+      $id = IoHelper::secureStringForFileAccess($id);
+    }
+
+    if(!is_numeric($id)){
+      throw new InvalidArgumentException("The id of the document has to be numeric");
+    }
+
+    return (int) $id;
   }
 
 }
