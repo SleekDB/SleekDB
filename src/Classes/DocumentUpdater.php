@@ -25,7 +25,11 @@ class DocumentUpdater
     $this->primaryKey = $primaryKey;
   }
 
-  private function getDataPath(){
+  /**
+   * @return string
+   */
+  private function getDataPath(): string
+  {
     return $this->storePath . Store::dataDirectory;
   }
 
@@ -124,6 +128,7 @@ class DocumentUpdater
     $primaryKey = $this->primaryKey;
     $dataPath = $this->getDataPath();
 
+    // check if all documents exist beforehand
     foreach ($results as $key => $data) {
       $primaryKeyValue = IoHelper::secureStringForFileAccess($data[$primaryKey]);
       $data[$primaryKey] = $primaryKeyValue;
