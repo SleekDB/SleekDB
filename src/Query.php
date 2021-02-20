@@ -34,6 +34,10 @@ class Query
 
   protected $storePath;
   protected $primaryKey;
+  /**
+   * @var DocumentUpdater
+   */
+  protected $documentUpdater;
 
   /**
    * Query constructor.
@@ -48,6 +52,7 @@ class Query
 
     $this->cacheHandler = new CacheHandler($store->getStorePath(), $queryBuilder);
     $this->documentFinder = new DocumentFinder($store->getStorePath(), $queryBuilder->_getConditionProperties(), $this->primaryKey);
+    $this->documentUpdater = new DocumentUpdater($store->getStorePath(), $this->primaryKey);
   }
 
 
@@ -86,7 +91,7 @@ class Query
   }
 
   /**
-   * Update one or multiple documents, based on current query
+   * Update one or multiple documents, based on current query.
    * @param array $updatable
    * @param bool $returnUpdatedDocuments
    * @return array|bool
@@ -95,21 +100,19 @@ class Query
    */
   public function update(array $updatable, bool $returnUpdatedDocuments = false){
 
+    if(empty($updatable)){
+      throw new InvalidArgumentException("You have to define what you want to update.");
+    }
+
     $results = $this->documentFinder->findDocuments(false, false);
 
     $this->getCacheHandler()->deleteAllWithNoLifetime();
 
-    return DocumentUpdater::updateResults(
-      $results,
-      $updatable,
-      $returnUpdatedDocuments,
-      $this->primaryKey,
-      $this->getDataPath()
-    );
+    return $this->documentUpdater->updateResults($results, $updatable, $returnUpdatedDocuments);
   }
 
   /**
-   * Deletes matched store objects.
+   * Delete one or multiple documents based on current query.
    * @param int $returnOption
    * @return bool|array|int
    * @throws InvalidArgumentException
@@ -120,7 +123,26 @@ class Query
 
     $this->getCacheHandler()->deleteAllWithNoLifetime();
 
-    return DocumentUpdater::deleteResults($results, $returnOption, $this->primaryKey, $this->getDataPath());
+    return $this->documentUpdater->deleteResults($results, $returnOption);
+  }
+
+  /**
+   * Remove fields from one or multiple documents based on current query.
+   * @param array $fieldsToRemove
+   * @return bool
+   * @throws IOException
+   * @throws InvalidArgumentException
+   */
+  public function removeFields(array $fieldsToRemove): bool
+  {
+    if(empty($fieldsToRemove)){
+      throw new InvalidArgumentException("You have to define what fields you want to remove.");
+    }
+    $results = $this->documentFinder->findDocuments(false, false);
+
+    $this->getCacheHandler()->deleteAllWithNoLifetime();
+
+    return $this->documentUpdater->removeFields($results, $fieldsToRemove);
   }
 
   /**

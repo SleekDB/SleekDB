@@ -7,6 +7,7 @@ namespace SleekDB\Classes;
 use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Query;
+use SleekDB\Store;
 
 /**
  * Class DocumentUpdater
@@ -15,22 +16,31 @@ use SleekDB\Query;
 class DocumentUpdater
 {
 
+  protected $storePath;
+  protected $primaryKey;
+
+  public function __construct(string $storePath, string $primaryKey)
+  {
+    $this->storePath = $storePath;
+    $this->primaryKey = $primaryKey;
+  }
+
+  private function getDataPath(){
+    return $this->storePath . Store::dataDirectory;
+  }
+
   /**
    * Update one or multiple documents, based on current query
    * @param array $results
    * @param array $updatable
    * @param bool $returnUpdatedDocuments
-   * @param string $primaryKey
-   * @param string $dataPath
    * @return array|bool
    * @throws IOException
    */
-  public static function updateResults(array $results, array $updatable, bool $returnUpdatedDocuments, string $primaryKey, string $dataPath)
+  public function updateResults(array $results, array $updatable, bool $returnUpdatedDocuments)
   {
-    // If no documents found return false.
-    if (empty($results)) {
-      return false;
-    }
+    $primaryKey = $this->primaryKey;
+    $dataPath = $this->getDataPath();
     // check if all documents exist beforehand
     foreach ($results as $key => $data) {
       $primaryKeyValue = IoHelper::secureStringForFileAccess($data[$primaryKey]);
@@ -61,15 +71,14 @@ class DocumentUpdater
    * Deletes matched store objects.
    * @param array $results
    * @param int $returnOption
-   * @param string $primaryKey
-   * @param string $dataPath
    * @return bool|array|int
    * @throws IOException
    * @throws InvalidArgumentException
    */
-  public static function deleteResults(array $results, int $returnOption, string $primaryKey, string $dataPath)
+  public function deleteResults(array $results, int $returnOption)
   {
-
+    $primaryKey = $this->primaryKey;
+    $dataPath = $this->getDataPath();
     switch ($returnOption){
       case Query::DELETE_RETURN_BOOL:
         $returnValue = !empty($results);
@@ -102,6 +111,40 @@ class DocumentUpdater
       }
     }
     return $returnValue;
+  }
+
+  /**
+   * @param array $results
+   * @param array $fieldsToRemove
+   * @return bool
+   * @throws IOException
+   */
+  public function removeFields(array $results, array $fieldsToRemove): bool
+  {
+    $primaryKey = $this->primaryKey;
+    $dataPath = $this->getDataPath();
+
+    foreach ($results as $key => $data) {
+      $primaryKeyValue = IoHelper::secureStringForFileAccess($data[$primaryKey]);
+      $data[$primaryKey] = $primaryKeyValue;
+      $results[$key] = $data;
+
+      $filePath = $dataPath . $primaryKeyValue . '.json';
+      if(!file_exists($filePath)){
+        return false;
+      }
+    }
+
+    foreach ($results as $document){
+      foreach ($fieldsToRemove as $fieldToRemove){
+        if($fieldToRemove !== $primaryKey){
+          NestedHelper::removeNestedField($document, $fieldToRemove);
+        }
+      }
+      $filePath = $dataPath . $document[$primaryKey] . '.json';
+      IoHelper::writeContentToFile($filePath, json_encode($document));
+    }
+    return true;
   }
 
 }
