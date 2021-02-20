@@ -47,6 +47,7 @@ class QueryBuilder
   // will also not be used for cache token
   protected $propertiesNotUsedInConditionsArray = [
     "propertiesNotUsedInConditionsArray",
+    "propertiesNotUsedForCacheToken",
     "store",
     "cache",
   ];
@@ -334,13 +335,13 @@ class QueryBuilder
 
   /**
    * @param Closure $joinFunction
-   * @param string $dataPropertyName
+   * @param string $propertyName
    * @return QueryBuilder
    */
-  public function join(Closure $joinFunction, string $dataPropertyName): QueryBuilder
+  public function join(Closure $joinFunction, string $propertyName): QueryBuilder
   {
     $this->listOfJoins[] = [
-      'dataPropertyName' => $dataPropertyName,
+      'propertyName' => $propertyName,
       'joinFunction' => $joinFunction
     ];
     return $this;

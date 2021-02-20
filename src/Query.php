@@ -27,8 +27,12 @@ class Query
    */
   protected $cacheHandler;
 
+  /**
+   * @var DocumentFinder
+   */
+  protected $documentFinder;
+
   protected $storePath;
-  protected $queryBuilderProperties;
   protected $primaryKey;
 
   /**
@@ -41,9 +45,9 @@ class Query
 
     $this->storePath = $store->getStorePath();
     $this->primaryKey = $store->getPrimaryKey();
-    $this->queryBuilderProperties = $queryBuilder->_getConditionProperties();
 
     $this->cacheHandler = new CacheHandler($store->getStorePath(), $queryBuilder);
+    $this->documentFinder = new DocumentFinder($store->getStorePath(), $queryBuilder->_getConditionProperties(), $this->primaryKey);
   }
 
 
@@ -91,13 +95,7 @@ class Query
    */
   public function update(array $updatable, bool $returnUpdatedDocuments = false){
 
-    $results = DocumentFinder::findStoreDocuments(
-      false,
-      false,
-      $this->queryBuilderProperties,
-      $this->getDataPath(),
-      $this->primaryKey
-    );
+    $results = $this->documentFinder->findDocuments(false, false);
 
     $this->getCacheHandler()->deleteAllWithNoLifetime();
 
@@ -118,13 +116,7 @@ class Query
    * @throws IOException
    */
   public function delete(int $returnOption = self::DELETE_RETURN_BOOL){
-    $results = DocumentFinder::findStoreDocuments(
-      false,
-      false,
-      $this->queryBuilderProperties,
-      $this->getDataPath(),
-      $this->primaryKey
-    );
+    $results = $this->documentFinder->findDocuments(false, false);
 
     $this->getCacheHandler()->deleteAllWithNoLifetime();
 
@@ -133,12 +125,11 @@ class Query
 
   /**
    * @param bool $getOneDocument
-   * @param bool $reduceAndJoinPossible
    * @return array
    * @throws IOException
    * @throws InvalidArgumentException
    */
-  private function getResults(bool $getOneDocument = false, bool $reduceAndJoinPossible = true): array
+  private function getResults(bool $getOneDocument = false): array
   {
 
     $results = $this->getCacheHandler()->getCacheContent($getOneDocument);
@@ -147,13 +138,7 @@ class Query
       return $results;
     }
 
-    $results = DocumentFinder::findStoreDocuments(
-      $getOneDocument,
-      $reduceAndJoinPossible,
-      $this->queryBuilderProperties,
-      $this->getDataPath(),
-      $this->primaryKey
-    );
+    $results = $this->documentFinder->findDocuments($getOneDocument, true);
 
     if ($getOneDocument === true && count($results) > 0) {
       list($item) = $results;
@@ -178,7 +163,7 @@ class Query
    */
   private function getDataPath(): string
   {
-    return $this->storePath . "data/";
+    return $this->storePath . Store::dataDirectory;
   }
 
   /**

@@ -72,6 +72,9 @@ class DocumentReducer
    * @throws InvalidArgumentException
    */
   public static function joinData(array &$results, array $listOfJoins){
+    if(empty($listOfJoins)){
+      return;
+    }
     // Join data.
     foreach ($results as $key => $doc) {
       foreach ($listOfJoins as $join) {
@@ -104,6 +107,10 @@ class DocumentReducer
    */
   public static function handleGroupBy(array &$found, array $groupBy, array $fieldsToSelect, array $havingConditions)
   {
+    if(empty($groupBy)){
+      return;
+    }
+    // TODO optimize algorithm
     $groupByFields = $groupBy["groupByFields"];
     $countKeyName = $groupBy["countKeyName"];
     $allowEmpty = $groupBy["allowEmpty"];

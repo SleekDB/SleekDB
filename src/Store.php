@@ -35,7 +35,7 @@ class Store
   protected $storeName = "";
   protected $storePath = "";
 
-  protected $dataDirectory = "";
+  protected $databasePath = "";
 
   protected $useCache = true;
   protected $defaultCacheLifetime;
@@ -48,16 +48,18 @@ class Store
     "algorithm" => Query::SEARCH_ALGORITHM["hits"]
   ];
 
+  const dataDirectory = "data/";
+
   /**
    * Store constructor.
    * @param string $storeName
-   * @param string $dataDir
+   * @param string $databasePath
    * @param array $configuration
    * @throws InvalidArgumentException
    * @throws IOException
    * @throws InvalidConfigurationException
    */
-  public function __construct(string $storeName, string $dataDir, array $configuration = [])
+  public function __construct(string $storeName, string $databasePath, array $configuration = [])
   {
     $storeName = trim($storeName);
     if (empty($storeName)) {
@@ -65,38 +67,38 @@ class Store
     }
     $this->storeName = $storeName;
 
-    $dataDir = trim($dataDir);
-    if (empty($dataDir)) {
+    $databasePath = trim($databasePath);
+    if (empty($databasePath)) {
       throw new InvalidArgumentException('data directory can not be empty');
     }
-    if (substr($dataDir, -1) !== '/') {
-      $dataDir .= '/';
+    if (substr($databasePath, -1) !== '/') {
+      $databasePath .= '/';
     }
-    $this->dataDirectory = $dataDir;
+    $this->databasePath = $databasePath;
 
     $this->setConfiguration($configuration);
 
     // boot store
-    $this->createDataDirectory();
+    $this->createDatabasePath();
     $this->createStore();
   }
 
   /**
    * Change the destination of the store object.
    * @param string $storeName
-   * @param string|null $dataDir If dataDir is empty, previous database directory path will be used.
+   * @param string|null $databasePath If empty, previous database path will be used.
    * @param array $configuration
    * @return Store
    * @throws IOException
    * @throws InvalidArgumentException
    * @throws InvalidConfigurationException
    */
-  public function changeStore(string $storeName, string $dataDir = null, array $configuration = []): Store
+  public function changeStore(string $storeName, string $databasePath = null, array $configuration = []): Store
   {
-    if(empty($dataDir)){
-      $dataDir = $this->getDataDirectory();
+    if(empty($databasePath)){
+      $databasePath = $this->getDatabasePath();
     }
-    $this->__construct($storeName, $dataDir, $configuration);
+    $this->__construct($storeName, $databasePath, $configuration);
     return $this;
   }
 
@@ -111,9 +113,19 @@ class Store
   /**
    * @return string
    */
+  public function getDatabasePath(): string
+  {
+    return $this->databasePath;
+  }
+
+  /**
+   * @return string
+   * @deprecated since version 2.7, use getDatabasePath instead.
+   */
   public function getDataDirectory(): string
   {
-    return $this->dataDirectory;
+    // TODO remove with version 3.0
+    return $this->databasePath;
   }
 
   /**
@@ -278,7 +290,7 @@ class Store
         please provide a valid PHP associative array');
     }
     // Define the store path
-    $filePath = $this->getStorePath() . "data/$id.json";
+    $filePath = $this->getDataPath()."$id.json";
 
     IoHelper::writeContentToFile($filePath, $storableJSON);
 
@@ -299,10 +311,10 @@ class Store
   /**
    * @throws IOException
    */
-  private function createDataDirectory()
+  private function createDatabasePath()
   {
-    $dataDir = $this->getDataDirectory();
-    IoHelper::createFolder($dataDir);
+    $databasePath = $this->getDatabasePath();
+    IoHelper::createFolder($databasePath);
   }
 
   /**
@@ -316,7 +328,7 @@ class Store
       $storeName .= '/';
     }
     // Store directory path.
-    $this->storePath = $this->getDataDirectory() . $storeName;
+    $this->storePath = $this->getDatabasePath() . $storeName;
     $storePath = $this->getStorePath();
     IoHelper::createFolder($storePath);
 
@@ -325,8 +337,7 @@ class Store
     IoHelper::createFolder($cacheDirectory);
 
     // Create the data directory.
-    $dataDirectory = $storePath . 'data';
-    IoHelper::createFolder($dataDirectory);
+    IoHelper::createFolder($storePath . self::dataDirectory);
 
     // Create the store counter file.
     $counterFile = $storePath . '_cnt.sdb';
@@ -411,7 +422,7 @@ class Store
 
     $id = $this->checkAndStripId($id);
 
-    $filePath = $this->getStorePath() . "data/$id.json";
+    $filePath = $this->getDataPath() . "$id.json";
 
     try{
       $content = IoHelper::getFileContent($filePath);
@@ -506,7 +517,7 @@ class Store
       // after the stripping and checking we apply it back to the updatable array.
       $updatable[$key] = $document;
 
-      $storePath = $this->getStorePath() . "data/$document[$primaryKey].json";
+      $storePath = $this->getDataPath() . "$document[$primaryKey].json";
 
       if (!file_exists($storePath)) {
         return false;
@@ -516,7 +527,7 @@ class Store
     // One or multiple documents to update
     foreach ($updatable as $document) {
       // save to access file with primary key value because we secured it above
-      $storePath = $this->getStorePath() . "data/$document[$primaryKey].json";
+      $storePath = $this->getDataPath() . "$document[$primaryKey].json";
       IoHelper::writeContentToFile($storePath, json_encode($document));
     }
 
@@ -539,7 +550,7 @@ class Store
 
     $id = $this->checkAndStripId($id);
 
-    $filePath = $this->getStorePath() . "data/$id.json";
+    $filePath = $this->getDataPath() . "$id.json";
 
     $primaryKey = $this->getPrimaryKey();
 
@@ -595,7 +606,7 @@ class Store
 
     $id = $this->checkAndStripId($id);
 
-    $filePath = $this->getStorePath() . "data/$id.json";
+    $filePath = $this->getDataPath() . "$id.json";
 
     $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
 
@@ -671,6 +682,14 @@ class Store
     }
 
     return (int) $id;
+  }
+
+  /**
+   * @return string
+   */
+  private function getDataPath(): string
+  {
+    return $this->getStorePath() . self::dataDirectory;
   }
 
 }

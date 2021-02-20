@@ -8,6 +8,7 @@ use Exception;
 use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Query;
+use SleekDB\Store;
 
 /**
  * Class DocumentFinder
@@ -15,25 +16,38 @@ use SleekDB\Query;
  */
 class DocumentFinder
 {
+  protected $storePath;
+  protected $queryBuilderProperties;
+  protected $primaryKey;
+
+  public function __construct(string $storePath, array $queryBuilderProperties, string $primaryKey)
+  {
+    $this->storePath = $storePath;
+    $this->queryBuilderProperties = $queryBuilderProperties;
+    $this->primaryKey = $primaryKey;
+  }
+
+  /**
+   * @return string
+   */
+  private function getDataPath(): string
+  {
+    return $this->storePath . Store::dataDirectory;
+  }
 
   /**
    * @param bool $getOneDocument
    * @param bool $reduceAndJoinPossible
-   * @param array $queryBuilderProperties
-   * @param string $dataPath
-   * @param string $primaryKey
    * @return array
    * @throws IOException
    * @throws InvalidArgumentException
    */
-  public static function findStoreDocuments(
-    bool $getOneDocument,
-    bool $reduceAndJoinPossible,
-    array $queryBuilderProperties,
-    string $dataPath,
-    string $primaryKey
-  ): array
+  public function findDocuments(bool $getOneDocument, bool $reduceAndJoinPossible): array
   {
+    $queryBuilderProperties = $this->queryBuilderProperties;
+    $dataPath = $this->getDataPath();
+    $primaryKey = $this->primaryKey;
+
     $found = [];
     // Start collecting and filtering data.
     IoHelper::_checkRead($dataPath);
@@ -41,6 +55,18 @@ class DocumentFinder
     $conditions = $queryBuilderProperties["whereConditions"];
     $distinctFields = $queryBuilderProperties["distinctFields"];
     $nestedWhereConditions = $queryBuilderProperties["nestedWhere"];
+    $listOfJoins = $queryBuilderProperties["listOfJoins"];
+    $search = $queryBuilderProperties["search"];
+    $searchOptions = $queryBuilderProperties["searchOptions"];
+    $groupBy = $queryBuilderProperties["groupBy"];
+    $having = $queryBuilderProperties["having"];
+    $fieldsToSelect = $queryBuilderProperties["fieldsToSelect"];
+    $orderBy = $queryBuilderProperties["orderBy"];
+    $skip = $queryBuilderProperties["skip"];
+    $limit = $queryBuilderProperties["limit"];
+    $fieldsToExclude = $queryBuilderProperties["fieldsToExclude"];
+
+    unset($queryBuilderProperties);
 
     if ($handle = opendir($dataPath)) {
 
@@ -94,41 +120,41 @@ class DocumentFinder
     // apply additional changes to result like sort and limit
 
     if($reduceAndJoinPossible === true){
-      DocumentReducer::joinData($found, $queryBuilderProperties["listOfJoins"]);
+      DocumentReducer::joinData($found, $listOfJoins);
     }
 
     if (count($found) > 0) {
-      self::performSearch($found, $queryBuilderProperties["search"], $queryBuilderProperties["searchOptions"]);
+      self::performSearch($found, $search, $searchOptions);
     }
 
-    if ($reduceAndJoinPossible === true && !empty($queryBuilderProperties["groupBy"]) && count($found) > 0) {
+    if ($reduceAndJoinPossible === true && !empty($groupBy) && count($found) > 0) {
       DocumentReducer::handleGroupBy(
         $found,
-        $queryBuilderProperties["groupBy"],
-        $queryBuilderProperties["fieldsToSelect"],
-        $queryBuilderProperties["having"]
+        $groupBy,
+        $fieldsToSelect,
+        $having
       );
     }
 
     if(count($found) > 0){
       // sort the data.
-      self::sort($found, $queryBuilderProperties["orderBy"]);
+      self::sort($found, $orderBy);
 
       // Skip data
-      self::skip($found, $queryBuilderProperties["skip"]);
+      self::skip($found, $skip);
     }
 
     if(count($found) > 0) {
       // Limit data.
-      self::limit($found, $queryBuilderProperties["limit"]);
+      self::limit($found, $limit);
     }
 
-    if($reduceAndJoinPossible === true && empty($queryBuilderProperties["groupBy"]) && count($found) > 0){
+    if($reduceAndJoinPossible === true && empty($groupBy) && count($found) > 0){
       // select specific fields
-      DocumentReducer::selectFields($found, $primaryKey, $queryBuilderProperties["fieldsToSelect"]);
+      DocumentReducer::selectFields($found, $primaryKey, $fieldsToSelect);
 
       // exclude specific fields
-      DocumentReducer::excludeFields($found, $queryBuilderProperties["fieldsToExclude"]);
+      DocumentReducer::excludeFields($found, $fieldsToExclude);
     }
 
     return $found;
