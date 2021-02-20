@@ -9,6 +9,10 @@ use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Query;
 
+/**
+ * Class DocumentFinder
+ * Find documents
+ */
 class DocumentFinder
 {
 
@@ -23,7 +27,11 @@ class DocumentFinder
    * @throws InvalidArgumentException
    */
   public static function findStoreDocuments(
-    bool $getOneDocument, bool $reduceAndJoinPossible, array $queryBuilderProperties, string $dataPath, string $primaryKey
+    bool $getOneDocument,
+    bool $reduceAndJoinPossible,
+    array $queryBuilderProperties,
+    string $dataPath,
+    string $primaryKey
   ): array
   {
     $found = [];

@@ -9,6 +9,10 @@ use DateTime;
 use Exception;
 use Throwable;
 
+/**
+ * Class ConditionsHandler
+ * Handle all types of conditions to check if a document has passed.
+ */
 class ConditionsHandler
 {
 
@@ -41,7 +45,7 @@ class ConditionsHandler
    * @return bool
    * @throws InvalidArgumentException
    */
-  private static function verifyWhereConditions(string $condition, $fieldValue, $value): bool
+  public static function verifyWhereConditions(string $condition, $fieldValue, $value): bool
   {
 
     if($value instanceof DateTime){

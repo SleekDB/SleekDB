@@ -6,6 +6,10 @@ namespace SleekDB\Classes;
 
 use SleekDB\Exceptions\InvalidArgumentException;
 
+/**
+ * Class NestedHelper
+ * Helper to handle arrays.
+ */
 class NestedHelper
 {
 

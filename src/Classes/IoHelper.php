@@ -9,6 +9,10 @@ use RecursiveIteratorIterator;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Exceptions\JsonException;
 
+/**
+ * Class IoHelper
+ * Helper to handle file input/ output.
+ */
 class IoHelper {
 
   /**
