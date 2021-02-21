@@ -3,13 +3,13 @@
 namespace SleekDB;
 
 use Exception;
+use SleekDB\Classes\IoHelper;
+use SleekDB\Classes\NestedHelper;
 use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\IdNotAllowedException;
 use SleekDB\Exceptions\InvalidConfigurationException;
-use SleekDB\Exceptions\InvalidPropertyAccessException;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Exceptions\JsonException;
-use SleekDB\Traits\IoHelperTrait;
 
 // To provide usage without composer, we need to require all files.
 if(false === class_exists("\Composer\Autoload\ClassLoader")) {
@@ -30,14 +30,12 @@ if(false === class_exists("\Composer\Autoload\ClassLoader")) {
 class Store
 {
 
-  use IoHelperTrait;
-
   protected $root = __DIR__;
 
   protected $storeName = "";
   protected $storePath = "";
 
-  protected $dataDirectory = "";
+  protected $databasePath = "";
 
   protected $useCache = true;
   protected $defaultCacheLifetime;
@@ -50,16 +48,18 @@ class Store
     "algorithm" => Query::SEARCH_ALGORITHM["hits"]
   ];
 
+  const dataDirectory = "data/";
+
   /**
    * Store constructor.
    * @param string $storeName
-   * @param string $dataDir
+   * @param string $databasePath
    * @param array $configuration
    * @throws InvalidArgumentException
    * @throws IOException
    * @throws InvalidConfigurationException
    */
-  public function __construct(string $storeName, string $dataDir, array $configuration = [])
+  public function __construct(string $storeName, string $databasePath, array $configuration = [])
   {
     $storeName = trim($storeName);
     if (empty($storeName)) {
@@ -67,38 +67,37 @@ class Store
     }
     $this->storeName = $storeName;
 
-    $dataDir = trim($dataDir);
-    if (empty($dataDir)) {
+    $databasePath = trim($databasePath);
+    if (empty($databasePath)) {
       throw new InvalidArgumentException('data directory can not be empty');
     }
-    if (substr($dataDir, -1) !== '/') {
-      $dataDir .= '/';
-    }
-    $this->dataDirectory = $dataDir;
+
+    IoHelper::normalizeDirectory($databasePath);
+    $this->databasePath = $databasePath;
 
     $this->setConfiguration($configuration);
 
     // boot store
-    $this->createDataDirectory();
+    $this->createDatabasePath();
     $this->createStore();
   }
 
   /**
    * Change the destination of the store object.
    * @param string $storeName
-   * @param string|null $dataDir If dataDir is empty, previous database directory path will be used.
+   * @param string|null $databasePath If empty, previous database path will be used.
    * @param array $configuration
    * @return Store
    * @throws IOException
    * @throws InvalidArgumentException
    * @throws InvalidConfigurationException
    */
-  public function changeStore(string $storeName, string $dataDir = null, array $configuration = []): Store
+  public function changeStore(string $storeName, string $databasePath = null, array $configuration = []): Store
   {
-    if(empty($dataDir)){
-      $dataDir = $this->getDataDirectory();
+    if(empty($databasePath)){
+      $databasePath = $this->getDatabasePath();
     }
-    $this->__construct($storeName, $dataDir, $configuration);
+    $this->__construct($storeName, $databasePath, $configuration);
     return $this;
   }
 
@@ -113,9 +112,459 @@ class Store
   /**
    * @return string
    */
+  public function getDatabasePath(): string
+  {
+    return $this->databasePath;
+  }
+
+  /**
+   * @return string
+   * @deprecated since version 2.7, use getDatabasePath instead.
+   */
   public function getDataDirectory(): string
   {
-    return $this->dataDirectory;
+    // TODO remove with version 3.0
+    return $this->databasePath;
+  }
+
+
+  /**
+   * @return QueryBuilder
+   */
+  public function createQueryBuilder(): QueryBuilder
+  {
+    return new QueryBuilder($this);
+  }
+
+  /**
+   * Creates a new object in the store.
+   * It is stored as a plaintext JSON document.
+   * @param array $data
+   * @return array
+   * @throws IOException
+   * @throws IdNotAllowedException
+   * @throws InvalidArgumentException
+   * @throws JsonException
+   */
+  public function insert(array $data): array
+  {
+    // Handle invalid data
+    if (empty($data)) {
+      throw new InvalidArgumentException('No data found to insert in the store');
+    }
+
+    $data = $this->writeNewDocumentToStore($data);
+
+    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
+
+    return $data;
+  }
+
+  /**
+   * Creates multiple objects in the store.
+   * @param array $data
+   * @return array
+   * @throws IOException
+   * @throws IdNotAllowedException
+   * @throws InvalidArgumentException
+   * @throws JsonException
+   */
+  public function insertMany(array $data): array
+  {
+    // Handle invalid data
+    if (empty($data)) {
+      throw new InvalidArgumentException('No data found to insert in the store');
+    }
+    // All results.
+    $results = [];
+    foreach ($data as $document) {
+      $results[] = $this->writeNewDocumentToStore($document);
+    }
+    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
+    return $results;
+  }
+
+
+  /**
+   * Delete store with all its data and cache.
+   * @return bool
+   * @throws IOException
+   */
+  public function deleteStore(): bool
+  {
+    $storePath = $this->getStorePath();
+    return IoHelper::deleteFolder($storePath);
+  }
+
+
+  /**
+   * Return the last created store object ID.
+   * @return int
+   * @throws IOException
+   */
+  public function getLastInsertedId(): int
+  {
+    $counterPath = $this->getStorePath() . '_cnt.sdb';
+
+    return (int) IoHelper::getFileContent($counterPath);
+  }
+
+  /**
+   * @return string
+   */
+  public function getStorePath(): string
+  {
+    return $this->storePath;
+  }
+
+  /**
+   * Retrieve all documents.
+   * @return array
+   * @throws IOException
+   * @throws InvalidArgumentException
+   */
+  public function findAll(): array
+  {
+    return $this->createQueryBuilder()->getQuery()->fetch();
+  }
+
+  /**
+   * Retrieve one document by its primary key. Very fast because it finds the document by its file path.
+   * @param int|string $id
+   * @return array|null
+   * @throws InvalidArgumentException
+   */
+  public function findById($id){
+
+    $id = $this->checkAndStripId($id);
+
+    $filePath = $this->getDataPath() . "$id.json";
+
+    try{
+      $content = IoHelper::getFileContent($filePath);
+    } catch (Exception $exception){
+      return null;
+    }
+
+    return @json_decode($content, true);
+  }
+
+  /**
+   * Retrieve one or multiple documents.
+   * @param array $criteria
+   * @param array $orderBy
+   * @param int $limit
+   * @param int $offset
+   * @return array
+   * @throws IOException
+   * @throws InvalidArgumentException
+   */
+  public function findBy(array $criteria, array $orderBy = null, int $limit = null, int $offset = null): array
+  {
+    $qb = $this->createQueryBuilder();
+
+    $qb->where($criteria);
+
+    if($orderBy !== null) {
+      $qb->orderBy($orderBy);
+    }
+
+    if($limit !== null) {
+      $qb->limit($limit);
+    }
+
+    if($offset !== null) {
+      $qb->skip($offset);
+    }
+
+    return $qb->getQuery()->fetch();
+  }
+
+  /**
+   * Retrieve one document.
+   * @param array $criteria
+   * @return array|null single document or NULL if no document can be found
+   * @throws IOException
+   * @throws InvalidArgumentException
+   */
+  public function findOneBy(array $criteria)
+  {
+    $qb = $this->createQueryBuilder();
+
+    $qb->where($criteria);
+
+    $result = $qb->getQuery()->first();
+
+    return (!empty($result))? $result : null;
+
+  }
+
+  /**
+   * Update one or multiple documents.
+   * @param array $updatable true if all documents could be updated and false if one document did not exist
+   * @return bool
+   * @throws IOException
+   * @throws InvalidArgumentException
+   */
+  public function update(array $updatable): bool
+  {
+    $primaryKey = $this->getPrimaryKey();
+
+    if(empty($updatable)) {
+      throw new InvalidArgumentException("No documents to update.");
+    }
+
+    // we can use this check to determine if multiple documents are given
+    // because documents have to have at least the primary key.
+    if(array_keys($updatable) !== range(0, (count($updatable) - 1))){
+      $updatable = [ $updatable ];
+    }
+
+    // Check if all documents exist and have the primary key before updating any
+    foreach ($updatable as $key => $document){
+      if(!is_array($document)) {
+        throw new InvalidArgumentException('Documents have to be an arrays.');
+      }
+      if(!array_key_exists($primaryKey, $document)) {
+        throw new InvalidArgumentException("Documents have to have the primary key \"$primaryKey\".");
+      }
+
+      $document[$primaryKey] = $this->checkAndStripId($document[$primaryKey]);
+      // after the stripping and checking we apply it back to the updatable array.
+      $updatable[$key] = $document;
+
+      $storePath = $this->getDataPath() . "$document[$primaryKey].json";
+
+      if (!file_exists($storePath)) {
+        return false;
+      }
+    }
+
+    // One or multiple documents to update
+    foreach ($updatable as $document) {
+      // save to access file with primary key value because we secured it above
+      $storePath = $this->getDataPath() . "$document[$primaryKey].json";
+      IoHelper::writeContentToFile($storePath, json_encode($document));
+    }
+
+    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
+
+    return true;
+  }
+
+  /**
+   * Update properties of one document.
+   * @param int|string $id
+   * @param array $updatable
+   * @return array|false Updated document or false if document does not exist.
+   * @throws IOException If document could not be read or written.
+   * @throws InvalidArgumentException If one key to update is primary key or $id is not int or string.
+   * @throws JsonException If content of document file could not be decoded.
+   */
+  public function updateById($id, array $updatable)
+  {
+
+    $id = $this->checkAndStripId($id);
+
+    $filePath = $this->getDataPath() . "$id.json";
+
+    $primaryKey = $this->getPrimaryKey();
+
+    if(array_key_exists($primaryKey, $updatable)) {
+      throw new InvalidArgumentException("You can not update the primary key \"$primaryKey\" of documents.");
+    }
+
+    if(!file_exists($filePath)){
+      return false;
+    }
+
+    $content = IoHelper::updateFileContent($filePath, function($content) use ($filePath, $updatable){
+      $content = @json_decode($content, true);
+      if(!is_array($content)){
+        throw new JsonException("Could not decode content of \"$filePath\" with json_decode.");
+      }
+      foreach ($updatable as $key => $value){
+        NestedHelper::updateNestedValue($key, $content, $value);
+      }
+      return json_encode($content);
+    });
+
+    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
+
+    return json_decode($content, true);
+  }
+
+  /**
+   * Delete one or multiple documents.
+   * @param array $criteria
+   * @param int $returnOption
+   * @return array|bool|int
+   * @throws IOException
+   * @throws InvalidArgumentException
+   */
+  public function deleteBy(array $criteria, int $returnOption = Query::DELETE_RETURN_BOOL){
+
+    $query = $this->createQueryBuilder()->where($criteria)->getQuery();
+
+    $query->getCache()->deleteAllWithNoLifetime();
+
+    return $query->delete($returnOption);
+  }
+
+  /**
+   * Delete one document by its primary key. Very fast because it deletes the document by its file path.
+   * @param int|string $id
+   * @return bool true if document does not exist or deletion was successful, false otherwise
+   * @throws InvalidArgumentException
+   */
+  public function deleteById($id): bool
+  {
+
+    $id = $this->checkAndStripId($id);
+
+    $filePath = $this->getDataPath() . "$id.json";
+
+    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
+
+    return (!file_exists($filePath) || true === @unlink($filePath));
+  }
+
+  /**
+   * @param int|string $id
+   * @param array $fieldsToRemove
+   * @return false|array
+   * @throws IOException
+   * @throws InvalidArgumentException
+   * @throws JsonException
+   */
+  public function removeFieldsById($id, array $fieldsToRemove)
+  {
+    $id = $this->checkAndStripId($id);
+    $filePath = $this->getDataPath() . "$id.json";
+    $primaryKey = $this->getPrimaryKey();
+
+    if(in_array($primaryKey, $fieldsToRemove, false)) {
+      throw new InvalidArgumentException("You can not remove the primary key \"$primaryKey\" of documents.");
+    }
+    if(!file_exists($filePath)){
+      return false;
+    }
+
+    $content = IoHelper::updateFileContent($filePath, function($content) use ($filePath, $fieldsToRemove){
+      $content = @json_decode($content, true);
+      if(!is_array($content)){
+        throw new JsonException("Could not decode content of \"$filePath\" with json_decode.");
+      }
+      foreach ($fieldsToRemove as $fieldToRemove){
+        NestedHelper::removeNestedField($content, $fieldToRemove);
+      }
+      return $content;
+    });
+
+    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
+
+    return json_decode($content, true);
+  }
+
+  /**
+   * Do a fulltext like search against one or multiple fields.
+   * @param array $fields
+   * @param string $query
+   * @param array|null $orderBy
+   * @param int|null $limit
+   * @param int|null $offset
+   * @return array
+   * @throws IOException
+   * @throws InvalidArgumentException
+   */
+  public function search(array $fields, string $query, array $orderBy = null, int $limit = null, int $offset = null): array
+  {
+
+    $qb = $this->createQueryBuilder();
+
+    $qb->search($fields, $query);
+
+    if($orderBy !== null) {
+      $qb->orderBy($orderBy);
+    }
+
+    if($limit !== null) {
+      $qb->limit($limit);
+    }
+
+    if($offset !== null) {
+      $qb->skip($offset);
+    }
+
+    return $qb->getQuery()->fetch();
+  }
+
+  /**
+   * @return string
+   */
+  public function getPrimaryKey(): string
+  {
+    return $this->primaryKey;
+  }
+
+  /**
+   * @return array
+   */
+  public function _getSearchOptions(): array
+  {
+    return $this->searchOptions;
+  }
+
+  /**
+   * @return bool
+   */
+  public function _getUseCache(): bool
+  {
+    return $this->useCache;
+  }
+
+  /**
+   * @return null|int
+   */
+  public function _getDefaultCacheLifetime()
+  {
+    return $this->defaultCacheLifetime;
+  }
+
+  /**
+   * @throws IOException
+   */
+  private function createDatabasePath()
+  {
+    $databasePath = $this->getDatabasePath();
+    IoHelper::createFolder($databasePath);
+  }
+
+  /**
+   * @throws IOException
+   */
+  private function createStore()
+  {
+    $storeName = $this->getStoreName();
+    // Prepare store name.
+    IoHelper::normalizeDirectory($storeName);
+    // Store directory path.
+    $this->storePath = $this->getDatabasePath() . $storeName;
+    $storePath = $this->getStorePath();
+    IoHelper::createFolder($storePath);
+
+    // Create the cache directory.
+    $cacheDirectory = $storePath . 'cache';
+    IoHelper::createFolder($cacheDirectory);
+
+    // Create the data directory.
+    IoHelper::createFolder($storePath . self::dataDirectory);
+
+    // Create the store counter file.
+    $counterFile = $storePath . '_cnt.sdb';
+    if(!file_exists($counterFile)){
+      IoHelper::writeContentToFile($counterFile, '0');
+    }
   }
 
   /**
@@ -198,62 +647,6 @@ class Store
   }
 
   /**
-   * @return QueryBuilder
-   */
-  public function createQueryBuilder(): QueryBuilder
-  {
-    return new QueryBuilder($this);
-  }
-
-  /**
-   * Creates a new object in the store.
-   * It is stored as a plaintext JSON document.
-   * @param array $data
-   * @return array
-   * @throws IOException
-   * @throws IdNotAllowedException
-   * @throws InvalidArgumentException
-   * @throws JsonException
-   */
-  public function insert(array $data): array
-  {
-    // Handle invalid data
-    if (empty($data)) {
-      throw new InvalidArgumentException('No data found to insert in the store');
-    }
-
-    $data = $this->writeNewDocumentToStore($data);
-
-    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
-
-    return $data;
-  }
-
-  /**
-   * Creates multiple objects in the store.
-   * @param array $data
-   * @return array
-   * @throws IOException
-   * @throws IdNotAllowedException
-   * @throws InvalidArgumentException
-   * @throws JsonException
-   */
-  public function insertMany(array $data): array
-  {
-    // Handle invalid data
-    if (empty($data)) {
-      throw new InvalidArgumentException('No data found to insert in the store');
-    }
-    // All results.
-    $results = [];
-    foreach ($data as $document) {
-      $results[] = $this->writeNewDocumentToStore($document);
-    }
-    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
-    return $results;
-  }
-
-  /**
    * Writes an object in a store.
    * @param array $storeData
    * @return array
@@ -270,7 +663,7 @@ class Store
         "The \"$primaryKey\" index is reserved by SleekDB, please delete the $primaryKey key and try again"
       );
     }
-    $id = $this->getStoreId();
+    $id = $this->increaseCounterAndGetNextId();
     // Add the system ID with the store data array.
     $storeData[$primaryKey] = $id;
     // Prepare storable data
@@ -280,77 +673,11 @@ class Store
         please provide a valid PHP associative array');
     }
     // Define the store path
-    $filePath = $this->getStorePath() . "data/$id.json";
+    $filePath = $this->getDataPath()."$id.json";
 
-    self::writeContentToFile($filePath, $storableJSON);
+    IoHelper::writeContentToFile($filePath, $storableJSON);
 
     return $storeData;
-  }
-
-  /**
-   * Delete store with all its data and cache.
-   * @return bool
-   * @throws IOException
-   */
-  public function deleteStore(): bool
-  {
-    $storePath = $this->getStorePath();
-    return self::deleteFolder($storePath);
-  }
-
-  /**
-   * @throws IOException
-   */
-  private function createDataDirectory()
-  {
-    $dataDir = $this->getDataDirectory();
-    self::createFolder($dataDir);
-  }
-
-  /**
-   * @throws IOException
-   */
-  private function createStore()
-  {
-    $storeName = $this->getStoreName();
-    // Prepare store name.
-    if (substr($storeName, -1) !== '/') {
-      $storeName .= '/';
-    }
-    // Store directory path.
-    $this->storePath = $this->getDataDirectory() . $storeName;
-    $storePath = $this->getStorePath();
-    self::createFolder($storePath);
-
-    // Create the cache directory.
-    $cacheDirectory = $storePath . 'cache';
-    self::createFolder($cacheDirectory);
-
-    // Create the data directory.
-    $dataDirectory = $storePath . 'data';
-    self::createFolder($dataDirectory);
-
-    // Create the store counter file.
-    $counterFile = $storePath . '_cnt.sdb';
-    if(!file_exists($counterFile)){
-      self::writeContentToFile($counterFile, '0');
-    }
-  }
-
-  /**
-   * @return bool
-   */
-  public function _getUseCache(): bool
-  {
-    return $this->useCache;
-  }
-
-  /**
-   * @return null|int
-   */
-  public function _getDefaultCacheLifetime()
-  {
-    return $this->defaultCacheLifetime;
   }
 
   /**
@@ -359,7 +686,7 @@ class Store
    * @throws IOException
    * @throws JsonException
    */
-  private function getStoreId(): int
+  private function increaseCounterAndGetNextId(): int
   {
     $counterPath = $this->getStorePath() . '_cnt.sdb';
 
@@ -367,318 +694,40 @@ class Store
       throw new IOException("File $counterPath does not exist.");
     }
 
-    return (int) self::updateFileContent($counterPath, function ($counter){
+    return (int) IoHelper::updateFileContent($counterPath, function ($counter){
       return (string)(((int) $counter) + 1);
     });
   }
 
+
   /**
-   * Return the last created store object ID.
+   * @param string|int $id
    * @return int
-   * @throws IOException
+   * @throws InvalidArgumentException
    */
-  public function getLastInsertedId(): int
+  private function checkAndStripId($id): int
   {
-    $counterPath = $this->getStorePath() . '_cnt.sdb';
+    if(!is_string($id) && !is_int($id)){
+      throw new InvalidArgumentException("The id of the document has to be an integer or string");
+    }
 
-    return (int) self::getFileContent($counterPath);
+    if(is_string($id)){
+      $id = IoHelper::secureStringForFileAccess($id);
+    }
+
+    if(!is_numeric($id)){
+      throw new InvalidArgumentException("The id of the document has to be numeric");
+    }
+
+    return (int) $id;
   }
 
   /**
    * @return string
    */
-  public function getStorePath(): string
+  private function getDataPath(): string
   {
-    return $this->storePath;
-  }
-
-  /**
-   * Retrieve all documents.
-   * @return array
-   * @throws InvalidPropertyAccessException
-   * @throws IOException
-   * @throws InvalidArgumentException
-   */
-  public function findAll(): array
-  {
-    return $this->createQueryBuilder()->getQuery()->fetch();
-  }
-
-  /**
-   * Retrieve one document by its primary key. Very fast because it finds the document by its file path.
-   * @param int $id
-   * @return array|null
-   */
-  public function findById(int $id){
-
-    $filePath = $this->getStorePath() . "data/$id.json";
-
-    try{
-      $content = self::getFileContent($filePath);
-    } catch (Exception $exception){
-      return null;
-    }
-
-    return @json_decode($content, true);
-  }
-
-  /**
-   * Retrieve one or multiple documents.
-   * @param array $criteria
-   * @param array $orderBy
-   * @param int $limit
-   * @param int $offset
-   * @return array
-   * @throws IOException
-   * @throws InvalidArgumentException
-   * @throws InvalidPropertyAccessException
-   */
-  public function findBy(array $criteria, array $orderBy = null, int $limit = null, int $offset = null): array
-  {
-    $qb = $this->createQueryBuilder();
-
-    $qb->where($criteria);
-
-    if($orderBy !== null) {
-      $qb->orderBy($orderBy);
-    }
-
-    if($limit !== null) {
-      $qb->limit($limit);
-    }
-
-    if($offset !== null) {
-      $qb->skip($offset);
-    }
-
-    return $qb->getQuery()->fetch();
-  }
-
-  /**
-   * Retrieve one document.
-   * @param array $criteria
-   * @return array|null single document or NULL if no document can be found
-   * @throws IOException
-   * @throws InvalidArgumentException
-   * @throws InvalidPropertyAccessException
-   */
-  public function findOneBy(array $criteria)
-  {
-    $qb = $this->createQueryBuilder();
-
-    $qb->where($criteria);
-
-    $result = $qb->getQuery()->first();
-
-    return (!empty($result))? $result : null;
-
-  }
-
-  /**
-   * Update one or multiple documents.
-   * @param array $updatable true if all documents could be updated and false if one document did not exist
-   * @return bool
-   * @throws IOException
-   * @throws InvalidArgumentException
-   */
-  public function update(array $updatable): bool
-  {
-    $primaryKey = $this->getPrimaryKey();
-
-    if(empty($updatable)) {
-      throw new InvalidArgumentException("No documents to update.");
-    }
-
-    // we can use this check to determine if multiple documents are given
-    // because documents have to have at least the primary key.
-    if(array_keys($updatable) !== range(0, (count($updatable) - 1))){
-      $updatable = [ $updatable ];
-    }
-
-    // Check if all documents exist and have the primary key before updating any
-    foreach ($updatable as $document){
-      if(!is_array($document)) {
-        throw new InvalidArgumentException('Documents have to be an arrays.');
-      }
-      if(!array_key_exists($primaryKey, $document)) {
-        throw new InvalidArgumentException("Documents have to have the primary key \"$primaryKey\".");
-      }
-
-      $storePath = $this->getStorePath() . "data/$document[$primaryKey].json";
-
-      if (!file_exists($storePath)) {
-        return false;
-      }
-    }
-
-    // One or multiple documents to update
-    foreach ($updatable as $document) {
-      $storePath = $this->getStorePath() . "data/$document[$primaryKey].json";
-      self::writeContentToFile($storePath, json_encode($document));
-    }
-
-    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
-
-    return true;
-  }
-
-  /**
-   * Update properties of one document.
-   * @param int $id
-   * @param array $updatable
-   * @return array|false Updated document or false if document does not exist.
-   * @throws IOException If document could not be read or written.
-   * @throws InvalidArgumentException If one key to update is primary key.
-   * @throws JsonException If content of document file could not be decoded.
-   */
-  public function updateById(int $id, array $updatable)
-  {
-    $filePath = $this->getStorePath() . "data/$id.json";
-
-    $primaryKey = $this->getPrimaryKey();
-
-    if(array_key_exists($primaryKey, $updatable)) {
-      throw new InvalidArgumentException("You can not update the primary key \"$primaryKey\" of documents.");
-    }
-
-    if(!file_exists($filePath)){
-      return false;
-    }
-
-    $updateNestedValue = static function (array $keysArray, $oldData, $newValue, int $originalKeySize) use (&$updateNestedValue){
-      if(empty($keysArray)){
-        return $newValue;
-      }
-      $currentKey = $keysArray[0];
-      $result[$currentKey] = $oldData;
-      if(!is_array($oldData) || !array_key_exists($currentKey, $oldData)){
-        $result[$currentKey] = $updateNestedValue(array_slice($keysArray, 1), $oldData, $newValue, $originalKeySize);
-        if(count($keysArray) !== $originalKeySize){
-          return $result;
-        }
-      }
-      foreach ($oldData as $key => $item){
-        if($key !== $currentKey){
-          $result[$key] = $oldData[$key];
-        } else {
-          $result[$currentKey] = $updateNestedValue(array_slice($keysArray, 1), $oldData[$currentKey], $newValue, $originalKeySize);
-        }
-      }
-      return $result;
-    };
-
-    $content = self::updateFileContent($filePath, function($content) use ($filePath, $updatable, &$updateNestedValue){
-      $content = @json_decode($content, true);
-      if(!is_array($content)){
-        throw new JsonException("Could not decode content of \"$filePath\" with json_decode.");
-      }
-      foreach ($updatable as $key => $value){
-        $fieldNameArray = explode(".", $key);
-        if(count($fieldNameArray) > 1){
-          if(array_key_exists($fieldNameArray[0], $content)){
-            $oldData = $content[$fieldNameArray[0]];
-            $fieldNameArraySliced = array_slice($fieldNameArray, 1);
-            $value = $updateNestedValue($fieldNameArraySliced, $oldData, $value, count($fieldNameArraySliced));
-          } else {
-            $oldData = $content;
-            $value = $updateNestedValue($fieldNameArray, $oldData, $value, count($fieldNameArray));
-            $content = $value;
-            continue;
-          }
-        }
-        $content[$fieldNameArray[0]] = $value;
-      }
-
-      return json_encode($content);
-    });
-
-    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
-
-    return json_decode($content, true);
-  }
-
-  /**
-   * Delete one or multiple documents.
-   * @param array $criteria
-   * @param int $returnOption
-   * @return array|bool|int
-   * @throws IOException
-   * @throws InvalidArgumentException
-   * @throws InvalidPropertyAccessException
-   */
-  public function deleteBy(array $criteria, int $returnOption = Query::DELETE_RETURN_BOOL){
-
-    $query = $this->createQueryBuilder()->where($criteria)->getQuery();
-
-    $query->getCache()->deleteAllWithNoLifetime();
-
-    return $query->delete($returnOption);
-  }
-
-  /**
-   * Delete one document by its primary key. Very fast because it deletes the document by its file path.
-   * @param int $id
-   * @return bool true if document does not exist or deletion was successful, false otherwise
-   * @throws IOException
-   */
-  public function deleteById(int $id): bool
-  {
-
-    $filePath = $this->getStorePath() . "data/$id.json";
-
-    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
-
-    return (!file_exists($filePath) || true === @unlink($filePath));
-  }
-
-  /**
-   * Do a fulltext like search against one or multiple fields.
-   * @param array $fields
-   * @param string $query
-   * @param array|null $orderBy
-   * @param int|null $limit
-   * @param int|null $offset
-   * @return array
-   * @throws IOException
-   * @throws InvalidArgumentException
-   * @throws InvalidPropertyAccessException
-   */
-  public function search(array $fields, string $query, array $orderBy = null, int $limit = null, int $offset = null): array
-  {
-
-    $qb = $this->createQueryBuilder();
-
-    $qb->search($fields, $query);
-
-    if($orderBy !== null) {
-      $qb->orderBy($orderBy);
-    }
-
-    if($limit !== null) {
-      $qb->limit($limit);
-    }
-
-    if($offset !== null) {
-      $qb->skip($offset);
-    }
-
-    return $qb->getQuery()->fetch();
-  }
-
-  /**
-   * @return string
-   */
-  public function getPrimaryKey(): string
-  {
-    return $this->primaryKey;
-  }
-
-  /**
-   * @return array
-   */
-  public function _getSearchOptions(): array
-  {
-    return $this->searchOptions;
+    return $this->getStorePath() . self::dataDirectory;
   }
 
 }

@@ -2,13 +2,18 @@
 
 namespace SleekDB;
 
+use Closure;
+use Exception;
+use ReflectionFunction;
+use SleekDB\Classes\IoHelper;
 use SleekDB\Exceptions\IOException;
-use SleekDB\Traits\IoHelperTrait;
 
+/**
+ * Class Cache
+ * Caching layer of SleekDB, handles everything regarding caching.
+ */
 class Cache
 {
-
-  use IoHelperTrait;
 
   const DEFAULT_CACHE_DIR = "cache/";
   const NO_LIFETIME_FILE_STRING = "no_lifetime";
@@ -27,32 +32,26 @@ class Cache
 
   /**
    * Cache constructor.
-   * @param Query $query
    * @param string $storePath
+   * @param array $cacheTokenArray
+   * @param int|null $cacheLifetime
    */
-  public function __construct(Query $query, string $storePath)
+  public function __construct(string $storePath, array &$cacheTokenArray, $cacheLifetime)
   {
     // TODO make it possible to define custom cache directory.
-    $cacheDir = "";
-    $this->setCacheDir($cacheDir);
+//    $cacheDir = "";
+//    $this->setCacheDir($cacheDir);
 
     $this->setCachePath($storePath);
 
-    $this->setTokenArray($query->_getCacheTokenArray());
+    $this->setTokenArray($cacheTokenArray);
+
+    $this->lifetime = $cacheLifetime;
   }
 
   /**
-   * @param int|null $lifetime
-   * @return $this
-   */
-  public function setLifetime($lifetime): Cache
-  {
-    $this->lifetime = $lifetime;
-    return $this;
-  }
-
-  /**
-   * @return int|null
+   * Retrieve the cache lifetime for current query.
+   * @return int|null lifetime in seconds (int) or no lifetime with null
    */
   public function getLifetime()
   {
@@ -60,32 +59,7 @@ class Cache
   }
 
   /**
-   * @param string $storePath
-   * @return Cache
-   */
-  private function setCachePath(string $storePath): Cache
-  {
-
-    $cachePath = "";
-
-    $cacheDir = $this->getCacheDir();
-
-    if(!empty($storePath)){
-
-      if(substr($storePath, -1) !== "/") {
-        $storePath .= "/";
-      }
-
-      $cachePath = $storePath . $cacheDir;
-
-    }
-
-    $this->cachePath = $cachePath;
-
-    return $this;
-  }
-
-  /**
+   * Retrieve the cache directory path for current store.
    * @return string path to cache directory
    */
   public function getCachePath(): string
@@ -94,25 +68,8 @@ class Cache
   }
 
   /**
-   * @param array $tokenArray
-   * @return Cache
-   */
-  private function setTokenArray(array &$tokenArray): Cache
-  {
-    $this->tokenArray = &$tokenArray;
-    return $this;
-  }
-
-  /**
-   * @return array
-   */
-  private function getTokenArray(): array
-  {
-    return $this->tokenArray;
-  }
-
-  /**
-   * @return string
+   * Retrieve the cache token used as filename to store cache file.
+   * @return string unique token for current query.
    */
   public function getToken(): string
   {
@@ -138,20 +95,147 @@ class Cache
   }
 
   /**
-   * @param \Closure $closure
-   * @return false|string
+   * Delete all cache files for current store.
+   * @return bool
    */
-  private static function getClosureAsString(\Closure $closure)
+  public function deleteAll(): bool
+  {
+    return IoHelper::deleteFiles(glob($this->getCachePath()."*"));
+  }
+
+  /**
+   * Delete all cache files with no lifetime in current store.
+   * @return bool
+   */
+  public function deleteAllWithNoLifetime(): bool
+  {
+    $noLifetimeFileString = self::NO_LIFETIME_FILE_STRING;
+    return IoHelper::deleteFiles(glob($this->getCachePath()."*.$noLifetimeFileString.json"));
+  }
+
+  /**
+   * Save content for current query as a cache file.
+   * @param array $content
+   * @throws IOException if cache folder is not writable or saving failed.
+   */
+  public function set(array $content){
+    $lifetime = $this->getLifetime();
+    $cachePath = $this->getCachePath();
+    $token = $this->getToken();
+
+    $noLifetimeFileString = self::NO_LIFETIME_FILE_STRING;
+    $cacheFile = $cachePath . $token . ".$noLifetimeFileString.json";
+
+    if(is_int($lifetime)){
+      $cacheFile = $cachePath . $token . ".$lifetime.json";
+    }
+
+    IoHelper::writeContentToFile($cacheFile, json_encode($content));
+  }
+
+  /**
+   * Retrieve content of cache file.
+   * @return array|null array on success, else null
+   * @throws IOException if cache file is not readable or does not exist.
+   */
+  public function get(){
+    $cachePath = $this->getCachePath();
+    $token = $this->getToken();
+
+    $cacheFile = null;
+
+    $cacheFiles = glob($cachePath.$token."*.json");
+
+    if($cacheFiles !== false && count($cacheFiles) > 0){
+      $cacheFile = $cacheFiles[0];
+    }
+
+    if(!empty($cacheFile)){
+      $cacheParts = explode(".", $cacheFile);
+      if(count($cacheParts) >= 3){
+        $lifetime = $cacheParts[count($cacheParts) - 2];
+        if(is_numeric($lifetime)){
+          if($lifetime === "0"){
+            return json_decode(IoHelper::getFileContent($cacheFile), true);
+          }
+          $fileExpiredAfter = filemtime($cacheFile) + (int) $lifetime;
+          if(time() <= $fileExpiredAfter){
+            return json_decode(IoHelper::getFileContent($cacheFile), true);
+          }
+          IoHelper::deleteFile($cacheFile);
+        } else if($lifetime === self::NO_LIFETIME_FILE_STRING){
+            return json_decode(IoHelper::getFileContent($cacheFile), true);
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Delete cache file/s for current query.
+   * @return bool
+   */
+  public function delete(): bool
+  {
+    return IoHelper::deleteFiles(glob($this->getCachePath().$this->getToken()."*.json"));
+  }
+
+  /**
+   * @param string $storePath
+   * @return Cache
+   */
+  private function setCachePath(string $storePath): Cache
+  {
+    $cachePath = "";
+    $cacheDir = $this->getCacheDir();
+
+    if(!empty($storePath)){
+      IoHelper::normalizeDirectory($storePath);
+      $cachePath = $storePath . $cacheDir;
+    }
+
+    $this->cachePath = $cachePath;
+
+    return $this;
+  }
+
+  /**
+   * Set the cache token array used for cache token string generation.
+   * @param array $tokenArray
+   * @return Cache
+   */
+  private function setTokenArray(array &$tokenArray): Cache
+  {
+    $this->tokenArray = &$tokenArray;
+    return $this;
+  }
+
+  /**
+   * Retrieve the cache token array.
+   * @return array
+   */
+  private function getTokenArray(): array
+  {
+    return $this->tokenArray;
+  }
+
+  /**
+   * Retrieve a string representation of a closure that can be used to differentiate between closures
+   * when generating the cache token string.
+   * @param Closure $closure
+   * @return false|string string representation of closure or false on failure.
+   */
+  private static function getClosureAsString(Closure $closure)
   {
     try{
-      $reflectionFunction = new \ReflectionFunction($closure); // get reflection object
-    } catch (\Exception $exception){
+      $reflectionFunction = new ReflectionFunction($closure); // get reflection object
+    } catch (Exception $exception){
       return false;
     }
     $filePath = $reflectionFunction->getFileName();  // absolute path of php file containing function
-    $startLine = $reflectionFunction->getStartLine();
-    $endLine = $reflectionFunction->getEndLine();
-    $lineSeparator = PHP_EOL;
+    $startLine = $reflectionFunction->getStartLine(); // start line of function
+    $endLine = $reflectionFunction->getEndLine(); // end line of function
+    $lineSeparator = PHP_EOL; // line separator "\n"
 
     if($filePath === false || $startLine === false || $endLine === false){
       return false;
@@ -178,116 +262,34 @@ class Cache
       return false;
     }
 
+    // separate the file into an array containing every line as one element
     $fileContentArray = explode($lineSeparator, $fileContent);
-
     if(count($fileContentArray) < $endLine){
       return false;
     }
 
+    // return the part of the file containing the function as a string.
     return implode("", array_slice($fileContentArray, $startLine, $startEndDifference + 1));
   }
 
   /**
+   * Set the cache directory name.
    * @param string $cacheDir
    * @return Cache
    */
   private function setCacheDir(string $cacheDir): Cache
   {
-    if(!empty($cacheDir) && substr($cacheDir, -1) !== "/") {
-      $cacheDir .= "/";
-    }
+    IoHelper::normalizeDirectory($cacheDir);
     $this->cacheDir = $cacheDir;
     return $this;
   }
 
   /**
+   * Retrieve the cache directory name or the default cache directory name if empty.
    * @return string
    */
   private function getCacheDir(): string
   {
     return (!empty($this->cacheDir)) ? $this->cacheDir : self::DEFAULT_CACHE_DIR;
-  }
-
-  /**
-   * Delete all cache files for current store.
-   * @throws IOException
-   */
-  public function deleteAll(){
-    self::deleteFiles(glob($this->getCachePath()."*"));
-  }
-
-  /**
-   * Delete all cache files with no lifetime in current store.
-   * @throws IOException
-   */
-  public function deleteAllWithNoLifetime(){
-    $noLifetimeFileString = self::NO_LIFETIME_FILE_STRING;
-    self::deleteFiles(glob($this->getCachePath()."*.$noLifetimeFileString.json"));
-  }
-
-  /**
-   * Cache content for current query
-   * @param array $content
-   * @throws IOException
-   */
-  public function set(array $content){
-    $lifetime = $this->getLifetime();
-    $cachePath = $this->getCachePath();
-    $token = $this->getToken();
-
-    $noLifetimeFileString = self::NO_LIFETIME_FILE_STRING;
-    $cacheFile = $cachePath . $token . ".$noLifetimeFileString.json";
-
-    if(is_int($lifetime)){
-      $cacheFile = $cachePath . $token . ".$lifetime.json";
-    }
-
-    self::writeContentToFile($cacheFile, json_encode($content));
-  }
-
-  /**
-   * @return array|null array on success, else null
-   * @throws IOException
-   */
-  public function get(){
-    $cachePath = $this->getCachePath();
-    $token = $this->getToken();
-
-    $cacheFile = null;
-
-    $cacheFiles = glob($cachePath.$token."*.json");
-
-    if($cacheFiles !== false && count($cacheFiles) > 0){
-      $cacheFile = $cacheFiles[0];
-    }
-
-    if(!empty($cacheFile)){
-      $cacheParts = explode(".", $cacheFile);
-      if(count($cacheParts) >= 3){
-        $lifetime = $cacheParts[count($cacheParts) - 2];
-        if(is_numeric($lifetime)){
-          if($lifetime === "0"){
-            return json_decode(self::getFileContent($cacheFile), true);
-          }
-          $fileExpiredAfter = filemtime($cacheFile) + (int) $lifetime;
-          if(time() <= $fileExpiredAfter){
-            return json_decode(self::getFileContent($cacheFile), true);
-          }
-          self::deleteFile($cacheFile);
-        } else if($lifetime === self::NO_LIFETIME_FILE_STRING){
-            return json_decode(self::getFileContent($cacheFile), true);
-        }
-      }
-    }
-    return null;
-  }
-
-  /**
-   * Delete cache file/s for current query.
-   * @return bool
-   */
-  public function delete(): bool
-  {
-    return self::deleteFiles(glob($this->getCachePath().$this->getToken()."*.json"));
   }
 }
