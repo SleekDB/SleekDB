@@ -42,34 +42,10 @@ class NestedHelper
     $fieldNameArray = explode(".", $fieldName);
     $value = $newValue;
     if(count($fieldNameArray) > 1){
-      $data = self::_updateNestedValue($fieldNameArray, $data, $newValue, count($fieldNameArray));
+      $data = self::_updateNestedValueHelper($fieldNameArray, $data, $newValue, count($fieldNameArray));
       return;
     }
     $data[$fieldNameArray[0]] = $value;
-  }
-
-  /**
-   * @param array $keysArray
-   * @param $data
-   * @param $newValue
-   * @param int $originalKeySize
-   * @return mixed
-   */
-  private static function _updateNestedValue(array $keysArray, $data, $newValue, int $originalKeySize)
-  {
-    if(empty($keysArray)){
-      return $newValue;
-    }
-    $currentKey = $keysArray[0];
-    $result = (is_array($data)) ? $data : [];
-    if(!is_array($data) || !array_key_exists($currentKey, $data)){
-      $result[$currentKey] = self::_updateNestedValue(array_slice($keysArray, 1), $data, $newValue, $originalKeySize);
-      if(count($keysArray) !== $originalKeySize){
-        return $result;
-      }
-    }
-    $result[$currentKey] = self::_updateNestedValue(array_slice($keysArray, 1), $data[$currentKey], $newValue, $originalKeySize);
-    return $result;
   }
 
   public static function createNestedArray(string $fieldName, $fieldValue): array
@@ -110,5 +86,29 @@ class NestedHelper
       }
       $temp = &$temp[$i];
     }
+  }
+
+  /**
+   * @param array $keysArray
+   * @param $data
+   * @param $newValue
+   * @param int $originalKeySize
+   * @return mixed
+   */
+  private static function _updateNestedValueHelper(array $keysArray, $data, $newValue, int $originalKeySize)
+  {
+    if(empty($keysArray)){
+      return $newValue;
+    }
+    $currentKey = $keysArray[0];
+    $result = (is_array($data)) ? $data : [];
+    if(!is_array($data) || !array_key_exists($currentKey, $data)){
+      $result[$currentKey] = self::_updateNestedValueHelper(array_slice($keysArray, 1), $data, $newValue, $originalKeySize);
+      if(count($keysArray) !== $originalKeySize){
+        return $result;
+      }
+    }
+    $result[$currentKey] = self::_updateNestedValueHelper(array_slice($keysArray, 1), $data[$currentKey], $newValue, $originalKeySize);
+    return $result;
   }
 }

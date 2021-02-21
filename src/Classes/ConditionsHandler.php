@@ -17,35 +17,14 @@ class ConditionsHandler
 {
 
   /**
-   * @param $value
-   * @return int
-   * @throws InvalidArgumentException
-   */
-  private static function convertValueToTimeStamp($value): int
-  {
-    $value = (is_string($value)) ? trim($value) : $value;
-    try{
-      return (new DateTime($value))->getTimestamp();
-    } catch (Exception $exception){
-      $value = (!is_object($value) && !is_array($value))
-        ? $value
-        : gettype($value);
-      throw new InvalidArgumentException(
-        "DateTime object given as value to check against. "
-        . "Could not convert value of field stored in the database into DateTime. "
-        . "Value of field: $value"
-      );
-    }
-  }
-
-  /**
+   * Get the result of an condition.
    * @param string $condition
    * @param mixed $fieldValue value of current field
    * @param mixed $value value to check
    * @return bool
    * @throws InvalidArgumentException
    */
-  public static function verifyWhereConditions(string $condition, $fieldValue, $value): bool
+  public static function verifyCondition(string $condition, $fieldValue, $value): bool
   {
 
     if($value instanceof DateTime){
@@ -146,8 +125,8 @@ class ConditionsHandler
         list($startValue, $endValue) = $value;
 
         $result = (
-          self::verifyWhereConditions(">=", $fieldValue, $startValue)
-          && self::verifyWhereConditions("<=", $fieldValue, $endValue)
+          self::verifyCondition(">=", $fieldValue, $startValue)
+          && self::verifyCondition("<=", $fieldValue, $endValue)
         );
 
         return ($condition === "not between") ? !$result : $result;
@@ -178,7 +157,7 @@ class ConditionsHandler
 
       $fieldValue = NestedHelper::getNestedValue($element[0], $data);
 
-      return self::verifyWhereConditions($element[1], $fieldValue, $element[2]);
+      return self::verifyCondition($element[1], $fieldValue, $element[2]);
     }
 
     // element is an array "brackets"
@@ -259,7 +238,6 @@ class ConditionsHandler
     return $returnValue;
   }
 
-
   /**
    * @param array $results
    * @param array $currentDocument
@@ -286,6 +264,38 @@ class ConditionsHandler
   }
 
   /**
+   * @param array $data
+   * @param bool $storePassed
+   * @param array $nestedWhereConditions
+   * @return bool
+   * @throws InvalidArgumentException
+   * @deprecated since version 2.3, use handleWhereConditions instead.
+   */
+  public static function handleNestedWhere(array $data, bool $storePassed, array $nestedWhereConditions): bool
+  {
+    // TODO remove nested where with v3.0
+
+    if(empty($nestedWhereConditions)){
+      return $storePassed;
+    }
+
+    // the outermost operation specify how the given conditions are connected with other conditions,
+    // like the ones that are specified using the where, orWhere, in or notIn methods
+    $outerMostOperation = (array_keys($nestedWhereConditions))[0];
+    $nestedConditions = $nestedWhereConditions[$outerMostOperation];
+
+    // specifying outermost is optional and defaults to "and"
+    $outerMostOperation = (is_string($outerMostOperation)) ? strtolower($outerMostOperation) : "and";
+
+    // if the document already passed the store with another condition, we dont need to check it.
+    if($outerMostOperation === "or" && $storePassed === true){
+      return true;
+    }
+
+    return self::_nestedWhereHelper($nestedConditions, $data);
+  }
+
+  /**
    * @param array $element
    * @param array $data
    * @return bool
@@ -303,7 +313,7 @@ class ConditionsHandler
 
       $fieldValue = NestedHelper::getNestedValue($element[0], $data);
 
-      return self::verifyWhereConditions($element[1], $fieldValue, $element[2]);
+      return self::verifyCondition($element[1], $fieldValue, $element[2]);
     }
 
     // element is an array "brackets"
@@ -353,34 +363,24 @@ class ConditionsHandler
   }
 
   /**
-   * @param array $data
-   * @param bool $storePassed
-   * @param array $nestedWhereConditions
-   * @return bool
+   * @param $value
+   * @return int
    * @throws InvalidArgumentException
-   * @deprecated since version 2.3, use handleWhereConditions instead.
    */
-  public static function handleNestedWhere(array $data, bool $storePassed, array $nestedWhereConditions): bool
+  private static function convertValueToTimeStamp($value): int
   {
-    // TODO remove nested where with v3.0
-
-    if(empty($nestedWhereConditions)){
-      return $storePassed;
+    $value = (is_string($value)) ? trim($value) : $value;
+    try{
+      return (new DateTime($value))->getTimestamp();
+    } catch (Exception $exception){
+      $value = (!is_object($value) && !is_array($value))
+        ? $value
+        : gettype($value);
+      throw new InvalidArgumentException(
+        "DateTime object given as value to check against. "
+        . "Could not convert value of field stored in the database into DateTime. "
+        . "Value of field: $value"
+      );
     }
-
-    // the outermost operation specify how the given conditions are connected with other conditions,
-    // like the ones that are specified using the where, orWhere, in or notIn methods
-    $outerMostOperation = (array_keys($nestedWhereConditions))[0];
-    $nestedConditions = $nestedWhereConditions[$outerMostOperation];
-
-    // specifying outermost is optional and defaults to "and"
-    $outerMostOperation = (is_string($outerMostOperation)) ? strtolower($outerMostOperation) : "and";
-
-    // if the document already passed the store with another condition, we dont need to check it.
-    if($outerMostOperation === "or" && $storePassed === true){
-      return true;
-    }
-
-    return self::_nestedWhereHelper($nestedConditions, $data);
   }
 }

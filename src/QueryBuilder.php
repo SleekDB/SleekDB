@@ -126,44 +126,6 @@ class QueryBuilder
   }
 
   /**
-   * Add "in" condition to filter data.
-   * @param string $fieldName
-   * @param array $values
-   * @return QueryBuilder
-   * @throws InvalidArgumentException
-   * @deprecated since version 2.4, use where and orWhere instead.
-   */
-  public function in(string $fieldName, array $values = []): QueryBuilder
-  {
-    if (empty($fieldName)) {
-      throw new InvalidArgumentException('Field name for in clause can not be empty.');
-    }
-
-    // Add to conditions with "AND" operation
-    $this->whereConditions[] = [$fieldName, "in", $values];
-    return $this;
-  }
-
-  /**
-   * Add "not in" condition to filter data.
-   * @param string $fieldName
-   * @param array $values
-   * @return QueryBuilder
-   * @throws InvalidArgumentException
-   * @deprecated since version 2.4, use where and orWhere instead.
-   */
-  public function notIn(string $fieldName, array $values = []): QueryBuilder
-  {
-    if (empty($fieldName)) {
-      throw new InvalidArgumentException('Field name for notIn clause can not be empty.');
-    }
-
-    // Add to conditions with "AND" operation
-    $this->whereConditions[] = [$fieldName, "not in", $values];
-    return $this;
-  }
-
-  /**
    * Add or-where conditions to filter data.
    * @param array $conditions array(array(string fieldName, string condition, mixed value) [, array(...)])
    * @return QueryBuilder
@@ -178,38 +140,6 @@ class QueryBuilder
 
     $this->whereConditions[] = "or";
     $this->whereConditions[] = $conditions;
-
-    return $this;
-  }
-
-  /**
-   * Add a where statement that is nested. ( $x or ($y and $z) )
-   * @param array $conditions
-   * @return QueryBuilder
-   * @throws InvalidArgumentException
-   * @deprecated since version 2.3, use where or orWhere instead.
-   */
-  public function nestedWhere(array $conditions): QueryBuilder
-  {
-    // TODO remove with version 3.0
-    if(empty($conditions)){
-      throw new InvalidArgumentException("You need to specify nested where clauses");
-    }
-
-    if(count($conditions) > 1){
-      throw new InvalidArgumentException("You are not allowed to specify multiple elements at the first depth!");
-    }
-
-    $outerMostOperation = (array_keys($conditions))[0];
-    $outerMostOperation = (is_string($outerMostOperation)) ? strtolower($outerMostOperation) : $outerMostOperation;
-
-    $allowedOuterMostOperations = [0, "and", "or"];
-
-    if(!in_array($outerMostOperation, $allowedOuterMostOperations, true)){
-      throw new InvalidArgumentException("Outer most operation has to one of the following: ( 0 / and / or ) ");
-    }
-
-    $this->nestedWhere = $conditions;
 
     return $this;
   }
@@ -404,6 +334,55 @@ class QueryBuilder
   }
 
   /**
+   * Re-generate the cache for the query.
+   * @return QueryBuilder
+   */
+  public function regenerateCache(): QueryBuilder
+  {
+    $this->regenerateCache = true;
+    return $this;
+  }
+
+  /**
+   * @return Query
+   */
+  public function getQuery(): Query
+  {
+    return new Query($this);
+  }
+
+  /**
+   * @param array $groupByFields
+   * @param string|null $countKeyName
+   * @param bool $allowEmpty
+   * @return QueryBuilder
+   */
+  public function groupBy(array $groupByFields, string $countKeyName = null, bool $allowEmpty = false): QueryBuilder
+  {
+    $this->groupBy = [
+      "groupByFields" => $groupByFields,
+      "countKeyName" => $countKeyName,
+      "allowEmpty" => $allowEmpty
+    ];
+    return $this;
+  }
+
+  /**
+   * Filter result data of groupBy
+   * @param array $criteria
+   * @return QueryBuilder
+   * @throws InvalidArgumentException
+   */
+  public function having(array $criteria): QueryBuilder
+  {
+    if (empty($criteria)) {
+      throw new InvalidArgumentException("You need to specify a having clause");
+    }
+    $this->having = $criteria;
+    return $this;
+  }
+
+  /**
    * This method would make a unique token for the current query.
    * We would use this hash token as the id/name of the cache file.
    * @return array
@@ -440,55 +419,81 @@ class QueryBuilder
   }
 
   /**
-   * Re-generate the cache for the query.
-   * @return QueryBuilder
+   * Retrieve the Store object used to create this QueryBuilder object.
+   * @return Store
    */
-  public function regenerateCache(): QueryBuilder
-  {
-    $this->regenerateCache = true;
-    return $this;
-  }
-
-  /**
-   * @return Query
-   */
-  public function getQuery(): Query
-  {
-    return new Query($this);
-  }
-
   public function _getStore(): Store{
       return $this->store;
   }
 
   /**
-   * @param array $groupByFields
-   * @param string|null $countKeyName
-   * @param bool $allowEmpty
+   * Add "in" condition to filter data.
+   * @param string $fieldName
+   * @param array $values
    * @return QueryBuilder
+   * @throws InvalidArgumentException
+   * @deprecated since version 2.4, use where and orWhere instead.
    */
-  public function groupBy(array $groupByFields, string $countKeyName = null, bool $allowEmpty = false): QueryBuilder
+  public function in(string $fieldName, array $values = []): QueryBuilder
   {
-    $this->groupBy = [
-      "groupByFields" => $groupByFields,
-      "countKeyName" => $countKeyName,
-      "allowEmpty" => $allowEmpty
-    ];
+    if (empty($fieldName)) {
+      throw new InvalidArgumentException('Field name for in clause can not be empty.');
+    }
+
+    // Add to conditions with "AND" operation
+    $this->whereConditions[] = [$fieldName, "in", $values];
     return $this;
   }
 
   /**
-   * Filter result data of groupBy
-   * @param array $criteria
+   * Add "not in" condition to filter data.
+   * @param string $fieldName
+   * @param array $values
    * @return QueryBuilder
    * @throws InvalidArgumentException
+   * @deprecated since version 2.4, use where and orWhere instead.
    */
-  public function having(array $criteria): QueryBuilder
+  public function notIn(string $fieldName, array $values = []): QueryBuilder
   {
-    if (empty($criteria)) {
-      throw new InvalidArgumentException("You need to specify a having clause");
+    if (empty($fieldName)) {
+      throw new InvalidArgumentException('Field name for notIn clause can not be empty.');
     }
-    $this->having = $criteria;
+
+    // Add to conditions with "AND" operation
+    $this->whereConditions[] = [$fieldName, "not in", $values];
     return $this;
   }
+
+  /**
+   * Add a where statement that is nested. ( $x or ($y and $z) )
+   * @param array $conditions
+   * @return QueryBuilder
+   * @throws InvalidArgumentException
+   * @deprecated since version 2.3, use where or orWhere instead.
+   */
+  public function nestedWhere(array $conditions): QueryBuilder
+  {
+    // TODO remove with version 3.0
+    if(empty($conditions)){
+      throw new InvalidArgumentException("You need to specify nested where clauses");
+    }
+
+    if(count($conditions) > 1){
+      throw new InvalidArgumentException("You are not allowed to specify multiple elements at the first depth!");
+    }
+
+    $outerMostOperation = (array_keys($conditions))[0];
+    $outerMostOperation = (is_string($outerMostOperation)) ? strtolower($outerMostOperation) : $outerMostOperation;
+
+    $allowedOuterMostOperations = [0, "and", "or"];
+
+    if(!in_array($outerMostOperation, $allowedOuterMostOperations, true)){
+      throw new InvalidArgumentException("Outer most operation has to one of the following: ( 0 / and / or ) ");
+    }
+
+    $this->nestedWhere = $conditions;
+
+    return $this;
+  }
+
 }

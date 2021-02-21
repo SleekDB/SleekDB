@@ -26,14 +26,6 @@ class DocumentUpdater
   }
 
   /**
-   * @return string
-   */
-  private function getDataPath(): string
-  {
-    return $this->storePath . Store::dataDirectory;
-  }
-
-  /**
    * Update one or multiple documents, based on current query
    * @param array $results
    * @param array $updatable
@@ -150,6 +142,14 @@ class DocumentUpdater
       IoHelper::writeContentToFile($filePath, json_encode($document));
     }
     return true;
+  }
+
+  /**
+   * @return string
+   */
+  private function getDataPath(): string
+  {
+    return $this->storePath . Store::dataDirectory;
   }
 
 }

@@ -8,6 +8,10 @@ use ReflectionFunction;
 use SleekDB\Classes\IoHelper;
 use SleekDB\Exceptions\IOException;
 
+/**
+ * Class Cache
+ * Caching layer of SleekDB, handles everything regarding caching.
+ */
 class Cache
 {
 
@@ -35,8 +39,8 @@ class Cache
   public function __construct(string $storePath, array &$cacheTokenArray, $cacheLifetime)
   {
     // TODO make it possible to define custom cache directory.
-    $cacheDir = "";
-    $this->setCacheDir($cacheDir);
+//    $cacheDir = "";
+//    $this->setCacheDir($cacheDir);
 
     $this->setCachePath($storePath);
 
@@ -46,7 +50,8 @@ class Cache
   }
 
   /**
-   * @return int|null
+   * Retrieve the cache lifetime for current query.
+   * @return int|null lifetime in seconds (int) or no lifetime with null
    */
   public function getLifetime()
   {
@@ -54,27 +59,7 @@ class Cache
   }
 
   /**
-   * @param string $storePath
-   * @return Cache
-   */
-  private function setCachePath(string $storePath): Cache
-  {
-
-    $cachePath = "";
-
-    $cacheDir = $this->getCacheDir();
-
-    if(!empty($storePath)){
-      IoHelper::normalizeDirectory($storePath);
-      $cachePath = $storePath . $cacheDir;
-    }
-
-    $this->cachePath = $cachePath;
-
-    return $this;
-  }
-
-  /**
+   * Retrieve the cache directory path for current store.
    * @return string path to cache directory
    */
   public function getCachePath(): string
@@ -83,25 +68,8 @@ class Cache
   }
 
   /**
-   * @param array $tokenArray
-   * @return Cache
-   */
-  private function setTokenArray(array &$tokenArray): Cache
-  {
-    $this->tokenArray = &$tokenArray;
-    return $this;
-  }
-
-  /**
-   * @return array
-   */
-  private function getTokenArray(): array
-  {
-    return $this->tokenArray;
-  }
-
-  /**
-   * @return string
+   * Retrieve the cache token used as filename to store cache file.
+   * @return string unique token for current query.
    */
   public function getToken(): string
   {
@@ -127,76 +95,8 @@ class Cache
   }
 
   /**
-   * @param Closure $closure
-   * @return false|string
-   */
-  private static function getClosureAsString(Closure $closure)
-  {
-    try{
-      $reflectionFunction = new ReflectionFunction($closure); // get reflection object
-    } catch (Exception $exception){
-      return false;
-    }
-    $filePath = $reflectionFunction->getFileName();  // absolute path of php file containing function
-    $startLine = $reflectionFunction->getStartLine();
-    $endLine = $reflectionFunction->getEndLine();
-    $lineSeparator = PHP_EOL;
-
-    if($filePath === false || $startLine === false || $endLine === false){
-      return false;
-    }
-
-    $startEndDifference = $endLine - $startLine;
-
-    $startLine--; // -1 to use it with the array representation of the file
-
-    if($startLine < 0 || $startEndDifference < 0){
-      return false;
-    }
-
-    // get content of file containing function
-    $fp = fopen($filePath, 'rb');
-    $fileContent = "";
-    if(flock($fp, LOCK_SH)){
-      $fileContent = @stream_get_contents($fp);
-    }
-    flock($fp, LOCK_UN);
-    fclose($fp);
-
-    if(empty($fileContent)){
-      return false;
-    }
-
-    $fileContentArray = explode($lineSeparator, $fileContent);
-
-    if(count($fileContentArray) < $endLine){
-      return false;
-    }
-
-    return implode("", array_slice($fileContentArray, $startLine, $startEndDifference + 1));
-  }
-
-  /**
-   * @param string $cacheDir
-   * @return Cache
-   */
-  private function setCacheDir(string $cacheDir): Cache
-  {
-    IoHelper::normalizeDirectory($cacheDir);
-    $this->cacheDir = $cacheDir;
-    return $this;
-  }
-
-  /**
-   * @return string
-   */
-  private function getCacheDir(): string
-  {
-    return (!empty($this->cacheDir)) ? $this->cacheDir : self::DEFAULT_CACHE_DIR;
-  }
-
-  /**
    * Delete all cache files for current store.
+   * @return bool
    */
   public function deleteAll(): bool
   {
@@ -205,6 +105,7 @@ class Cache
 
   /**
    * Delete all cache files with no lifetime in current store.
+   * @return bool
    */
   public function deleteAllWithNoLifetime(): bool
   {
@@ -213,9 +114,9 @@ class Cache
   }
 
   /**
-   * Cache content for current query
+   * Save content for current query as a cache file.
    * @param array $content
-   * @throws IOException
+   * @throws IOException if cache folder is not writable or saving failed.
    */
   public function set(array $content){
     $lifetime = $this->getLifetime();
@@ -233,8 +134,9 @@ class Cache
   }
 
   /**
+   * Retrieve content of cache file.
    * @return array|null array on success, else null
-   * @throws IOException
+   * @throws IOException if cache file is not readable or does not exist.
    */
   public function get(){
     $cachePath = $this->getCachePath();
@@ -276,5 +178,118 @@ class Cache
   public function delete(): bool
   {
     return IoHelper::deleteFiles(glob($this->getCachePath().$this->getToken()."*.json"));
+  }
+
+  /**
+   * @param string $storePath
+   * @return Cache
+   */
+  private function setCachePath(string $storePath): Cache
+  {
+    $cachePath = "";
+    $cacheDir = $this->getCacheDir();
+
+    if(!empty($storePath)){
+      IoHelper::normalizeDirectory($storePath);
+      $cachePath = $storePath . $cacheDir;
+    }
+
+    $this->cachePath = $cachePath;
+
+    return $this;
+  }
+
+  /**
+   * Set the cache token array used for cache token string generation.
+   * @param array $tokenArray
+   * @return Cache
+   */
+  private function setTokenArray(array &$tokenArray): Cache
+  {
+    $this->tokenArray = &$tokenArray;
+    return $this;
+  }
+
+  /**
+   * Retrieve the cache token array.
+   * @return array
+   */
+  private function getTokenArray(): array
+  {
+    return $this->tokenArray;
+  }
+
+  /**
+   * Retrieve a string representation of a closure that can be used to differentiate between closures
+   * when generating the cache token string.
+   * @param Closure $closure
+   * @return false|string string representation of closure or false on failure.
+   */
+  private static function getClosureAsString(Closure $closure)
+  {
+    try{
+      $reflectionFunction = new ReflectionFunction($closure); // get reflection object
+    } catch (Exception $exception){
+      return false;
+    }
+    $filePath = $reflectionFunction->getFileName();  // absolute path of php file containing function
+    $startLine = $reflectionFunction->getStartLine(); // start line of function
+    $endLine = $reflectionFunction->getEndLine(); // end line of function
+    $lineSeparator = PHP_EOL; // line separator "\n"
+
+    if($filePath === false || $startLine === false || $endLine === false){
+      return false;
+    }
+
+    $startEndDifference = $endLine - $startLine;
+
+    $startLine--; // -1 to use it with the array representation of the file
+
+    if($startLine < 0 || $startEndDifference < 0){
+      return false;
+    }
+
+    // get content of file containing function
+    $fp = fopen($filePath, 'rb');
+    $fileContent = "";
+    if(flock($fp, LOCK_SH)){
+      $fileContent = @stream_get_contents($fp);
+    }
+    flock($fp, LOCK_UN);
+    fclose($fp);
+
+    if(empty($fileContent)){
+      return false;
+    }
+
+    // separate the file into an array containing every line as one element
+    $fileContentArray = explode($lineSeparator, $fileContent);
+    if(count($fileContentArray) < $endLine){
+      return false;
+    }
+
+    // return the part of the file containing the function as a string.
+    return implode("", array_slice($fileContentArray, $startLine, $startEndDifference + 1));
+  }
+
+  /**
+   * Set the cache directory name.
+   * @param string $cacheDir
+   * @return Cache
+   */
+  private function setCacheDir(string $cacheDir): Cache
+  {
+    IoHelper::normalizeDirectory($cacheDir);
+    $this->cacheDir = $cacheDir;
+    return $this;
+  }
+
+  /**
+   * Retrieve the cache directory name or the default cache directory name if empty.
+   * @return string
+   */
+  private function getCacheDir(): string
+  {
+    return (!empty($this->cacheDir)) ? $this->cacheDir : self::DEFAULT_CACHE_DIR;
   }
 }

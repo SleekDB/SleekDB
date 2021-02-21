@@ -8,6 +8,10 @@ use SleekDB\Classes\DocumentUpdater;
 use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\IOException;
 
+/**
+ * Class Query
+ * Query execution object of SleekDB.
+ */
 class Query
 {
 
@@ -32,8 +36,6 @@ class Query
    */
   protected $documentFinder;
 
-  protected $storePath;
-  protected $primaryKey;
   /**
    * @var DocumentUpdater
    */
@@ -46,18 +48,15 @@ class Query
   public function __construct(QueryBuilder $queryBuilder)
   {
     $store = $queryBuilder->_getStore();
-
-    $this->storePath = $store->getStorePath();
-    $this->primaryKey = $store->getPrimaryKey();
+    $primaryKey = $store->getPrimaryKey();
 
     $this->cacheHandler = new CacheHandler($store->getStorePath(), $queryBuilder);
-    $this->documentFinder = new DocumentFinder($store->getStorePath(), $queryBuilder->_getConditionProperties(), $this->primaryKey);
-    $this->documentUpdater = new DocumentUpdater($store->getStorePath(), $this->primaryKey);
+    $this->documentFinder = new DocumentFinder($store->getStorePath(), $queryBuilder->_getConditionProperties(), $primaryKey);
+    $this->documentUpdater = new DocumentUpdater($store->getStorePath(), $primaryKey);
   }
 
-
   /**
-   * Execute Query and get Results
+   * Execute query and get results.
    * @return array
    * @throws InvalidArgumentException
    * @throws IOException
@@ -68,7 +67,7 @@ class Query
   }
 
   /**
-   * Check if data is found
+   * Check if data is found.
    * @return bool
    * @throws InvalidArgumentException
    * @throws IOException
@@ -91,7 +90,7 @@ class Query
   }
 
   /**
-   * Update one or multiple documents, based on current query.
+   * Update parts of one or multiple documents based on current query.
    * @param array $updatable
    * @param bool $returnUpdatedDocuments
    * @return array|bool
@@ -146,6 +145,16 @@ class Query
   }
 
   /**
+   * Retrieve Cache object.
+   * @return Cache
+   */
+  public function getCache(): Cache
+  {
+    return $this->getCacheHandler()->getCache();
+  }
+
+  /**
+   * Retrieve the results from either the cache or store.
    * @param bool $getOneDocument
    * @return array
    * @throws IOException
@@ -173,22 +182,7 @@ class Query
   }
 
   /**
-   * @return Cache
-   */
-  public function getCache(): Cache
-  {
-    return $this->getCacheHandler()->getCache();
-  }
-
-  /**
-   * @return string
-   */
-  private function getDataPath(): string
-  {
-    return $this->storePath . Store::dataDirectory;
-  }
-
-  /**
+   * Retrieve the caching layer bridge.
    * @return CacheHandler
    */
   private function getCacheHandler(): CacheHandler

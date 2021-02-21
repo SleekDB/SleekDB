@@ -28,14 +28,6 @@ class DocumentFinder
   }
 
   /**
-   * @return string
-   */
-  private function getDataPath(): string
-  {
-    return $this->storePath . Store::dataDirectory;
-  }
-
-  /**
    * @param bool $getOneDocument
    * @param bool $reduceAndJoinPossible
    * @return array
@@ -50,7 +42,7 @@ class DocumentFinder
 
     $found = [];
     // Start collecting and filtering data.
-    IoHelper::_checkRead($dataPath);
+    IoHelper::checkRead($dataPath);
 
     $conditions = $queryBuilderProperties["whereConditions"];
     $distinctFields = $queryBuilderProperties["distinctFields"];
@@ -160,6 +152,13 @@ class DocumentFinder
     return $found;
   }
 
+  /**
+   * @return string
+   */
+  private function getDataPath(): string
+  {
+    return $this->storePath . Store::dataDirectory;
+  }
 
   /**
    * @param array $found

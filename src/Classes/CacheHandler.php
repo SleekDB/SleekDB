@@ -39,10 +39,6 @@ class CacheHandler
     $this->cache = new Cache($storePath, $this->_getCacheTokenArray(), $queryBuilderProperties["cacheLifetime"]);
   }
 
-  private function getUseCache(){
-    return $this->useCache;
-  }
-
   /**
    * @return Cache
    */
@@ -89,6 +85,15 @@ class CacheHandler
   }
 
   /**
+   * Delete all cache files that have no lifetime.
+   * @return bool
+   */
+  public function deleteAllWithNoLifetime(): bool
+  {
+    return $this->getCache()->deleteAllWithNoLifetime();
+  }
+
+  /**
    * Returns a reference to the array used for cache token generation
    * @return array
    */
@@ -112,8 +117,13 @@ class CacheHandler
     $this->cacheTokenArray = $cacheTokenArray;
   }
 
-  public function deleteAllWithNoLifetime(){
-    $this->getCache()->deleteAllWithNoLifetime();
+  /**
+   * Status if cache is used or not
+   * @return bool
+   */
+  private function getUseCache(): bool
+  {
+    return $this->useCache;
   }
 
 }

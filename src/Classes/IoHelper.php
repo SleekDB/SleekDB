@@ -19,7 +19,7 @@ class IoHelper {
    * @param string $path
    * @throws IOException
    */
-  public static function _checkWrite(string $path)
+  public static function checkWrite(string $path)
   {
     if(file_exists($path) === false){
       $path = dirname($path);
@@ -36,7 +36,7 @@ class IoHelper {
    * @param string $path
    * @throws IOException
    */
-  public static function _checkRead(string $path)
+  public static function checkRead(string $path)
   {
     // Check if PHP has read permission
     if (!is_readable($path)) {
@@ -54,7 +54,7 @@ class IoHelper {
   public static function getFileContent(string $filePath): string
   {
 
-    self::_checkRead($filePath);
+    self::checkRead($filePath);
 
     if(!file_exists($filePath)) {
       throw new IOException("File does not exist: $filePath");
@@ -82,7 +82,7 @@ class IoHelper {
    */
   public static function writeContentToFile(string $filePath, string $content){
 
-    self::_checkWrite($filePath);
+    self::checkWrite($filePath);
 
     // Wait until it's unlocked, then write.
     if(file_put_contents($filePath, $content, LOCK_EX) === false){
@@ -97,11 +97,11 @@ class IoHelper {
    */
   public static function deleteFolder(string $folderPath): bool
   {
-    self::_checkWrite($folderPath);
+    self::checkWrite($folderPath);
     $it = new RecursiveDirectoryIterator($folderPath, RecursiveDirectoryIterator::SKIP_DOTS);
     $files = new RecursiveIteratorIterator($it, RecursiveIteratorIterator::CHILD_FIRST);
     foreach ($files as $file) {
-      self::_checkWrite($file);
+      self::checkWrite($file);
       if ($file->isDir()) {
         rmdir($file->getRealPath());
       } else {
@@ -116,7 +116,7 @@ class IoHelper {
    * @throws IOException
    */
   public static function createFolder(string $folderPath){
-    self::_checkWrite($folderPath);
+    self::checkWrite($folderPath);
     // Check if the data_directory exists or create one.
     if (!file_exists($folderPath) && !mkdir($folderPath, 0777, true) && !is_dir($folderPath)) {
       throw new IOException(
@@ -134,8 +134,8 @@ class IoHelper {
    */
   public static function updateFileContent(string $filePath, Closure $updateContentFunction): string
   {
-    self::_checkRead($filePath);
-    self::_checkWrite($filePath);
+    self::checkRead($filePath);
+    self::checkWrite($filePath);
 
     $content = false;
 
@@ -181,7 +181,7 @@ class IoHelper {
       return true;
     }
     try{
-      self::_checkWrite($filePath);
+      self::checkWrite($filePath);
     }catch(Exception $exception){
       return false;
     }
@@ -199,7 +199,7 @@ class IoHelper {
       // if a file does not exist, we do not need to delete it.
       if(true === file_exists($filePath)){
         try{
-          self::_checkWrite($filePath);
+          self::checkWrite($filePath);
           if(false === @unlink($filePath) || file_exists($filePath)){
             return false;
           }
@@ -222,6 +222,7 @@ class IoHelper {
   }
 
   /**
+   * Appends a slash ("/") to the given directory path if there is none.
    * @param string $directory
    */
   public static function normalizeDirectory(string &$directory){

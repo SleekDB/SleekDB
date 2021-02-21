@@ -127,84 +127,6 @@ class Store
     return $this->databasePath;
   }
 
-  /**
-   * @param array $configuration
-   * @throws InvalidConfigurationException
-   */
-  private function setConfiguration(array $configuration)
-  {
-    if(array_key_exists("auto_cache", $configuration)){
-      $autoCache = $configuration["auto_cache"];
-      if(!is_bool($configuration["auto_cache"])){
-        throw new InvalidConfigurationException("auto_cache has to be boolean");
-      }
-
-      $this->useCache = $autoCache;
-    }
-
-    if(array_key_exists("cache_lifetime", $configuration)){
-      $defaultCacheLifetime = $configuration["cache_lifetime"];
-      if(!is_int($defaultCacheLifetime) && !is_null($defaultCacheLifetime)){
-        throw new InvalidConfigurationException("cache_lifetime has to be null or int");
-      }
-
-      $this->defaultCacheLifetime = $defaultCacheLifetime;
-    }
-
-    // Set timeout.
-    if (array_key_exists("timeout", $configuration)) {
-      if (!is_int($configuration['timeout']) || $configuration['timeout'] <= 0){
-        throw new InvalidConfigurationException("timeout has to an int > 0");
-      }
-      $this->timeout = $configuration["timeout"];
-    }
-    set_time_limit($this->timeout);
-
-    if(array_key_exists("primary_key", $configuration)){
-      $primaryKey = $configuration["primary_key"];
-      if(!is_string($primaryKey)){
-        throw new InvalidConfigurationException("primary key has to be a string");
-      }
-      $this->primaryKey = $primaryKey;
-    }
-
-    if(array_key_exists("search", $configuration)){
-      $searchConfig = $configuration["search"];
-
-      if(array_key_exists("min_length", $searchConfig)){
-        $searchMinLength = $searchConfig["min_length"];
-        if(!is_int($searchMinLength) || $searchMinLength <= 0){
-          throw new InvalidConfigurationException("min length for searching has to be an int >= 0");
-        }
-        $this->searchOptions["minLength"] = $searchMinLength;
-      }
-
-      if(array_key_exists("mode", $searchConfig)){
-        $searchMode = $searchConfig["mode"];
-        if(!is_string($searchMode) || !in_array(strtolower(trim($searchMode)), ["and", "or"])){
-          throw new InvalidConfigurationException("search mode can just be \"and\" or \"or\"");
-        }
-        $this->searchOptions["mode"] = strtolower(trim($searchMode));
-      }
-
-      if(array_key_exists("score_key", $searchConfig)){
-        $searchScoreKey = $searchConfig["score_key"];
-        if((!is_string($searchScoreKey) && !is_null($searchScoreKey))){
-          throw new InvalidConfigurationException("search score key for search has to be a not empty string or null");
-        }
-        $this->searchOptions["scoreKey"] = $searchScoreKey;
-      }
-
-      if(array_key_exists("algorithm", $searchConfig)){
-        $searchAlgorithm = $searchConfig["algorithm"];
-        if(!in_array($searchAlgorithm, Query::SEARCH_ALGORITHM, true)){
-          $searchAlgorithm = implode(', ', $searchAlgorithm);
-          throw new InvalidConfigurationException("The search algorithm has to be one of the following integer values ($searchAlgorithm)");
-        }
-        $this->searchOptions["algorithm"] = $searchAlgorithm;
-      }
-    }
-  }
 
   /**
    * @return QueryBuilder
@@ -262,39 +184,6 @@ class Store
     return $results;
   }
 
-  /**
-   * Writes an object in a store.
-   * @param array $storeData
-   * @return array
-   * @throws IOException
-   * @throws IdNotAllowedException
-   * @throws JsonException
-   */
-  private function writeNewDocumentToStore(array $storeData): array
-  {
-    $primaryKey = $this->getPrimaryKey();
-    // Check if it has the primary key
-    if (isset($storeData[$primaryKey])) {
-      throw new IdNotAllowedException(
-        "The \"$primaryKey\" index is reserved by SleekDB, please delete the $primaryKey key and try again"
-      );
-    }
-    $id = $this->getStoreId();
-    // Add the system ID with the store data array.
-    $storeData[$primaryKey] = $id;
-    // Prepare storable data
-    $storableJSON = @json_encode($storeData);
-    if ($storableJSON === false) {
-      throw new JsonException('Unable to encode the data array, 
-        please provide a valid PHP associative array');
-    }
-    // Define the store path
-    $filePath = $this->getDataPath()."$id.json";
-
-    IoHelper::writeContentToFile($filePath, $storableJSON);
-
-    return $storeData;
-  }
 
   /**
    * Delete store with all its data and cache.
@@ -307,76 +196,6 @@ class Store
     return IoHelper::deleteFolder($storePath);
   }
 
-  /**
-   * @throws IOException
-   */
-  private function createDatabasePath()
-  {
-    $databasePath = $this->getDatabasePath();
-    IoHelper::createFolder($databasePath);
-  }
-
-  /**
-   * @throws IOException
-   */
-  private function createStore()
-  {
-    $storeName = $this->getStoreName();
-    // Prepare store name.
-    IoHelper::normalizeDirectory($storeName);
-    // Store directory path.
-    $this->storePath = $this->getDatabasePath() . $storeName;
-    $storePath = $this->getStorePath();
-    IoHelper::createFolder($storePath);
-
-    // Create the cache directory.
-    $cacheDirectory = $storePath . 'cache';
-    IoHelper::createFolder($cacheDirectory);
-
-    // Create the data directory.
-    IoHelper::createFolder($storePath . self::dataDirectory);
-
-    // Create the store counter file.
-    $counterFile = $storePath . '_cnt.sdb';
-    if(!file_exists($counterFile)){
-      IoHelper::writeContentToFile($counterFile, '0');
-    }
-  }
-
-  /**
-   * @return bool
-   */
-  public function _getUseCache(): bool
-  {
-    return $this->useCache;
-  }
-
-  /**
-   * @return null|int
-   */
-  public function _getDefaultCacheLifetime()
-  {
-    return $this->defaultCacheLifetime;
-  }
-
-  /**
-   * Increments the store wide unique store object ID and returns it.
-   * @return int
-   * @throws IOException
-   * @throws JsonException
-   */
-  private function getStoreId(): int
-  {
-    $counterPath = $this->getStorePath() . '_cnt.sdb';
-
-    if (!file_exists($counterPath)) {
-      throw new IOException("File $counterPath does not exist.");
-    }
-
-    return (int) IoHelper::updateFileContent($counterPath, function ($counter){
-      return (string)(((int) $counter) + 1);
-    });
-  }
 
   /**
    * Return the last created store object ID.
@@ -695,6 +514,191 @@ class Store
   {
     return $this->searchOptions;
   }
+
+  /**
+   * @return bool
+   */
+  public function _getUseCache(): bool
+  {
+    return $this->useCache;
+  }
+
+  /**
+   * @return null|int
+   */
+  public function _getDefaultCacheLifetime()
+  {
+    return $this->defaultCacheLifetime;
+  }
+
+  /**
+   * @throws IOException
+   */
+  private function createDatabasePath()
+  {
+    $databasePath = $this->getDatabasePath();
+    IoHelper::createFolder($databasePath);
+  }
+
+  /**
+   * @throws IOException
+   */
+  private function createStore()
+  {
+    $storeName = $this->getStoreName();
+    // Prepare store name.
+    IoHelper::normalizeDirectory($storeName);
+    // Store directory path.
+    $this->storePath = $this->getDatabasePath() . $storeName;
+    $storePath = $this->getStorePath();
+    IoHelper::createFolder($storePath);
+
+    // Create the cache directory.
+    $cacheDirectory = $storePath . 'cache';
+    IoHelper::createFolder($cacheDirectory);
+
+    // Create the data directory.
+    IoHelper::createFolder($storePath . self::dataDirectory);
+
+    // Create the store counter file.
+    $counterFile = $storePath . '_cnt.sdb';
+    if(!file_exists($counterFile)){
+      IoHelper::writeContentToFile($counterFile, '0');
+    }
+  }
+
+  /**
+   * @param array $configuration
+   * @throws InvalidConfigurationException
+   */
+  private function setConfiguration(array $configuration)
+  {
+    if(array_key_exists("auto_cache", $configuration)){
+      $autoCache = $configuration["auto_cache"];
+      if(!is_bool($configuration["auto_cache"])){
+        throw new InvalidConfigurationException("auto_cache has to be boolean");
+      }
+
+      $this->useCache = $autoCache;
+    }
+
+    if(array_key_exists("cache_lifetime", $configuration)){
+      $defaultCacheLifetime = $configuration["cache_lifetime"];
+      if(!is_int($defaultCacheLifetime) && !is_null($defaultCacheLifetime)){
+        throw new InvalidConfigurationException("cache_lifetime has to be null or int");
+      }
+
+      $this->defaultCacheLifetime = $defaultCacheLifetime;
+    }
+
+    // Set timeout.
+    if (array_key_exists("timeout", $configuration)) {
+      if (!is_int($configuration['timeout']) || $configuration['timeout'] <= 0){
+        throw new InvalidConfigurationException("timeout has to an int > 0");
+      }
+      $this->timeout = $configuration["timeout"];
+    }
+    set_time_limit($this->timeout);
+
+    if(array_key_exists("primary_key", $configuration)){
+      $primaryKey = $configuration["primary_key"];
+      if(!is_string($primaryKey)){
+        throw new InvalidConfigurationException("primary key has to be a string");
+      }
+      $this->primaryKey = $primaryKey;
+    }
+
+    if(array_key_exists("search", $configuration)){
+      $searchConfig = $configuration["search"];
+
+      if(array_key_exists("min_length", $searchConfig)){
+        $searchMinLength = $searchConfig["min_length"];
+        if(!is_int($searchMinLength) || $searchMinLength <= 0){
+          throw new InvalidConfigurationException("min length for searching has to be an int >= 0");
+        }
+        $this->searchOptions["minLength"] = $searchMinLength;
+      }
+
+      if(array_key_exists("mode", $searchConfig)){
+        $searchMode = $searchConfig["mode"];
+        if(!is_string($searchMode) || !in_array(strtolower(trim($searchMode)), ["and", "or"])){
+          throw new InvalidConfigurationException("search mode can just be \"and\" or \"or\"");
+        }
+        $this->searchOptions["mode"] = strtolower(trim($searchMode));
+      }
+
+      if(array_key_exists("score_key", $searchConfig)){
+        $searchScoreKey = $searchConfig["score_key"];
+        if((!is_string($searchScoreKey) && !is_null($searchScoreKey))){
+          throw new InvalidConfigurationException("search score key for search has to be a not empty string or null");
+        }
+        $this->searchOptions["scoreKey"] = $searchScoreKey;
+      }
+
+      if(array_key_exists("algorithm", $searchConfig)){
+        $searchAlgorithm = $searchConfig["algorithm"];
+        if(!in_array($searchAlgorithm, Query::SEARCH_ALGORITHM, true)){
+          $searchAlgorithm = implode(', ', $searchAlgorithm);
+          throw new InvalidConfigurationException("The search algorithm has to be one of the following integer values ($searchAlgorithm)");
+        }
+        $this->searchOptions["algorithm"] = $searchAlgorithm;
+      }
+    }
+  }
+
+  /**
+   * Writes an object in a store.
+   * @param array $storeData
+   * @return array
+   * @throws IOException
+   * @throws IdNotAllowedException
+   * @throws JsonException
+   */
+  private function writeNewDocumentToStore(array $storeData): array
+  {
+    $primaryKey = $this->getPrimaryKey();
+    // Check if it has the primary key
+    if (isset($storeData[$primaryKey])) {
+      throw new IdNotAllowedException(
+        "The \"$primaryKey\" index is reserved by SleekDB, please delete the $primaryKey key and try again"
+      );
+    }
+    $id = $this->increaseCounterAndGetNextId();
+    // Add the system ID with the store data array.
+    $storeData[$primaryKey] = $id;
+    // Prepare storable data
+    $storableJSON = @json_encode($storeData);
+    if ($storableJSON === false) {
+      throw new JsonException('Unable to encode the data array, 
+        please provide a valid PHP associative array');
+    }
+    // Define the store path
+    $filePath = $this->getDataPath()."$id.json";
+
+    IoHelper::writeContentToFile($filePath, $storableJSON);
+
+    return $storeData;
+  }
+
+  /**
+   * Increments the store wide unique store object ID and returns it.
+   * @return int
+   * @throws IOException
+   * @throws JsonException
+   */
+  private function increaseCounterAndGetNextId(): int
+  {
+    $counterPath = $this->getStorePath() . '_cnt.sdb';
+
+    if (!file_exists($counterPath)) {
+      throw new IOException("File $counterPath does not exist.");
+    }
+
+    return (int) IoHelper::updateFileContent($counterPath, function ($counter){
+      return (string)(((int) $counter) + 1);
+    });
+  }
+
 
   /**
    * @param string|int $id
