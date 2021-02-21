@@ -302,13 +302,11 @@ class DocumentFinder
 
         $lowerValue = mb_strtolower($value, $encoding);
 
-        $hitPosition = mb_strpos($lowerValue, $lowerQuery, 0, $encoding);
-
         if ($lowerQuery === $lowerValue) {
           // exact match
           $searchHits++;
           $searchScore += 16 * $score;
-        } elseif ($positionAlgorithm && $hitPosition === 0) {
+        } elseif ($positionAlgorithm && mb_strpos($lowerValue, $lowerQuery, 0, $encoding) === 0) {
           // exact beginning match
           $searchHits++;
           $searchScore += 8 * $score;
