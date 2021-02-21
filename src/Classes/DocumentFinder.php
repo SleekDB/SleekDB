@@ -285,7 +285,7 @@ class DocumentFinder
     }
 
     // search
-    foreach ($found as $foundKey => $document) {
+    foreach ($found as $foundKey => &$document) {
       $searchHits = 0;
       $searchScore = 0;
       foreach ($fields as $key => $field) {
@@ -322,7 +322,9 @@ class DocumentFinder
           }
         }
 
-        $matches = ($searchMode === "and") ? preg_match($preg, $value) : preg_match_all($preg, $value);
+        $matchesArray = [];
+
+        $matches = ($searchMode === "and") ? preg_match($preg, $value) : preg_match_all($preg, $value, $matchesArray, PREG_OFFSET_CAPTURE);
 
         if ($matches) {
           // any match
@@ -332,14 +334,18 @@ class DocumentFinder
             $searchScore += $matches * ($fieldsLength - $key);
           }
           // because the "and" search algorithm at most finds one match we also use the amount of word occurrences
-          if($searchMode === "and" && isset($pregOr) && ($matches = preg_match_all($pregOr, $value))){
+          if($searchMode === "and" && isset($pregOr) && ($matches = preg_match_all($pregOr, $value, $matchesArray, PREG_OFFSET_CAPTURE))){
             $searchHits += $matches;
             $searchScore += $matches * $score;
           }
         }
 
         // we apply a small very small number to the score to differentiate the distance from the beginning
-        if($positionAlgorithm && $hitPosition > 0){
+        if($positionAlgorithm && $matches && !empty($matchesArray)){
+          $hitPosition = $matchesArray[0][0][1];
+          if(!is_int($hitPosition) || !($hitPosition > 0)){
+            $hitPosition = 1;
+          }
           $searchScore += ($score / $highestScore) * ($hitPosition / ($hitPosition * $hitPosition));
         }
       }
@@ -347,7 +353,6 @@ class DocumentFinder
       if($searchHits > 0){
         if(!is_null($searchScoreKey)){
           $document[$searchScoreKey] = $searchScore;
-          $found[$foundKey] = $document;
         }
       } else {
         unset($found[$foundKey]);
