@@ -80,7 +80,7 @@ class DocumentReducer
       foreach ($listOfJoins as $join) {
         // Execute the child query.
         $joinQuery = ($join['joinFunction'])($doc); // QueryBuilder or result of fetch
-        $dataPropertyName =$join['dataPropertyName'];
+        $dataPropertyName =$join['propertyName'];
 
         // TODO remove SleekDB check in version 3.0
         if($joinQuery instanceof QueryBuilder || $joinQuery instanceof SleekDB){
