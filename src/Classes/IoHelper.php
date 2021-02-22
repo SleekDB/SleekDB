@@ -1,19 +1,25 @@
 <?php
 
-namespace SleekDB\Traits;
+namespace SleekDB\Classes;
 
+use Closure;
+use Exception;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Exceptions\JsonException;
 
-trait IoHelperTrait {
+/**
+ * Class IoHelper
+ * Helper to handle file input/ output.
+ */
+class IoHelper {
 
   /**
    * @param string $path
    * @throws IOException
    */
-  private static function _checkWrite(string $path)
+  public static function checkWrite(string $path)
   {
     if(file_exists($path) === false){
       $path = dirname($path);
@@ -30,7 +36,7 @@ trait IoHelperTrait {
    * @param string $path
    * @throws IOException
    */
-  private static function _checkRead(string $path)
+  public static function checkRead(string $path)
   {
     // Check if PHP has read permission
     if (!is_readable($path)) {
@@ -45,9 +51,10 @@ trait IoHelperTrait {
    * @return string
    * @throws IOException
    */
-  private static function getFileContent(string $filePath){
+  public static function getFileContent(string $filePath): string
+  {
 
-    self::_checkRead($filePath);
+    self::checkRead($filePath);
 
     if(!file_exists($filePath)) {
       throw new IOException("File does not exist: $filePath");
@@ -68,9 +75,14 @@ trait IoHelperTrait {
     return $content;
   }
 
-  private static function writeContentToFile(string $filePath, string $content){
+  /**
+   * @param string $filePath
+   * @param string $content
+   * @throws IOException
+   */
+  public static function writeContentToFile(string $filePath, string $content){
 
-    self::_checkWrite($filePath);
+    self::checkWrite($filePath);
 
     // Wait until it's unlocked, then write.
     if(file_put_contents($filePath, $content, LOCK_EX) === false){
@@ -83,12 +95,13 @@ trait IoHelperTrait {
    * @return bool
    * @throws IOException
    */
-  private static function deleteFolder(string $folderPath){
-    self::_checkWrite($folderPath);
+  public static function deleteFolder(string $folderPath): bool
+  {
+    self::checkWrite($folderPath);
     $it = new RecursiveDirectoryIterator($folderPath, RecursiveDirectoryIterator::SKIP_DOTS);
     $files = new RecursiveIteratorIterator($it, RecursiveIteratorIterator::CHILD_FIRST);
     foreach ($files as $file) {
-      self::_checkWrite($file);
+      self::checkWrite($file);
       if ($file->isDir()) {
         rmdir($file->getRealPath());
       } else {
@@ -102,8 +115,8 @@ trait IoHelperTrait {
    * @param string $folderPath
    * @throws IOException
    */
-  private static function createFolder(string $folderPath){
-    self::_checkWrite($folderPath);
+  public static function createFolder(string $folderPath){
+    self::checkWrite($folderPath);
     // Check if the data_directory exists or create one.
     if (!file_exists($folderPath) && !mkdir($folderPath, 0777, true) && !is_dir($folderPath)) {
       throw new IOException(
@@ -114,13 +127,15 @@ trait IoHelperTrait {
 
   /**
    * @param string $filePath
-   * @param \Closure $updateContentFunction
-   * @return mixed
+   * @param Closure $updateContentFunction Has to return a string or an array that will be encoded to json.
+   * @return string
    * @throws IOException
+   * @throws JsonException
    */
-  private static function updateFileContent(string $filePath, \Closure $updateContentFunction){
-    self::_checkRead($filePath);
-    self::_checkWrite($filePath);
+  public static function updateFileContent(string $filePath, Closure $updateContentFunction): string
+  {
+    self::checkRead($filePath);
+    self::checkWrite($filePath);
 
     $content = false;
 
@@ -159,38 +174,60 @@ trait IoHelperTrait {
    * @param string $filePath
    * @return bool
    */
-  private static function deleteFile(string $filePath){
+  public static function deleteFile(string $filePath): bool
+  {
 
     if(false === file_exists($filePath)){
       return true;
     }
     try{
-      self::_checkWrite($filePath);
-    }catch(\Exception $exception){
+      self::checkWrite($filePath);
+    }catch(Exception $exception){
       return false;
     }
 
-    return @unlink($filePath) && !file_exists($filePath);
+    return (@unlink($filePath) && !file_exists($filePath));
   }
 
   /**
    * @param array $filePaths
    * @return bool
    */
-  private static function deleteFiles(array $filePaths){
+  public static function deleteFiles(array $filePaths): bool
+  {
     foreach ($filePaths as $filePath){
       // if a file does not exist, we do not need to delete it.
       if(true === file_exists($filePath)){
         try{
-          self::_checkWrite($filePath);
+          self::checkWrite($filePath);
           if(false === @unlink($filePath) || file_exists($filePath)){
             return false;
           }
-        } catch (\Exception $exception){
+        } catch (Exception $exception){
           return false;
         }
       }
     }
     return true;
+  }
+
+  /**
+   * Strip string for secure file access.
+   * @param string $string
+   * @return string
+   */
+  public static function secureStringForFileAccess(string $string): string
+  {
+    return (str_replace(array(".", "/", "\\"), "", $string));
+  }
+
+  /**
+   * Appends a slash ("/") to the given directory path if there is none.
+   * @param string $directory
+   */
+  public static function normalizeDirectory(string &$directory){
+    if(!empty($directory) && substr($directory, -1) !== "/") {
+      $directory .= "/";
+    }
   }
 }

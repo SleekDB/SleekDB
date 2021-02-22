@@ -2,13 +2,14 @@
 
 namespace SleekDB;
 
+use Exception;
+use SleekDB\Classes\IoHelper;
+use SleekDB\Classes\NestedHelper;
 use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\IdNotAllowedException;
 use SleekDB\Exceptions\InvalidConfigurationException;
-use SleekDB\Exceptions\InvalidPropertyAccessException;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Exceptions\JsonException;
-use SleekDB\Traits\IoHelperTrait;
 
 // To provide usage without composer, we need to require all files.
 if(false === class_exists("\Composer\Autoload\ClassLoader")) {
@@ -29,30 +30,36 @@ if(false === class_exists("\Composer\Autoload\ClassLoader")) {
 class Store
 {
 
-  use IoHelperTrait;
-
   protected $root = __DIR__;
 
   protected $storeName = "";
   protected $storePath = "";
 
-  protected $dataDirectory = "";
+  protected $databasePath = "";
 
   protected $useCache = true;
   protected $defaultCacheLifetime;
   protected $primaryKey = "_id";
   protected $timeout = 120;
+  protected $searchOptions = [
+    "minLength" => 2,
+    "scoreKey" => "searchScore",
+    "mode" => "or",
+    "algorithm" => Query::SEARCH_ALGORITHM["hits"]
+  ];
+
+  const dataDirectory = "data/";
 
   /**
    * Store constructor.
    * @param string $storeName
-   * @param string $dataDir
+   * @param string $databasePath
    * @param array $configuration
    * @throws InvalidArgumentException
    * @throws IOException
    * @throws InvalidConfigurationException
    */
-  public function __construct(string $storeName, string $dataDir, array $configuration = [])
+  public function __construct(string $storeName, string $databasePath, array $configuration = [])
   {
     $storeName = trim($storeName);
     if (empty($storeName)) {
@@ -60,38 +67,37 @@ class Store
     }
     $this->storeName = $storeName;
 
-    $dataDir = trim($dataDir);
-    if (empty($dataDir)) {
+    $databasePath = trim($databasePath);
+    if (empty($databasePath)) {
       throw new InvalidArgumentException('data directory can not be empty');
     }
-    if (substr($dataDir, -1) !== '/') {
-      $dataDir .= '/';
-    }
-    $this->dataDirectory = $dataDir;
+
+    IoHelper::normalizeDirectory($databasePath);
+    $this->databasePath = $databasePath;
 
     $this->setConfiguration($configuration);
 
     // boot store
-    $this->createDataDirectory();
+    $this->createDatabasePath();
     $this->createStore();
   }
 
   /**
    * Change the destination of the store object.
    * @param string $storeName
-   * @param string|null $dataDir If dataDir is empty, previous database directory path will be used.
+   * @param string|null $databasePath If empty, previous database path will be used.
    * @param array $configuration
    * @return Store
    * @throws IOException
    * @throws InvalidArgumentException
    * @throws InvalidConfigurationException
    */
-  public function changeStore(string $storeName, string $dataDir = null, array $configuration = []): Store
+  public function changeStore(string $storeName, string $databasePath = null, array $configuration = []): Store
   {
-    if(empty($dataDir)){
-      $dataDir = $this->getDataDirectory();
+    if(empty($databasePath)){
+      $databasePath = $this->getDatabasePath();
     }
-    $this->__construct($storeName, $dataDir, $configuration);
+    $this->__construct($storeName, $databasePath, $configuration);
     return $this;
   }
 
@@ -106,51 +112,9 @@ class Store
   /**
    * @return string
    */
-  public function getDataDirectory(): string
+  public function getDatabasePath(): string
   {
-    return $this->dataDirectory;
-  }
-
-  /**
-   * @param array $configuration
-   * @throws InvalidConfigurationException
-   */
-  private function setConfiguration(array $configuration)
-  {
-    if(array_key_exists("auto_cache", $configuration)){
-      $autoCache = $configuration["auto_cache"];
-      if(!is_bool($configuration["auto_cache"])){
-        throw new InvalidConfigurationException("auto_cache has to be boolean");
-      }
-
-      $this->useCache = $autoCache;
-    }
-
-    if(array_key_exists("cache_lifetime", $configuration)){
-      $defaultCacheLifetime = $configuration["cache_lifetime"];
-      if(!is_int($defaultCacheLifetime) && !is_null($defaultCacheLifetime)){
-        throw new InvalidConfigurationException("cache_lifetime has to be null or int");
-      }
-
-      $this->defaultCacheLifetime = $defaultCacheLifetime;
-    }
-
-    // Set timeout.
-    if (array_key_exists("timeout", $configuration)) {
-      if (!is_int($configuration['timeout']) || $configuration['timeout'] <= 0){
-        throw new InvalidConfigurationException("timeout has to an int > 0");
-      }
-      $this->timeout = $configuration["timeout"];
-    }
-    set_time_limit($this->timeout);
-
-    if(array_key_exists("primary_key", $configuration)){
-      $primaryKey = $configuration["primary_key"];
-      if(!is_string($primaryKey)){
-        throw new InvalidConfigurationException("primary key has to be a string");
-      }
-      $this->primaryKey = $primaryKey;
-    }
+    return $this->databasePath;
   }
 
   /**
@@ -209,39 +173,6 @@ class Store
     return $results;
   }
 
-  /**
-   * Writes an object in a store.
-   * @param array $storeData
-   * @return array
-   * @throws IOException
-   * @throws IdNotAllowedException
-   * @throws JsonException
-   */
-  private function writeNewDocumentToStore(array $storeData): array
-  {
-    $primaryKey = $this->getPrimaryKey();
-    // Check if it has the primary key
-    if (isset($storeData[$primaryKey])) {
-      throw new IdNotAllowedException(
-        "The \"$primaryKey\" index is reserved by SleekDB, please delete the $primaryKey key and try again"
-      );
-    }
-    $id = $this->getStoreId();
-    // Add the system ID with the store data array.
-    $storeData[$primaryKey] = $id;
-    // Prepare storable data
-    $storableJSON = @json_encode($storeData);
-    if ($storableJSON === false) {
-      throw new JsonException('Unable to encode the data array, 
-        please provide a valid PHP associative array');
-    }
-    // Define the store path
-    $filePath = $this->getStorePath() . "data/$id.json";
-
-    self::writeContentToFile($filePath, $storableJSON);
-
-    return $storeData;
-  }
 
   /**
    * Delete store with all its data and cache.
@@ -251,83 +182,9 @@ class Store
   public function deleteStore(): bool
   {
     $storePath = $this->getStorePath();
-    return self::deleteFolder($storePath);
+    return IoHelper::deleteFolder($storePath);
   }
 
-  /**
-   * @throws IOException
-   */
-  private function createDataDirectory()
-  {
-    $dataDir = $this->getDataDirectory();
-    self::createFolder($dataDir);
-  }
-
-  /**
-   * @throws IOException
-   */
-  private function createStore()
-  {
-    $storeName = $this->getStoreName();
-    // Prepare store name.
-    if (substr($storeName, -1) !== '/') {
-      $storeName .= '/';
-    }
-    // Store directory path.
-    $this->storePath = $this->getDataDirectory() . $storeName;
-    $storePath = $this->getStorePath();
-    self::createFolder($storePath);
-
-    // Create the cache directory.
-    $cacheDirectory = $storePath . 'cache';
-    self::createFolder($cacheDirectory);
-
-    // Create the data directory.
-    $dataDirectory = $storePath . 'data';
-    self::createFolder($dataDirectory);
-
-    // Create the store counter file.
-    $counterFile = $storePath . '_cnt.sdb';
-    if(!file_exists($counterFile)){
-      self::writeContentToFile($counterFile, '0');
-    }
-  }
-
-  /**
-   * @return bool
-   */
-  public function _getUseCache(): bool
-  {
-    return $this->useCache;
-  }
-
-  /**
-   * @return null|int
-   */
-  public function _getDefaultCacheLifetime()
-  {
-    return $this->defaultCacheLifetime;
-  }
-
-  /**
-   * Increments the store wide unique store object ID and returns it.
-   * @return int
-   * @throws IOException
-   */
-  private function getStoreId(): int
-  {
-    $counterPath = $this->getStorePath() . '_cnt.sdb';
-
-    if (!file_exists($counterPath)) {
-      throw new IOException("File $counterPath does not exist.");
-    }
-
-    $counter = self::updateFileContent($counterPath, function ($counter){
-      return ((int) $counter) + 1;
-    });
-
-    return $counter;
-  }
 
   /**
    * Return the last created store object ID.
@@ -338,7 +195,7 @@ class Store
   {
     $counterPath = $this->getStorePath() . '_cnt.sdb';
 
-    return (int) self::getFileContent($counterPath);
+    return (int) IoHelper::getFileContent($counterPath);
   }
 
   /**
@@ -352,7 +209,6 @@ class Store
   /**
    * Retrieve all documents.
    * @return array
-   * @throws InvalidPropertyAccessException
    * @throws IOException
    * @throws InvalidArgumentException
    */
@@ -363,17 +219,19 @@ class Store
 
   /**
    * Retrieve one document by its primary key. Very fast because it finds the document by its file path.
-   * @param int $id
+   * @param int|string $id
    * @return array|null
-   * @throws IOException
+   * @throws InvalidArgumentException
    */
-  public function findById(int $id){
+  public function findById($id){
 
-    $filePath = $this->getStorePath() . "data/$id.json";
+    $id = $this->checkAndStripId($id);
+
+    $filePath = $this->getDataPath() . "$id.json";
 
     try{
-      $content = self::getFileContent($filePath);
-    } catch (\Exception $exception){
+      $content = IoHelper::getFileContent($filePath);
+    } catch (Exception $exception){
       return null;
     }
 
@@ -389,7 +247,6 @@ class Store
    * @return array
    * @throws IOException
    * @throws InvalidArgumentException
-   * @throws InvalidPropertyAccessException
    */
   public function findBy(array $criteria, array $orderBy = null, int $limit = null, int $offset = null): array
   {
@@ -410,7 +267,6 @@ class Store
     }
 
     return $qb->getQuery()->fetch();
-
   }
 
   /**
@@ -419,7 +275,6 @@ class Store
    * @return array|null single document or NULL if no document can be found
    * @throws IOException
    * @throws InvalidArgumentException
-   * @throws InvalidPropertyAccessException
    */
   public function findOneBy(array $criteria)
   {
@@ -455,7 +310,7 @@ class Store
     }
 
     // Check if all documents exist and have the primary key before updating any
-    foreach ($updatable as $document){
+    foreach ($updatable as $key => $document){
       if(!is_array($document)) {
         throw new InvalidArgumentException('Documents have to be an arrays.');
       }
@@ -463,7 +318,11 @@ class Store
         throw new InvalidArgumentException("Documents have to have the primary key \"$primaryKey\".");
       }
 
-      $storePath = $this->getStorePath() . "data/$document[$primaryKey].json";
+      $document[$primaryKey] = $this->checkAndStripId($document[$primaryKey]);
+      // after the stripping and checking we apply it back to the updatable array.
+      $updatable[$key] = $document;
+
+      $storePath = $this->getDataPath() . "$document[$primaryKey].json";
 
       if (!file_exists($storePath)) {
         return false;
@@ -472,8 +331,9 @@ class Store
 
     // One or multiple documents to update
     foreach ($updatable as $document) {
-      $storePath = $this->getStorePath() . "data/$document[$primaryKey].json";
-      self::writeContentToFile($storePath, json_encode($document));
+      // save to access file with primary key value because we secured it above
+      $storePath = $this->getDataPath() . "$document[$primaryKey].json";
+      IoHelper::writeContentToFile($storePath, json_encode($document));
     }
 
     $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
@@ -483,16 +343,19 @@ class Store
 
   /**
    * Update properties of one document.
-   * @param int $id
+   * @param int|string $id
    * @param array $updatable
    * @return array|false Updated document or false if document does not exist.
    * @throws IOException If document could not be read or written.
-   * @throws InvalidArgumentException If one key to update is primary key.
+   * @throws InvalidArgumentException If one key to update is primary key or $id is not int or string.
    * @throws JsonException If content of document file could not be decoded.
    */
-  public function updateById(int $id, array $updatable)
+  public function updateById($id, array $updatable)
   {
-    $filePath = $this->getStorePath() . "data/$id.json";
+
+    $id = $this->checkAndStripId($id);
+
+    $filePath = $this->getDataPath() . "$id.json";
 
     $primaryKey = $this->getPrimaryKey();
 
@@ -504,50 +367,14 @@ class Store
       return false;
     }
 
-    $updateNestedValue = static function (array $keysArray, $oldData, $newValue, int $originalKeySize) use (&$updateNestedValue){
-      if(empty($keysArray)){
-        return $newValue;
-      }
-      $currentKey = $keysArray[0];
-      $result[$currentKey] = $oldData;
-      if(!is_array($oldData) || !array_key_exists($currentKey, $oldData)){
-        $result[$currentKey] = $updateNestedValue(array_slice($keysArray, 1), $oldData, $newValue, $originalKeySize);
-        if(count($keysArray) !== $originalKeySize){
-          return $result;
-        }
-      }
-      foreach ($oldData as $key => $item){
-        if($key !== $currentKey){
-          $result[$key] = $oldData[$key];
-        } else {
-          $result[$currentKey] = $updateNestedValue(array_slice($keysArray, 1), $oldData[$currentKey], $newValue, $originalKeySize);
-        }
-      }
-      return $result;
-    };
-
-    $content = self::updateFileContent($filePath, function($content) use ($filePath, $updatable, &$updateNestedValue){
+    $content = IoHelper::updateFileContent($filePath, function($content) use ($filePath, $updatable){
       $content = @json_decode($content, true);
       if(!is_array($content)){
         throw new JsonException("Could not decode content of \"$filePath\" with json_decode.");
       }
       foreach ($updatable as $key => $value){
-        $fieldNameArray = explode(".", $key);
-        if(count($fieldNameArray) > 1){
-          if(array_key_exists($fieldNameArray[0], $content)){
-            $oldData = $content[$fieldNameArray[0]];
-            $fieldNameArraySliced = array_slice($fieldNameArray, 1);
-            $value = $updateNestedValue($fieldNameArraySliced, $oldData, $value, count($fieldNameArraySliced));
-          } else {
-            $oldData = $content;
-            $value = $updateNestedValue($fieldNameArray, $oldData, $value, count($fieldNameArray));
-            $content = $value;
-            continue;
-          }
-        }
-        $content[$fieldNameArray[0]] = $value;
+        NestedHelper::updateNestedValue($key, $content, $value);
       }
-
       return json_encode($content);
     });
 
@@ -563,7 +390,6 @@ class Store
    * @return array|bool|int
    * @throws IOException
    * @throws InvalidArgumentException
-   * @throws InvalidPropertyAccessException
    */
   public function deleteBy(array $criteria, int $returnOption = Query::DELETE_RETURN_BOOL){
 
@@ -576,14 +402,16 @@ class Store
 
   /**
    * Delete one document by its primary key. Very fast because it deletes the document by its file path.
-   * @param int $id
+   * @param int|string $id
    * @return bool true if document does not exist or deletion was successful, false otherwise
-   * @throws IOException
+   * @throws InvalidArgumentException
    */
-  public function deleteById(int $id): bool
+  public function deleteById($id): bool
   {
 
-    $filePath = $this->getStorePath() . "data/$id.json";
+    $id = $this->checkAndStripId($id);
+
+    $filePath = $this->getDataPath() . "$id.json";
 
     $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
 
@@ -591,11 +419,319 @@ class Store
   }
 
   /**
+   * Remove fields from one document by its primary key.
+   * @param int|string $id
+   * @param array $fieldsToRemove
+   * @return false|array
+   * @throws IOException
+   * @throws InvalidArgumentException
+   * @throws JsonException
+   */
+  public function removeFieldsById($id, array $fieldsToRemove)
+  {
+    $id = $this->checkAndStripId($id);
+    $filePath = $this->getDataPath() . "$id.json";
+    $primaryKey = $this->getPrimaryKey();
+
+    if(in_array($primaryKey, $fieldsToRemove, false)) {
+      throw new InvalidArgumentException("You can not remove the primary key \"$primaryKey\" of documents.");
+    }
+    if(!file_exists($filePath)){
+      return false;
+    }
+
+    $content = IoHelper::updateFileContent($filePath, function($content) use ($filePath, $fieldsToRemove){
+      $content = @json_decode($content, true);
+      if(!is_array($content)){
+        throw new JsonException("Could not decode content of \"$filePath\" with json_decode.");
+      }
+      foreach ($fieldsToRemove as $fieldToRemove){
+        NestedHelper::removeNestedField($content, $fieldToRemove);
+      }
+      return $content;
+    });
+
+    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
+
+    return json_decode($content, true);
+  }
+
+  /**
+   * Do a fulltext like search against one or multiple fields.
+   * @param array $fields
+   * @param string $query
+   * @param array|null $orderBy
+   * @param int|null $limit
+   * @param int|null $offset
+   * @return array
+   * @throws IOException
+   * @throws InvalidArgumentException
+   */
+  public function search(array $fields, string $query, array $orderBy = null, int $limit = null, int $offset = null): array
+  {
+
+    $qb = $this->createQueryBuilder();
+
+    $qb->search($fields, $query);
+
+    if($orderBy !== null) {
+      $qb->orderBy($orderBy);
+    }
+
+    if($limit !== null) {
+      $qb->limit($limit);
+    }
+
+    if($offset !== null) {
+      $qb->skip($offset);
+    }
+
+    return $qb->getQuery()->fetch();
+  }
+
+  /**
+   * Get the name of the field used as the primary key.
    * @return string
    */
   public function getPrimaryKey(): string
   {
     return $this->primaryKey;
+  }
+
+  /**
+   * Returns the search options of the store.
+   * @return array
+   */
+  public function _getSearchOptions(): array
+  {
+    return $this->searchOptions;
+  }
+
+  /**
+   * Returns if caching is enabled store wide.
+   * @return bool
+   */
+  public function _getUseCache(): bool
+  {
+    return $this->useCache;
+  }
+
+  /**
+   * Returns the store wide default cache lifetime.
+   * @return null|int
+   */
+  public function _getDefaultCacheLifetime()
+  {
+    return $this->defaultCacheLifetime;
+  }
+
+  /**
+   * @return string
+   * @deprecated since version 2.7, use getDatabasePath instead.
+   */
+  public function getDataDirectory(): string
+  {
+    // TODO remove with version 3.0
+    return $this->databasePath;
+  }
+
+  /**
+   * @throws IOException
+   */
+  private function createDatabasePath()
+  {
+    $databasePath = $this->getDatabasePath();
+    IoHelper::createFolder($databasePath);
+  }
+
+  /**
+   * @throws IOException
+   */
+  private function createStore()
+  {
+    $storeName = $this->getStoreName();
+    // Prepare store name.
+    IoHelper::normalizeDirectory($storeName);
+    // Store directory path.
+    $this->storePath = $this->getDatabasePath() . $storeName;
+    $storePath = $this->getStorePath();
+    IoHelper::createFolder($storePath);
+
+    // Create the cache directory.
+    $cacheDirectory = $storePath . 'cache';
+    IoHelper::createFolder($cacheDirectory);
+
+    // Create the data directory.
+    IoHelper::createFolder($storePath . self::dataDirectory);
+
+    // Create the store counter file.
+    $counterFile = $storePath . '_cnt.sdb';
+    if(!file_exists($counterFile)){
+      IoHelper::writeContentToFile($counterFile, '0');
+    }
+  }
+
+  /**
+   * @param array $configuration
+   * @throws InvalidConfigurationException
+   */
+  private function setConfiguration(array $configuration)
+  {
+    if(array_key_exists("auto_cache", $configuration)){
+      $autoCache = $configuration["auto_cache"];
+      if(!is_bool($configuration["auto_cache"])){
+        throw new InvalidConfigurationException("auto_cache has to be boolean");
+      }
+
+      $this->useCache = $autoCache;
+    }
+
+    if(array_key_exists("cache_lifetime", $configuration)){
+      $defaultCacheLifetime = $configuration["cache_lifetime"];
+      if(!is_int($defaultCacheLifetime) && !is_null($defaultCacheLifetime)){
+        throw new InvalidConfigurationException("cache_lifetime has to be null or int");
+      }
+
+      $this->defaultCacheLifetime = $defaultCacheLifetime;
+    }
+
+    // Set timeout.
+    if (array_key_exists("timeout", $configuration)) {
+      if (!is_int($configuration['timeout']) || $configuration['timeout'] <= 0){
+        throw new InvalidConfigurationException("timeout has to an int > 0");
+      }
+      $this->timeout = $configuration["timeout"];
+    }
+    set_time_limit($this->timeout);
+
+    if(array_key_exists("primary_key", $configuration)){
+      $primaryKey = $configuration["primary_key"];
+      if(!is_string($primaryKey)){
+        throw new InvalidConfigurationException("primary key has to be a string");
+      }
+      $this->primaryKey = $primaryKey;
+    }
+
+    if(array_key_exists("search", $configuration)){
+      $searchConfig = $configuration["search"];
+
+      if(array_key_exists("min_length", $searchConfig)){
+        $searchMinLength = $searchConfig["min_length"];
+        if(!is_int($searchMinLength) || $searchMinLength <= 0){
+          throw new InvalidConfigurationException("min length for searching has to be an int >= 0");
+        }
+        $this->searchOptions["minLength"] = $searchMinLength;
+      }
+
+      if(array_key_exists("mode", $searchConfig)){
+        $searchMode = $searchConfig["mode"];
+        if(!is_string($searchMode) || !in_array(strtolower(trim($searchMode)), ["and", "or"])){
+          throw new InvalidConfigurationException("search mode can just be \"and\" or \"or\"");
+        }
+        $this->searchOptions["mode"] = strtolower(trim($searchMode));
+      }
+
+      if(array_key_exists("score_key", $searchConfig)){
+        $searchScoreKey = $searchConfig["score_key"];
+        if((!is_string($searchScoreKey) && !is_null($searchScoreKey))){
+          throw new InvalidConfigurationException("search score key for search has to be a not empty string or null");
+        }
+        $this->searchOptions["scoreKey"] = $searchScoreKey;
+      }
+
+      if(array_key_exists("algorithm", $searchConfig)){
+        $searchAlgorithm = $searchConfig["algorithm"];
+        if(!in_array($searchAlgorithm, Query::SEARCH_ALGORITHM, true)){
+          $searchAlgorithm = implode(', ', $searchAlgorithm);
+          throw new InvalidConfigurationException("The search algorithm has to be one of the following integer values ($searchAlgorithm)");
+        }
+        $this->searchOptions["algorithm"] = $searchAlgorithm;
+      }
+    }
+  }
+
+  /**
+   * Writes an object in a store.
+   * @param array $storeData
+   * @return array
+   * @throws IOException
+   * @throws IdNotAllowedException
+   * @throws JsonException
+   */
+  private function writeNewDocumentToStore(array $storeData): array
+  {
+    $primaryKey = $this->getPrimaryKey();
+    // Check if it has the primary key
+    if (isset($storeData[$primaryKey])) {
+      throw new IdNotAllowedException(
+        "The \"$primaryKey\" index is reserved by SleekDB, please delete the $primaryKey key and try again"
+      );
+    }
+    $id = $this->increaseCounterAndGetNextId();
+    // Add the system ID with the store data array.
+    $storeData[$primaryKey] = $id;
+    // Prepare storable data
+    $storableJSON = @json_encode($storeData);
+    if ($storableJSON === false) {
+      throw new JsonException('Unable to encode the data array, 
+        please provide a valid PHP associative array');
+    }
+    // Define the store path
+    $filePath = $this->getDataPath()."$id.json";
+
+    IoHelper::writeContentToFile($filePath, $storableJSON);
+
+    return $storeData;
+  }
+
+  /**
+   * Increments the store wide unique store object ID and returns it.
+   * @return int
+   * @throws IOException
+   * @throws JsonException
+   */
+  private function increaseCounterAndGetNextId(): int
+  {
+    $counterPath = $this->getStorePath() . '_cnt.sdb';
+
+    if (!file_exists($counterPath)) {
+      throw new IOException("File $counterPath does not exist.");
+    }
+
+    return (int) IoHelper::updateFileContent($counterPath, function ($counter){
+      return (string)(((int) $counter) + 1);
+    });
+  }
+
+
+  /**
+   * @param string|int $id
+   * @return int
+   * @throws InvalidArgumentException
+   */
+  private function checkAndStripId($id): int
+  {
+    if(!is_string($id) && !is_int($id)){
+      throw new InvalidArgumentException("The id of the document has to be an integer or string");
+    }
+
+    if(is_string($id)){
+      $id = IoHelper::secureStringForFileAccess($id);
+    }
+
+    if(!is_numeric($id)){
+      throw new InvalidArgumentException("The id of the document has to be numeric");
+    }
+
+    return (int) $id;
+  }
+
+  /**
+   * @return string
+   */
+  private function getDataPath(): string
+  {
+    return $this->getStorePath() . self::dataDirectory;
   }
 
 }

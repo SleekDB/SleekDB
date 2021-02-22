@@ -2,10 +2,10 @@
 
 namespace SleekDB;
 
+use Closure;
 use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\IdNotAllowedException;
 use SleekDB\Exceptions\InvalidConfigurationException;
-use SleekDB\Exceptions\InvalidPropertyAccessException;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Exceptions\JsonException;
 
@@ -80,7 +80,6 @@ class SleekDB
    * @return array
    * @throws InvalidArgumentException
    * @throws IOException
-   * @throws InvalidPropertyAccessException
    */
   public function fetch(): array
   {
@@ -91,7 +90,6 @@ class SleekDB
    * Check if data is found
    * @return bool
    * @throws InvalidArgumentException
-   * @throws InvalidPropertyAccessException
    * @throws IOException
    */
   public function exists(): bool
@@ -103,7 +101,6 @@ class SleekDB
    * Return the first document.
    * @return array
    * @throws InvalidArgumentException
-   * @throws InvalidPropertyAccessException
    * @throws IOException
    */
   public function first(): array
@@ -146,7 +143,6 @@ class SleekDB
    * @return bool
    * @throws InvalidArgumentException
    * @throws IOException
-   * @throws InvalidPropertyAccessException
    */
   public function update(array $updatable): bool
   {
@@ -158,7 +154,6 @@ class SleekDB
    * @param int $returnOption
    * @return bool|array|int
    * @throws InvalidArgumentException
-   * @throws InvalidPropertyAccessException
    * @throws IOException
    */
   public function delete(int $returnOption = Query::DELETE_RETURN_BOOL){
@@ -189,7 +184,6 @@ class SleekDB
    * Select specific fields
    * @param string[] $fieldNames
    * @return SleekDB
-   * @throws InvalidArgumentException
    */
   public function select(array $fieldNames): SleekDB
   {
@@ -340,11 +334,11 @@ class SleekDB
   }
 
   /**
-   * @param \Closure $joinedStore
+   * @param Closure $joinedStore
    * @param string $dataPropertyName
    * @return SleekDB
    */
-  public function join(\Closure $joinedStore, string $dataPropertyName): SleekDB
+  public function join(Closure $joinedStore, string $dataPropertyName): SleekDB
   {
     $this->setQueryBuilder($this->getQueryBuilder()->join($joinedStore, $dataPropertyName));
     return $this;
@@ -385,7 +379,6 @@ class SleekDB
   /**
    * Delete cache file/s for current query.
    * @return SleekDB
-   * @throws IOException
    */
   public function deleteCache(): SleekDB
   {
@@ -396,7 +389,6 @@ class SleekDB
   /**
    * Delete all cache files for current store.
    * @return SleekDB
-   * @throws IOException
    */
   public function deleteAllCache(): SleekDB
   {
@@ -490,7 +482,6 @@ class SleekDB
   /**
    * Retrieve all documents.
    * @return array
-   * @throws InvalidPropertyAccessException
    * @throws IOException
    * @throws InvalidArgumentException
    */
@@ -503,7 +494,7 @@ class SleekDB
    * Retrieve one document by its _id. Very fast because it finds the document by its file path.
    * @param int $id
    * @return array|null
-   * @throws IOException
+   * @throws InvalidArgumentException
    */
   public function findById(int $id){
     return $this->getStore()->findById($id);
@@ -518,7 +509,6 @@ class SleekDB
    * @return array
    * @throws IOException
    * @throws InvalidArgumentException
-   * @throws InvalidPropertyAccessException
    */
   public function findBy(array $criteria, array $orderBy = null, int $limit = null, int $offset = null): array
   {
@@ -531,7 +521,6 @@ class SleekDB
    * @return array|null single document or NULL if no document can be found
    * @throws IOException
    * @throws InvalidArgumentException
-   * @throws InvalidPropertyAccessException
    */
   public function findOneBy(array $criteria)
   {
@@ -557,7 +546,6 @@ class SleekDB
    * @return array|bool|int
    * @throws IOException
    * @throws InvalidArgumentException
-   * @throws InvalidPropertyAccessException
    */
   public function deleteBy($criteria, $returnOption = Query::DELETE_RETURN_BOOL){
     return $this->getStore()->deleteBy($criteria, $returnOption);
