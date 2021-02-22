@@ -118,17 +118,6 @@ class Store
   }
 
   /**
-   * @return string
-   * @deprecated since version 2.7, use getDatabasePath instead.
-   */
-  public function getDataDirectory(): string
-  {
-    // TODO remove with version 3.0
-    return $this->databasePath;
-  }
-
-
-  /**
    * @return QueryBuilder
    */
   public function createQueryBuilder(): QueryBuilder
@@ -430,6 +419,7 @@ class Store
   }
 
   /**
+   * Remove fields from one document by its primary key.
    * @param int|string $id
    * @param array $fieldsToRemove
    * @return false|array
@@ -500,6 +490,7 @@ class Store
   }
 
   /**
+   * Get the name of the field used as the primary key.
    * @return string
    */
   public function getPrimaryKey(): string
@@ -508,6 +499,7 @@ class Store
   }
 
   /**
+   * Returns the search options of the store.
    * @return array
    */
   public function _getSearchOptions(): array
@@ -516,6 +508,7 @@ class Store
   }
 
   /**
+   * Returns if caching is enabled store wide.
    * @return bool
    */
   public function _getUseCache(): bool
@@ -524,11 +517,22 @@ class Store
   }
 
   /**
+   * Returns the store wide default cache lifetime.
    * @return null|int
    */
   public function _getDefaultCacheLifetime()
   {
     return $this->defaultCacheLifetime;
+  }
+
+  /**
+   * @return string
+   * @deprecated since version 2.7, use getDatabasePath instead.
+   */
+  public function getDataDirectory(): string
+  {
+    // TODO remove with version 3.0
+    return $this->databasePath;
   }
 
   /**

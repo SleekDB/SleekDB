@@ -59,7 +59,7 @@ class Cache
   }
 
   /**
-   * Retrieve the cache directory path for current store.
+   * Retrieve the path to cache folder of current store.
    * @return string path to cache directory
    */
   public function getCachePath(): string
@@ -104,7 +104,7 @@ class Cache
   }
 
   /**
-   * Delete all cache files with no lifetime in current store.
+   * Delete all cache files with no lifetime (null) in current store.
    * @return bool
    */
   public function deleteAllWithNoLifetime(): bool
