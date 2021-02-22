@@ -234,7 +234,7 @@ class QueryBuilder
     }
 
     if(count($fields) > 100){
-      throw new InvalidArgumentException('Searching through more than 100 fields is not supported.');
+      trigger_error('Searching through more than 100 fields is not recommended and can be resource heavy.', E_USER_WARNING);
     }
 
     if (!empty($query)) {
