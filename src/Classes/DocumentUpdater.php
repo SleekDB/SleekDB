@@ -112,10 +112,10 @@ class DocumentUpdater
   /**
    * @param array $results
    * @param array $fieldsToRemove
-   * @return bool
+   * @return array|false
    * @throws IOException
    */
-  public function removeFields(array $results, array $fieldsToRemove): bool
+  public function removeFields(array &$results, array $fieldsToRemove)
   {
     $primaryKey = $this->primaryKey;
     $dataPath = $this->getDataPath();
@@ -132,7 +132,7 @@ class DocumentUpdater
       }
     }
 
-    foreach ($results as $document){
+    foreach ($results as &$document){
       foreach ($fieldsToRemove as $fieldToRemove){
         if($fieldToRemove !== $primaryKey){
           NestedHelper::removeNestedField($document, $fieldToRemove);
@@ -141,7 +141,7 @@ class DocumentUpdater
       $filePath = $dataPath . $document[$primaryKey] . '.json';
       IoHelper::writeContentToFile($filePath, json_encode($document));
     }
-    return true;
+    return $results;
   }
 
   /**

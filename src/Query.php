@@ -126,13 +126,13 @@ class Query
   }
 
   /**
-   * Remove fields from one or multiple documents based on current query.
+   * Remove fields of one or multiple documents based on current query.
    * @param array $fieldsToRemove
-   * @return bool
+   * @return array|false
    * @throws IOException
    * @throws InvalidArgumentException
    */
-  public function removeFields(array $fieldsToRemove): bool
+  public function removeFields(array $fieldsToRemove)
   {
     if(empty($fieldsToRemove)){
       throw new InvalidArgumentException("You have to define what fields you want to remove.");

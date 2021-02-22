@@ -383,8 +383,7 @@ class QueryBuilder
   }
 
   /**
-   * This method would make a unique token for the current query.
-   * We would use this hash token as the id/name of the cache file.
+   * Returns a an array used to generate a unique token for the current query.
    * @return array
    */
   public function _getCacheTokenArray(): array
@@ -402,6 +401,7 @@ class QueryBuilder
   }
 
   /**
+   * Returns an array containing all information needed to execute an query.
    * @return array
    */
   public function _getConditionProperties(): array
@@ -419,7 +419,7 @@ class QueryBuilder
   }
 
   /**
-   * Retrieve the Store object used to create this QueryBuilder object.
+   * Returns the Store object used to create the QueryBuilder object.
    * @return Store
    */
   public function _getStore(): Store{
