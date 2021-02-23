@@ -16,7 +16,7 @@ if(false === class_exists("\Composer\Autoload\ClassLoader")) {
     foreach (glob(__DIR__ . '/Exceptions/*.php') as $exception) {
         require_once $exception;
     }
-    foreach (glob(__DIR__ . '/Traits/*.php') as $traits) {
+    foreach (glob(__DIR__ . '/Classes/*.php') as $traits) {
       require_once $traits;
     }
     foreach (glob(__DIR__ . '/*.php') as $class) {
