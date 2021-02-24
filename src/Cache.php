@@ -144,6 +144,8 @@ class Cache
 
     $cacheFile = null;
 
+    IoHelper::checkRead($cachePath);
+
     $cacheFiles = glob($cachePath.$token."*.json");
 
     if($cacheFiles !== false && count($cacheFiles) > 0){
