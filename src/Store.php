@@ -499,6 +499,30 @@ class Store
   }
 
   /**
+   * Returns the amount of documents in the store.
+   * @return int
+   * @throws IOException
+   */
+  public function count(): int
+  {
+    if($this->_getUseCache() === true){
+      $cacheTokenArray = ["count" => true];
+      $cache = new Cache($this->getStorePath(), $cacheTokenArray, null);
+      $cacheValue = $cache->get();
+      if(is_array($cacheValue) && array_key_exists("count", $cacheValue)){
+        return $cacheValue["count"];
+      }
+    }
+    $value = [
+      "count" => IoHelper::countFolderContent($this->getDataPath())
+    ];
+    if(isset($cache)) {
+      $cache->set($value);
+    }
+    return $value["count"];
+  }
+
+  /**
    * Returns the search options of the store.
    * @return array
    */

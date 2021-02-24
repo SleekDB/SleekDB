@@ -230,4 +230,13 @@ class IoHelper {
       $directory .= "/";
     }
   }
+
+  /**
+   * @param string $folder
+   * @return int
+   */
+  public static function countFolderContent(string $folder){
+    $fi = new \FilesystemIterator($folder, \FilesystemIterator::SKIP_DOTS);
+    return iterator_count($fi);
+  }
 }
