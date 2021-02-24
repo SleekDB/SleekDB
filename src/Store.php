@@ -499,6 +499,15 @@ class Store
   }
 
   /**
+   * Returns the amount of documents in the store.
+   * @return int
+   */
+  public function count(): int
+  {
+    return IoHelper::countFolderContent($this->getDataPath());
+  }
+
+  /**
    * Returns the search options of the store.
    * @return array
    */
