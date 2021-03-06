@@ -302,9 +302,57 @@ class Store
   }
 
   /**
-   * Update one or multiple documents.
-   * @param array $updatable true if all documents could be updated and false if one document did not exist
+   * Update or insert one or multiple documents.
+   * @param array $data
    * @return bool
+   * @throws IOException
+   * @throws InvalidArgumentException
+   */
+  public function updateOrInsert(array $data): bool
+  {
+    $primaryKey = $this->getPrimaryKey();
+
+    if(empty($data)) {
+      throw new InvalidArgumentException("No documents to update or insert.");
+    }
+
+    // we can use this check to determine if multiple documents are given
+    // because documents have to have at least the primary key.
+    if(array_keys($data) !== range(0, (count($data) - 1))){
+      $data = [ $data ];
+    }
+
+    // Check if all documents have the primary key before updating or inserting any
+    foreach ($data as $key => $document){
+      if(!is_array($document)) {
+        throw new InvalidArgumentException('Documents have to be an arrays.');
+      }
+      if(!array_key_exists($primaryKey, $document)) {
+        $documentString = var_export($document, true);
+        throw new InvalidArgumentException("Documents have to have the primary key \"$primaryKey\". Got data: $documentString");
+      }
+
+      $document[$primaryKey] = $this->checkAndStripId($document[$primaryKey]);
+      // after the stripping and checking we apply it back
+      $data[$key] = $document;
+    }
+
+    // One or multiple documents to update or insert
+    foreach ($data as $document) {
+      // save to access file with primary key value because we secured it above
+      $storePath = $this->getDataPath() . "$document[$primaryKey].json";
+      IoHelper::writeContentToFile($storePath, json_encode($document));
+    }
+
+    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
+
+    return true;
+  }
+
+  /**
+   * Update one or multiple documents.
+   * @param array $updatable
+   * @return bool true if all documents could be updated and false if one document did not exist
    * @throws IOException
    * @throws InvalidArgumentException
    */
