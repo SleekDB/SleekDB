@@ -783,8 +783,15 @@ class Store
       throw new IOException("File $counterPath does not exist.");
     }
 
-    return (int) IoHelper::updateFileContent($counterPath, function ($counter){
-      return (string)(((int) $counter) + 1);
+    $dataPath = $this->getDataPath();
+
+    return (int) IoHelper::updateFileContent($counterPath, function ($counter) use ($dataPath){
+      $newCounter = ((int) $counter) + 1;
+
+      while(file_exists($dataPath."$newCounter.json") === true){
+        $newCounter++;
+      }
+      return (string)$newCounter;
     });
   }
 
