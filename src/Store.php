@@ -208,13 +208,26 @@ class Store
 
   /**
    * Retrieve all documents.
+   * @param array|null $orderBy array($fieldName => $order). $order can be "asc" or "desc"
+   * @param int|null $limit the amount of data record to limit
+   * @param int|null $offset the amount of data record to skip
    * @return array
    * @throws IOException
    * @throws InvalidArgumentException
    */
-  public function findAll(): array
+  public function findAll(array $orderBy = null, int $limit = null, int $offset = null): array
   {
-    return $this->createQueryBuilder()->getQuery()->fetch();
+    $qb = $this->createQueryBuilder();
+    if(!is_null($orderBy)){
+      $qb->orderBy($orderBy);
+    }
+    if(!is_null($limit)){
+      $qb->limit($limit);
+    }
+    if(!is_null($offset)){
+      $qb->skip($offset);
+    }
+    return $qb->getQuery()->fetch();
   }
 
   /**
