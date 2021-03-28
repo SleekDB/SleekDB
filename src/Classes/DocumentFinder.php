@@ -51,7 +51,7 @@ class DocumentFinder
     $search = $queryBuilderProperties["search"];
     $searchOptions = $queryBuilderProperties["searchOptions"];
     $groupBy = $queryBuilderProperties["groupBy"];
-    $having = $queryBuilderProperties["having"];
+    $havingConditions = $queryBuilderProperties["havingConditions"];
     $fieldsToSelect = $queryBuilderProperties["fieldsToSelect"];
     $orderBy = $queryBuilderProperties["orderBy"];
     $skip = $queryBuilderProperties["skip"];
@@ -120,18 +120,35 @@ class DocumentFinder
     }
 
     if ($reduceAndJoinPossible === true && !empty($groupBy) && count($found) > 0) {
+
       DocumentReducer::handleGroupBy(
         $found,
         $groupBy,
-        $fieldsToSelect,
-        $having
+        $fieldsToSelect
       );
+    }
+
+    if($reduceAndJoinPossible === true && empty($groupBy) && count($found) > 0){
+      // select specific fields
+      DocumentReducer::selectFields($found, $primaryKey, $fieldsToSelect);
+    }
+
+    if($reduceAndJoinPossible === true && count($found) > 0){
+      // exclude specific fields
+      DocumentReducer::excludeFields($found, $fieldsToExclude);
+    }
+
+    if(count($found) > 0){
+      self::handleHaving($found, $havingConditions);
     }
 
     if(count($found) > 0){
       // sort the data.
       self::sort($found, $orderBy);
+    }
 
+
+    if(count($found) > 0) {
       // Skip data
       self::skip($found, $skip);
     }
@@ -139,14 +156,6 @@ class DocumentFinder
     if(count($found) > 0) {
       // Limit data.
       self::limit($found, $limit);
-    }
-
-    if($reduceAndJoinPossible === true && empty($groupBy) && count($found) > 0){
-      // select specific fields
-      DocumentReducer::selectFields($found, $primaryKey, $fieldsToSelect);
-
-      // exclude specific fields
-      DocumentReducer::excludeFields($found, $fieldsToExclude);
     }
 
     return $found;
@@ -354,6 +363,23 @@ class DocumentFinder
         }
       } else {
         unset($found[$foundKey]);
+      }
+    }
+  }
+
+  /**
+   * @param array $found
+   * @param array $havingConditions
+   * @throws InvalidArgumentException
+   */
+  private static function handleHaving(array &$found, array $havingConditions){
+    if(empty($havingConditions)){
+      return;
+    }
+
+    foreach ($found as $key => $document){
+      if(false === ConditionsHandler::handleWhereConditions($havingConditions, $document)){
+        unset($found[$key]);
       }
     }
   }
