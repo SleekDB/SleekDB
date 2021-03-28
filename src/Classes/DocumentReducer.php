@@ -93,7 +93,6 @@ class DocumentReducer
    * @param array $found
    * @param array $groupBy
    * @param array $fieldsToSelect
-   * @param array $havingConditions
    * @throws InvalidArgumentException
    */
   public static function handleGroupBy(array &$found, array $groupBy, array $fieldsToSelect)
