@@ -34,7 +34,7 @@ class QueryBuilder
   protected $fieldsToSelect = [];
   protected $fieldsToExclude = [];
   protected $groupBy = [];
-  protected $having = [];
+  protected $havingConditions = [];
 
   protected $listOfJoins = [];
   protected $distinctFields = [];
@@ -72,7 +72,7 @@ class QueryBuilder
 
   /**
    * Select specific fields
-   * @param string[] $fieldNames
+   * @param array $fieldNames
    * @return QueryBuilder
    */
   public function select(array $fieldNames): QueryBuilder
@@ -395,7 +395,7 @@ class QueryBuilder
     if (empty($criteria)) {
       throw new InvalidArgumentException("You need to specify a having clause");
     }
-    $this->having = $criteria;
+    $this->havingConditions = $criteria;
     return $this;
   }
 
