@@ -126,10 +126,10 @@ class Store
   }
 
   /**
-   * Creates a new object in the store.
+   * Insert a new document to the store.
    * It is stored as a plaintext JSON document.
    * @param array $data
-   * @return array
+   * @return array inserted document
    * @throws IOException
    * @throws IdNotAllowedException
    * @throws InvalidArgumentException
@@ -150,9 +150,10 @@ class Store
   }
 
   /**
-   * Creates multiple objects in the store.
+   * Insert multiple documents to the store.
+   * They are stored as plaintext JSON documents.
    * @param array $data
-   * @return array
+   * @return array inserted documents
    * @throws IOException
    * @throws IdNotAllowedException
    * @throws InvalidArgumentException
@@ -164,11 +165,13 @@ class Store
     if (empty($data)) {
       throw new InvalidArgumentException('No data found to insert in the store');
     }
+
     // All results.
     $results = [];
     foreach ($data as $document) {
       $results[] = $this->writeNewDocumentToStore($document);
     }
+
     $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
     return $results;
   }
@@ -270,11 +273,9 @@ class Store
     if($orderBy !== null) {
       $qb->orderBy($orderBy);
     }
-
     if($limit !== null) {
       $qb->limit($limit);
     }
-
     if($offset !== null) {
       $qb->skip($offset);
     }
@@ -302,13 +303,60 @@ class Store
   }
 
   /**
-   * Update or insert one or multiple documents.
+   * Update or insert one document.
    * @param array $data
+   * @param bool $autoGenerateIdOnInsert
    * @return bool
    * @throws IOException
    * @throws InvalidArgumentException
+   * @throws JsonException
    */
-  public function updateOrInsert(array $data): bool
+  public function updateOrInsert(array $data, bool $autoGenerateIdOnInsert = true): bool
+  {
+    $primaryKey = $this->getPrimaryKey();
+
+    if(empty($data)) {
+      throw new InvalidArgumentException("No document to update or insert.");
+    }
+
+//    // we can use this check to determine if multiple documents are given
+//    // because documents have to have at least the primary key.
+//    if(array_keys($data) !== range(0, (count($data) - 1))){
+//      $data = [ $data ];
+//    }
+
+    if(!array_key_exists($primaryKey, $data)) {
+//        $documentString = var_export($document, true);
+//        throw new InvalidArgumentException("Documents have to have the primary key \"$primaryKey\". Got data: $documentString");
+      $data[$primaryKey] = $this->increaseCounterAndGetNextId();
+    } else {
+      $data[$primaryKey] = $this->checkAndStripId($data[$primaryKey]);
+      if($autoGenerateIdOnInsert && $this->findById($data[$primaryKey]) === null){
+        $data[$primaryKey] = $this->increaseCounterAndGetNextId();
+      }
+    }
+
+    // One document to update or insert
+
+    // save to access file with primary key value because we secured it above
+    $storePath = $this->getDataPath() . "$data[$primaryKey].json";
+    IoHelper::writeContentToFile($storePath, json_encode($data));
+
+    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
+
+    return true;
+  }
+
+  /**
+   * Update or insert multiple documents.
+   * @param array $data
+   * @param bool $autoGenerateIdOnInsert
+   * @return bool
+   * @throws IOException
+   * @throws InvalidArgumentException
+   * @throws JsonException
+   */
+  public function updateOrInsertMany(array $data, $autoGenerateIdOnInsert = true): bool
   {
     $primaryKey = $this->getPrimaryKey();
 
@@ -316,11 +364,11 @@ class Store
       throw new InvalidArgumentException("No documents to update or insert.");
     }
 
-    // we can use this check to determine if multiple documents are given
-    // because documents have to have at least the primary key.
-    if(array_keys($data) !== range(0, (count($data) - 1))){
-      $data = [ $data ];
-    }
+//    // we can use this check to determine if multiple documents are given
+//    // because documents have to have at least the primary key.
+//    if(array_keys($data) !== range(0, (count($data) - 1))){
+//      $data = [ $data ];
+//    }
 
     // Check if all documents have the primary key before updating or inserting any
     foreach ($data as $key => $document){
@@ -328,11 +376,15 @@ class Store
         throw new InvalidArgumentException('Documents have to be an arrays.');
       }
       if(!array_key_exists($primaryKey, $document)) {
-        $documentString = var_export($document, true);
-        throw new InvalidArgumentException("Documents have to have the primary key \"$primaryKey\". Got data: $documentString");
+//        $documentString = var_export($document, true);
+//        throw new InvalidArgumentException("Documents have to have the primary key \"$primaryKey\". Got data: $documentString");
+        $document[$primaryKey] = $this->increaseCounterAndGetNextId();
+      } else {
+        $document[$primaryKey] = $this->checkAndStripId($document[$primaryKey]);
+        if($autoGenerateIdOnInsert && $this->findById($document[$primaryKey]) === null){
+          $document[$primaryKey] = $this->increaseCounterAndGetNextId();
+        }
       }
-
-      $document[$primaryKey] = $this->checkAndStripId($document[$primaryKey]);
       // after the stripping and checking we apply it back
       $data[$key] = $document;
     }
@@ -348,6 +400,7 @@ class Store
 
     return true;
   }
+
 
   /**
    * Update one or multiple documents.
