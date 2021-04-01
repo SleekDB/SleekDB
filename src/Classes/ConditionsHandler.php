@@ -130,6 +130,39 @@ class ConditionsHandler
         );
 
         return ($condition === "not between") ? !$result : $result;
+      case "not contains":
+      case "contains":
+
+        if(!is_array($fieldValue)){
+          return ($condition === "not contains");
+        }
+
+        $fieldValues = [];
+
+        if($value instanceof DateTime){
+          // compare timestamps
+          $value = $value->getTimestamp();
+
+          foreach ($fieldValue as $item){
+            // null, false or an empty string will convert to current date and time.
+            // That is not what we want.
+            if(empty($item)){
+              continue;
+            }
+            try{
+              $fieldValues[] = self::convertValueToTimeStamp($item);
+            } catch (Exception $exception){
+            }
+          }
+        }
+
+        if(!empty($fieldValues)){
+          $result = in_array($value, $fieldValues, true);
+        } else {
+          $result = in_array($value, $fieldValue, true);
+        }
+
+        return ($condition === "not contains") ? !$result : $result;
       default:
         throw new InvalidArgumentException("Condition \"$condition\" is not allowed.");
     }
@@ -378,8 +411,8 @@ class ConditionsHandler
         : gettype($value);
       throw new InvalidArgumentException(
         "DateTime object given as value to check against. "
-        . "Could not convert value of field stored in the database into DateTime. "
-        . "Value of field: $value"
+        . "Could not convert value into DateTime. "
+        . "Value: $value"
       );
     }
   }

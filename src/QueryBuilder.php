@@ -34,7 +34,7 @@ class QueryBuilder
   protected $fieldsToSelect = [];
   protected $fieldsToExclude = [];
   protected $groupBy = [];
-  protected $having = [];
+  protected $havingConditions = [];
 
   protected $listOfJoins = [];
   protected $distinctFields = [];
@@ -72,7 +72,7 @@ class QueryBuilder
 
   /**
    * Select specific fields
-   * @param string[] $fieldNames
+   * @param array $fieldNames
    * @return QueryBuilder
    */
   public function select(array $fieldNames): QueryBuilder
@@ -146,12 +146,20 @@ class QueryBuilder
 
   /**
    * Set the amount of data record to skip.
-   * @param int $skip
+   * @param int|string $skip
    * @return QueryBuilder
    * @throws InvalidArgumentException
    */
-  public function skip(int $skip = 0): QueryBuilder
+  public function skip($skip = 0): QueryBuilder
   {
+    if((!is_string($skip) || !is_numeric($skip)) && !is_int($skip)){
+      throw new InvalidArgumentException("Skip has to be an integer or a numeric string");
+    }
+
+    if(!is_int($skip)){
+      $skip = (int) $skip;
+    }
+
     if($skip < 0){
       throw new InvalidArgumentException("Skip has to be an integer >= 0");
     }
@@ -163,12 +171,21 @@ class QueryBuilder
 
   /**
    * Set the amount of data record to limit.
-   * @param int $limit
+   * @param int|string $limit
    * @return QueryBuilder
    * @throws InvalidArgumentException
    */
   public function limit($limit = 0): QueryBuilder
   {
+
+    if((!is_string($limit) || !is_numeric($limit)) && !is_int($limit)){
+      throw new InvalidArgumentException("Limit has to be an integer or a numeric string");
+    }
+
+    if(!is_int($limit)){
+      $limit = (int) $limit;
+    }
+
     if($limit <= 0){
       throw new InvalidArgumentException("Limit has to be an integer > 0");
     }
@@ -378,7 +395,7 @@ class QueryBuilder
     if (empty($criteria)) {
       throw new InvalidArgumentException("You need to specify a having clause");
     }
-    $this->having = $criteria;
+    $this->havingConditions = $criteria;
     return $this;
   }
 

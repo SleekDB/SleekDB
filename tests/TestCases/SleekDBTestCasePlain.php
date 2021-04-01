@@ -246,6 +246,23 @@ class SleekDBTestCasePlain extends TestCase
         "bio" => "bio test 3",
         "email" => "email3@test.com"
       ],
+    ],
+    "populationStatistics" => [
+      [
+        "country" => "China",
+        "populationGrowth" => -100,
+        "employmentPercentage" => 89.52,
+      ],
+      [
+        "country" => "Indonesia",
+        "populationGrowth" => -800,
+        "employmentPercentage" => 74.25,
+      ],
+      [
+        "country" => "Portugal",
+        "populationGrowth" => -2,
+        "employmentPercentage" => 49.49,
+      ],
     ]
   ];
 }
