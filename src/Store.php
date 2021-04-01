@@ -306,12 +306,12 @@ class Store
    * Update or insert one document.
    * @param array $data
    * @param bool $autoGenerateIdOnInsert
-   * @return bool
+   * @return array updated / inserted document
    * @throws IOException
    * @throws InvalidArgumentException
    * @throws JsonException
    */
-  public function updateOrInsert(array $data, bool $autoGenerateIdOnInsert = true): bool
+  public function updateOrInsert(array $data, bool $autoGenerateIdOnInsert = true): array
   {
     $primaryKey = $this->getPrimaryKey();
 
@@ -344,19 +344,19 @@ class Store
 
     $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
 
-    return true;
+    return $data;
   }
 
   /**
    * Update or insert multiple documents.
    * @param array $data
    * @param bool $autoGenerateIdOnInsert
-   * @return bool
+   * @return array updated / inserted documents
    * @throws IOException
    * @throws InvalidArgumentException
    * @throws JsonException
    */
-  public function updateOrInsertMany(array $data, $autoGenerateIdOnInsert = true): bool
+  public function updateOrInsertMany(array $data, bool $autoGenerateIdOnInsert = true): array
   {
     $primaryKey = $this->getPrimaryKey();
 
@@ -398,7 +398,7 @@ class Store
 
     $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
 
-    return true;
+    return $data;
   }
 
 
