@@ -356,7 +356,7 @@ class Store
    * @throws InvalidArgumentException
    * @throws JsonException
    */
-  public function updateOrInsertMany(array $data, $autoGenerateIdOnInsert = true): array
+  public function updateOrInsertMany(array $data, bool $autoGenerateIdOnInsert = true): array
   {
     $primaryKey = $this->getPrimaryKey();
 
