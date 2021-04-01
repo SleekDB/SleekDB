@@ -133,13 +133,13 @@ class DocumentFinder
       DocumentReducer::selectFields($found, $primaryKey, $fieldsToSelect);
     }
 
+    if(count($found) > 0){
+      self::handleHaving($found, $havingConditions);
+    }
+
     if($reduceAndJoinPossible === true && count($found) > 0){
       // exclude specific fields
       DocumentReducer::excludeFields($found, $fieldsToExclude);
-    }
-
-    if(count($found) > 0){
-      self::handleHaving($found, $havingConditions);
     }
 
     if(count($found) > 0){
