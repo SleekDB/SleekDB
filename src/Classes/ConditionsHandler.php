@@ -193,6 +193,17 @@ class ConditionsHandler
       return self::verifyCondition($element[1], $fieldValue, $element[2]);
     }
 
+    if($element[0] instanceof \Closure){
+      $closure = $element[0];
+      $result = $closure($data);
+      if(!is_bool($result)){
+        $resultType = gettype($result);
+        $errorMsg = "The closure in the where condition needs to return a boolean. Got: $resultType";
+        throw new InvalidArgumentException($errorMsg);
+      }
+      return $result;
+    }
+
     // element is an array "brackets"
 
     // prepare results array - example: [true, "and", false]
