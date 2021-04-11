@@ -193,17 +193,6 @@ class ConditionsHandler
       return self::verifyCondition($element[1], $fieldValue, $element[2]);
     }
 
-    if($element[0] instanceof \Closure){
-      $closure = $element[0];
-      $result = $closure($data);
-      if(!is_bool($result)){
-        $resultType = gettype($result);
-        $errorMsg = "The closure in the where condition needs to return a boolean. Got: $resultType";
-        throw new InvalidArgumentException($errorMsg);
-      }
-      return $result;
-    }
-
     // element is an array "brackets"
 
     // prepare results array - example: [true, "and", false]
@@ -211,8 +200,16 @@ class ConditionsHandler
     foreach ($element as $value){
       if(is_array($value)){
         $results[] = self::handleWhereConditions($value, $data);
-      } else if (is_string($value)){
+      } else if (is_string($value)) {
         $results[] = $value;
+      } else if($value instanceof \Closure){
+        $result = $value($data);
+        if(!is_bool($result)){
+          $resultType = gettype($result);
+          $errorMsg = "The closure in the where condition needs to return a boolean. Got: $resultType";
+          throw new InvalidArgumentException($errorMsg);
+        }
+        $results[] = $result;
       } else {
         $value = (!is_object($value) && !is_array($value) && !is_null($value)) ? $value : gettype($value);
         throw new InvalidArgumentException("Invalid nested where statement element! Expected condition or operation, got: \"$value\"");
