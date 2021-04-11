@@ -29,6 +29,7 @@ class DocumentReducer
     "LOWER" => "lower",
     "LENGTH" => "length",
     "CONCAT" => "concat",
+    "CUSTOM" => "custom",
   ];
 
   const SELECT_FUNCTIONS_THAT_REDUCE_RESULT = [
@@ -127,6 +128,17 @@ class DocumentReducer
         throw new InvalidArgumentException("You need to format the select correctly when using Group By.");
       }
       if(!is_string($value)) {
+
+        if($value instanceof \Closure){
+          if($hasSelectFunctionThatNotReduceResult === false){
+            $hasSelectFunctionThatNotReduceResult = true;
+          }
+          if(!in_array($key, $groupByFields, true)){ // key is fieldAlias
+            throw new InvalidArgumentException("You can not select a field \"$key\" that is not grouped by.");
+          }
+          continue;
+        }
+
         if (!is_array($value) || empty($value)) {
           throw new InvalidArgumentException("You need to format the select correctly when using Group By.");
         }
@@ -164,6 +176,11 @@ class DocumentReducer
             if(in_array(strtolower($function), self::SELECT_FUNCTIONS_THAT_REDUCE_RESULT)){
               continue;
             }
+
+            $document[$key] = self::handleSelectFunction($function, $document, $functionParameters);
+          } else if($value instanceof \Closure){
+            $function = self::SELECT_FUNCTIONS['CUSTOM'];
+            $functionParameters = $value;
             $document[$key] = self::handleSelectFunction($function, $document, $functionParameters);
           }
         }
@@ -315,7 +332,7 @@ class DocumentReducer
 
           // no alias specified and select function (array) used as element
           if(!is_string($fieldName)){
-            $errorMsg = "You need to specify a alias for the field when using select functions.";
+            $errorMsg = "You need to specify an alias for the field when using select functions.";
             throw new InvalidArgumentException($errorMsg);
           }
 
@@ -363,14 +380,16 @@ class DocumentReducer
 
         $fieldName = (!is_int($fieldAlias))? $fieldAlias : $fieldToSelect;
 
-        if(!is_string($fieldToSelect) && !is_int($fieldToSelect) && !is_array($fieldToSelect)){
-          $errorMsg = "When using select an array containing fieldNames as strings has to be given";
+        if(!is_string($fieldToSelect) && !is_int($fieldToSelect) && !is_array($fieldToSelect)
+          && !($fieldToSelect instanceof \Closure))
+        {
+          $errorMsg = "When using select an array containing fieldNames as strings or select functions has to be given";
           throw new InvalidArgumentException($errorMsg);
         }
 
         // no alias specified and select function (array) used as element
-        if(is_array($fieldName)){
-          $errorMsg = "You need to specify a alias for the field when using select functions.";
+        if(!is_string($fieldName)){
+          $errorMsg = "You need to specify an alias for the field when using select functions.";
           throw new InvalidArgumentException($errorMsg);
         }
 
@@ -379,7 +398,10 @@ class DocumentReducer
           // "fieldAlias" => ["function" => "field"]
           list($function) = array_keys($fieldToSelect);
           $functionParameters = $fieldToSelect[$function];
-
+          $newDocument[$fieldName] = self::handleSelectFunction($function, $document, $functionParameters);
+        } else if($fieldToSelect instanceof \Closure){
+          $function = self::SELECT_FUNCTIONS['CUSTOM'];
+          $functionParameters = $fieldToSelect;
           $newDocument[$fieldName] = self::handleSelectFunction($function, $document, $functionParameters);
         } else {
           // No select function is used (fieldToSelect is string or int)
@@ -567,6 +589,11 @@ class DocumentReducer
           return null;
         }
         return ($result / $resultValueAmount);
+      case self::SELECT_FUNCTIONS['CUSTOM']:
+        if(!($functionParameters instanceof \Closure)){
+          throw new InvalidArgumentException("When using a custom select function you need to provide a closure.");
+        }
+        return $functionParameters($document);
       default:
         throw new InvalidArgumentException("The given select function \"$function\" is not supported.");
     }
