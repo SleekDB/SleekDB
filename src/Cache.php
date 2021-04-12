@@ -246,6 +246,9 @@ class Cache
     $endLine = $reflectionFunction->getEndLine(); // end line of function
     $lineSeparator = PHP_EOL; // line separator "\n"
 
+    $staticVariables = $reflectionFunction->getStaticVariables();
+    $staticVariables = var_export($staticVariables, true);
+
     if($filePath === false || $startLine === false || $endLine === false){
       return false;
     }
@@ -278,7 +281,9 @@ class Cache
     }
 
     // return the part of the file containing the function as a string.
-    return implode("", array_slice($fileContentArray, $startLine, $startEndDifference + 1));
+    $functionString = implode("", array_slice($fileContentArray, $startLine, $startEndDifference + 1));
+    $functionString .= "|staticScopeVariables:".$staticVariables;
+    return $functionString;
   }
 
   /**
