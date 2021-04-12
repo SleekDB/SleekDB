@@ -200,8 +200,16 @@ class ConditionsHandler
     foreach ($element as $value){
       if(is_array($value)){
         $results[] = self::handleWhereConditions($value, $data);
-      } else if (is_string($value)){
+      } else if (is_string($value)) {
         $results[] = $value;
+      } else if($value instanceof \Closure){
+        $result = $value($data);
+        if(!is_bool($result)){
+          $resultType = gettype($result);
+          $errorMsg = "The closure in the where condition needs to return a boolean. Got: $resultType";
+          throw new InvalidArgumentException($errorMsg);
+        }
+        $results[] = $result;
       } else {
         $value = (!is_object($value) && !is_array($value) && !is_null($value)) ? $value : gettype($value);
         throw new InvalidArgumentException("Invalid nested where statement element! Expected condition or operation, got: \"$value\"");

@@ -73,23 +73,8 @@ class Cache
    */
   public function getToken(): string
   {
-
     $tokenArray = $this->getTokenArray();
-
-    // hash the join sub-queries instead of the function reference to generate the cache token
-    if(array_key_exists("listOfJoins", $tokenArray)){
-      $listOfJoins = $tokenArray["listOfJoins"];
-      foreach ($listOfJoins as $key => $join){
-        if(array_key_exists("joinFunction", $join)){
-          $joinFunction = $join["joinFunction"];
-          $joinFunctionString = self::getClosureAsString($joinFunction);
-          if($joinFunctionString === false){
-            continue;
-          }
-          $tokenArray["listOfJoins"][$key] = $joinFunctionString;
-        }
-      }
-    }
+    $tokenArray = self::convertClosuresToString($tokenArray);
 
     return md5(json_encode($tokenArray));
   }
@@ -219,6 +204,28 @@ class Cache
   private function getTokenArray(): array
   {
     return $this->tokenArray;
+  }
+
+  /**
+   * Convert one or multiple closures to string. If array provided, recursively.
+   * @param mixed $data
+   * @return mixed
+   */
+  private static function convertClosuresToString($data){
+    if(!is_array($data)){
+      if($data instanceof \Closure){
+        return self::getClosureAsString($data);
+      }
+      return $data;
+    }
+    foreach ($data as $key => $token){
+      if(is_array($token)){
+        $data[$key] = self::convertClosuresToString($token);
+      } else if($token instanceof \Closure){
+        $data[$key] = self::getClosureAsString($token);
+      }
+    }
+    return $data;
   }
 
   /**
