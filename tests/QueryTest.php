@@ -21,7 +21,7 @@ final class QueryTest extends SleekDBTestCase
     $userStore = $this->stores["users"];
     $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $users = $userQueryBuilder->where(["_id", "=", 1])->getQuery()->fetch();
+    $users = $userQueryBuilder->where(["name", "=", "Tundra"])->getQuery()->fetch();
 
     self::assertCount(1, $users);
   }
@@ -30,7 +30,7 @@ final class QueryTest extends SleekDBTestCase
     $userStore = $this->stores["users"];
     $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $users = $userQueryBuilder->where(["_id", "=", 1])->orWhere(["_id", "=", 2])->getQuery()->fetch();
+    $users = $userQueryBuilder->where(["name", "=", "Tundra"])->orWhere(["name","=","LR3"])->getQuery()->fetch();
 
     self::assertCount(2, $users);
   }
@@ -39,7 +39,7 @@ final class QueryTest extends SleekDBTestCase
     $userStore = $this->stores["users"];
     $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $users = $userQueryBuilder->where(["_id", "=", 1])->orWhere([["_id", "=", 2], ["_id", "=", 3]])->getQuery()->fetch();
+    $users = $userQueryBuilder->where(["name", "=", "Tundra"])->orWhere([["name","=","LR3"], ["name","=","Cougar"]])->getQuery()->fetch();
 
     self::assertCount(1, $users);
   }
@@ -48,7 +48,7 @@ final class QueryTest extends SleekDBTestCase
     $userStore = $this->stores["users"];
     $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $users = $userQueryBuilder->where(["_id", "=", 1])->where(["_id", "=", 2])->getQuery()->fetch();
+    $users = $userQueryBuilder->where(["name", "=", "Tundra"])->where(["name","=","LR3"])->getQuery()->fetch();
 
     self::assertCount(0, $users);
   }
@@ -57,7 +57,7 @@ final class QueryTest extends SleekDBTestCase
     $userStore = $this->stores["users"];
     $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $users = $userQueryBuilder->except(["_id", "name"])->where(["_id", "=", 1])->getQuery()->fetch();
+    $users = $userQueryBuilder->except(["_id", "name"])->where(["name", "=", "Tundra"])->getQuery()->fetch();
 
     foreach ($users as $user){
       self::assertArrayNotHasKey("_id", $user);
@@ -69,7 +69,7 @@ final class QueryTest extends SleekDBTestCase
     $userStore = $this->stores["users"];
     $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $users = $userQueryBuilder->select(["_id", "price"])->where(["_id", "=", 1])->getQuery()->fetch();
+    $users = $userQueryBuilder->select(["_id", "price"])->where(["name", "=", "Tundra"])->getQuery()->fetch();
 
     foreach ($users as $user){
       self::assertArrayHasKey("_id", $user);
@@ -82,7 +82,7 @@ final class QueryTest extends SleekDBTestCase
     $userStore = $this->stores["users"];
     $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $users = $userQueryBuilder->where(["_id","in",[1,2]])->getQuery()->fetch();
+    $users = $userQueryBuilder->where(["name","in",["Tundra","LR3"]])->getQuery()->fetch();
 
     self::assertCount(2, $users);
   }
@@ -91,7 +91,7 @@ final class QueryTest extends SleekDBTestCase
     $userStore = $this->stores["users"];
     $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $users = $userQueryBuilder->where(["_id", "not in", [1,2]])->getQuery()->fetch();
+    $users = $userQueryBuilder->where(["name", "not in", ["Tundra","LR3"]])->getQuery()->fetch();
 
     self::assertCount(count(self::DATABASE_DATA["users"]) - 2, $users);
   }
@@ -151,13 +151,13 @@ final class QueryTest extends SleekDBTestCase
     $userStore = $this->stores["users"];
     $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $userExists = $userQueryBuilder->where(["_id", "=", 1])->getQuery()->exists();
+    $userExists = $userQueryBuilder->where(["name", "=", "Tundra"])->getQuery()->exists();
 
     self::assertTrue($userExists);
 
     $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $userExists = $userQueryBuilder->where(["_id", "=", 2])->where(["_id", "=", 1])->getQuery()->exists();
+    $userExists = $userQueryBuilder->where(["name","=","LR3"])->where(["name", "=", "Tundra"])->getQuery()->exists();
 
     self::assertFalse($userExists);
   }
@@ -166,7 +166,7 @@ final class QueryTest extends SleekDBTestCase
     $userStore = $this->stores["users"];
     $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $query = $userQueryBuilder->where(["_id", "=", 1])->useCache()->getQuery();
+    $query = $userQueryBuilder->where(["name", "=", "Tundra"])->useCache()->getQuery();
 
     $userCache = $query->getCache();
 
@@ -181,7 +181,7 @@ final class QueryTest extends SleekDBTestCase
     $userStore = $this->stores["users"];
     $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $query = $userQueryBuilder->where(["_id", "=", 1])->useCache(null)->getQuery();
+    $query = $userQueryBuilder->where(["name", "=", "Tundra"])->useCache(null)->getQuery();
 
     $userCache = $query->getCache();
 
@@ -196,7 +196,7 @@ final class QueryTest extends SleekDBTestCase
     $userStore = $this->stores["users"];
     $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $query = $userQueryBuilder->where(["_id", "=", 1])->useCache(0)->getQuery();
+    $query = $userQueryBuilder->where(["name", "=", "Tundra"])->useCache(0)->getQuery();
 
     $userCache = $query->getCache();
 
@@ -215,7 +215,7 @@ final class QueryTest extends SleekDBTestCase
     $userStore = $this->stores["users"];
     $userQueryBuilder = $userStore->createQueryBuilder();
 
-    $query = $userQueryBuilder->where(["_id", "=", 1])->useCache(1)->getQuery();
+    $query = $userQueryBuilder->where(["name", "=", "Tundra"])->useCache(1)->getQuery();
 
     $userCache = $query->getCache();
 
