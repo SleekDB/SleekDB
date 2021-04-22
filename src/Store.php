@@ -326,8 +326,6 @@ class Store
 //    }
 
     if(!array_key_exists($primaryKey, $data)) {
-//        $documentString = var_export($document, true);
-//        throw new InvalidArgumentException("Documents have to have the primary key \"$primaryKey\". Got data: $documentString");
       $data[$primaryKey] = $this->increaseCounterAndGetNextId();
     } else {
       $data[$primaryKey] = $this->checkAndStripId($data[$primaryKey]);
@@ -375,13 +373,13 @@ class Store
       if(!is_array($document)) {
         throw new InvalidArgumentException('Documents have to be an arrays.');
       }
-      if(!array_key_exists($primaryKey, $document)) {
-//        $documentString = var_export($document, true);
-//        throw new InvalidArgumentException("Documents have to have the primary key \"$primaryKey\". Got data: $documentString");
-        $document[$primaryKey] = $this->increaseCounterAndGetNextId();
-      } else {
-        $document[$primaryKey] = $this->checkAndStripId($document[$primaryKey]);
-        if($autoGenerateIdOnInsert && $this->findById($document[$primaryKey]) === null){
+
+      $pKey = $document[$primaryKey] ?? null;
+
+      // No key => create new key
+      if(!$pKey) {
+        // throw new InvalidArgumentException('No primary key');
+        if($autoGenerateIdOnInsert){
           $document[$primaryKey] = $this->increaseCounterAndGetNextId();
         }
       }
@@ -811,8 +809,7 @@ class Store
     // Prepare storable data
     $storableJSON = @json_encode($storeData);
     if ($storableJSON === false) {
-      throw new JsonException('Unable to encode the data array, 
-        please provide a valid PHP associative array');
+      throw new JsonException('Unable to encode the data array, please provide a valid PHP associative array');
     }
     // Define the store path
     $filePath = $this->getDataPath()."$id.json";
@@ -828,24 +825,11 @@ class Store
    * @throws IOException
    * @throws JsonException
    */
-  private function increaseCounterAndGetNextId(): int
+  private function increaseCounterAndGetNextId(): string
   {
-    $counterPath = $this->getStorePath() . '_cnt.sdb';
-
-    if (!file_exists($counterPath)) {
-      throw new IOException("File $counterPath does not exist.");
-    }
-
-    $dataPath = $this->getDataPath();
-
-    return (int) IoHelper::updateFileContent($counterPath, function ($counter) use ($dataPath){
-      $newCounter = ((int) $counter) + 1;
-
-      while(file_exists($dataPath."$newCounter.json") === true){
-        $newCounter++;
-      }
-      return (string)$newCounter;
-    });
+   
+    $id = uniqid(null, TRUE);
+    return str_replace(".", "", $id);
   }
 
 
@@ -854,7 +838,7 @@ class Store
    * @return int
    * @throws InvalidArgumentException
    */
-  private function checkAndStripId($id): int
+  private function checkAndStripId($id = ''): string
   {
     if(!is_string($id) && !is_int($id)){
       throw new InvalidArgumentException("The id of the document has to be an integer or string");
@@ -864,11 +848,8 @@ class Store
       $id = IoHelper::secureStringForFileAccess($id);
     }
 
-    if(!is_numeric($id)){
-      throw new InvalidArgumentException("The id of the document has to be numeric");
-    }
 
-    return (int) $id;
+    return (string) $id;
   }
 
   /**
