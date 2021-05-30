@@ -40,7 +40,7 @@ class DocumentUpdater
     // check if all documents exist beforehand
     foreach ($results as $key => $data) {
       $primaryKeyValue = IoHelper::secureStringForFileAccess($data[$primaryKey]);
-      $data[$primaryKey] = $primaryKeyValue;
+      $data[$primaryKey] = (int) $primaryKeyValue;
       $results[$key] = $data;
 
       $filePath = $dataPath . $primaryKeyValue . '.json';
