@@ -735,12 +735,14 @@ class Store
 
     // Set timeout.
     if (array_key_exists("timeout", $configuration)) {
-      if (!is_int($configuration['timeout']) || $configuration['timeout'] <= 0){
-        throw new InvalidConfigurationException("timeout has to an int > 0");
+      if ((!is_int($configuration['timeout']) || $configuration['timeout'] <= 0) && !($configuration['timeout'] === false)){
+        throw new InvalidConfigurationException("timeout has to be an int > 0 or false");
       }
       $this->timeout = $configuration["timeout"];
     }
-    set_time_limit($this->timeout);
+    if($this->timeout !== false){
+      set_time_limit($this->timeout);
+    }
 
     if(array_key_exists("primary_key", $configuration)){
       $primaryKey = $configuration["primary_key"];
