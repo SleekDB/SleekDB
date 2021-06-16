@@ -116,6 +116,10 @@ class IoHelper {
    * @throws IOException
    */
   public static function createFolder(string $folderPath){
+    // We don't need to create a folder if it already exists.
+    if(file_exists($folderPath) === true){
+      return;
+    }
     self::checkWrite($folderPath);
     // Check if the data_directory exists or create one.
     if (!file_exists($folderPath) && !mkdir($folderPath, 0777, true) && !is_dir($folderPath)) {
