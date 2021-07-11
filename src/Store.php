@@ -733,6 +733,7 @@ class Store
       $this->defaultCacheLifetime = $defaultCacheLifetime;
     }
 
+    // TODO remove timeout on major update
     // Set timeout.
     if (array_key_exists("timeout", $configuration)) {
       if ((!is_int($configuration['timeout']) || $configuration['timeout'] <= 0) && !($configuration['timeout'] === false)){
@@ -741,6 +742,9 @@ class Store
       $this->timeout = $configuration["timeout"];
     }
     if($this->timeout !== false){
+      $message = 'The "timeout" configuration is deprecated and will be removed with the next major update.' .
+        ' Set the "timeout" configuration to false and if needed use the set_timeout_limit() function in your own code.';
+      trigger_error($message, E_USER_DEPRECATED);
       set_time_limit($this->timeout);
     }
 
