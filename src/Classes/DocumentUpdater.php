@@ -35,6 +35,10 @@ class DocumentUpdater
    */
   public function updateResults(array $results, array $updatable, bool $returnUpdatedDocuments)
   {
+    if(count($results) === 0) {
+      return false;
+    }
+
     $primaryKey = $this->primaryKey;
     $dataPath = $this->getDataPath();
     // check if all documents exist beforehand
