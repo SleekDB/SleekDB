@@ -38,6 +38,32 @@ class NestedHelper
     return $data;
   }
 
+  /**
+   * Check if a nested Property exists
+   * @param string $fieldName
+   * @param array $data
+   * @return mixed
+   * @throws InvalidArgumentException
+   */
+  public static function nestedFieldExists(string $fieldName, array $data)
+  {
+    $fieldName = trim($fieldName);
+    if (empty($fieldName)) {
+      throw new InvalidArgumentException('fieldName is not allowed to be empty');
+    }
+
+    // Dive deep step by step.
+    foreach (explode('.', $fieldName) as $i) {
+      // check if field exists
+      if (!is_array($data) || !array_key_exists($i, $data)) {
+        return false;
+      }
+      // The index is valid, dive deeper.
+      $data = $data[$i];
+    }
+    return true;
+  }
+
   public static function updateNestedValue(string $fieldName, array &$data, $newValue){
     $fieldNameArray = explode(".", $fieldName);
     $value = $newValue;

@@ -4,11 +4,11 @@
 namespace SleekDB\Classes;
 
 
+use Closure;
 use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\IOException;
 use SleekDB\QueryBuilder;
 use SleekDB\SleekDB;
-use function foo\func;
 
 /**
  * Class DocumentReducer
@@ -129,7 +129,7 @@ class DocumentReducer
       }
       if(!is_string($value)) {
 
-        if($value instanceof \Closure){
+        if($value instanceof Closure){
           if($hasSelectFunctionThatNotReduceResult === false){
             $hasSelectFunctionThatNotReduceResult = true;
           }
@@ -178,7 +178,7 @@ class DocumentReducer
             }
 
             $document[$key] = self::handleSelectFunction($function, $document, $functionParameters);
-          } else if($value instanceof \Closure){
+          } else if($value instanceof Closure){
             $function = self::SELECT_FUNCTIONS['CUSTOM'];
             $functionParameters = $value;
             $document[$key] = self::handleSelectFunction($function, $document, $functionParameters);
@@ -381,7 +381,7 @@ class DocumentReducer
         $fieldName = (!is_int($fieldAlias))? $fieldAlias : $fieldToSelect;
 
         if(!is_string($fieldToSelect) && !is_int($fieldToSelect) && !is_array($fieldToSelect)
-          && !($fieldToSelect instanceof \Closure))
+          && !($fieldToSelect instanceof Closure))
         {
           $errorMsg = "When using select an array containing fieldNames as strings or select functions has to be given";
           throw new InvalidArgumentException($errorMsg);
@@ -399,7 +399,7 @@ class DocumentReducer
           list($function) = array_keys($fieldToSelect);
           $functionParameters = $fieldToSelect[$function];
           $newDocument[$fieldName] = self::handleSelectFunction($function, $document, $functionParameters);
-        } else if($fieldToSelect instanceof \Closure){
+        } else if($fieldToSelect instanceof Closure){
           $function = self::SELECT_FUNCTIONS['CUSTOM'];
           $functionParameters = $fieldToSelect;
           $newDocument[$fieldName] = self::handleSelectFunction($function, $document, $functionParameters);
@@ -420,7 +420,7 @@ class DocumentReducer
   /**
    * @param string $function
    * @param array $document
-   * @param string|array|int $functionParameters
+   * @param string|array|int|Closure $functionParameters
    * @return mixed
    * @throws InvalidArgumentException
    */
@@ -590,7 +590,7 @@ class DocumentReducer
         }
         return ($result / $resultValueAmount);
       case self::SELECT_FUNCTIONS['CUSTOM']:
-        if(!($functionParameters instanceof \Closure)){
+        if(!($functionParameters instanceof Closure)){
           throw new InvalidArgumentException("When using a custom select function you need to provide a closure.");
         }
         return $functionParameters($document);
