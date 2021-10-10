@@ -46,11 +46,11 @@ class IoHelper {
     }
   }
 
-  /**
-   * @param $filePath
-   * @return string
-   * @throws IOException
-   */
+    /**
+     * @param string $filePath
+     * @return string
+     * @throws IOException
+     */
   public static function getFileContent(string $filePath): string
   {
 
@@ -208,6 +208,7 @@ class IoHelper {
             return false;
           }
         } catch (Exception $exception){
+          // TODO trigger a warning or exception
           return false;
         }
       }
