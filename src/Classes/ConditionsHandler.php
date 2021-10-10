@@ -163,6 +163,8 @@ class ConditionsHandler
         }
 
         return ($condition === "not contains") ? !$result : $result;
+      case 'exists':
+        return $fieldValue === $value;
       default:
         throw new InvalidArgumentException("Condition \"$condition\" is not allowed.");
     }
@@ -188,9 +190,13 @@ class ConditionsHandler
         throw new InvalidArgumentException("Where conditions have to be [fieldName, condition, value]");
       }
 
-      $fieldValue = NestedHelper::getNestedValue($element[0], $data);
+      $fieldName = $element[0];
+      $condition = strtolower(trim($element[1]));
+      $fieldValue = ($condition === 'exists')
+        ? NestedHelper::nestedFieldExists($fieldName, $data)
+        : NestedHelper::getNestedValue($fieldName, $data);
 
-      return self::verifyCondition($element[1], $fieldValue, $element[2]);
+      return self::verifyCondition($condition, $fieldValue, $element[2]);
     }
 
     // element is an array "brackets"
