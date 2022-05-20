@@ -36,7 +36,7 @@ class CacheHandler
     $this->useCache = $queryBuilderProperties["useCache"];
     $this->regenerateCache = $queryBuilderProperties["regenerateCache"];
 
-    $this->cache = new Cache($storePath, $this->_getCacheTokenArray(), $queryBuilderProperties["cacheLifetime"]);
+    $this->cache = new Cache($storePath, $this->_getCacheTokenArray(), $queryBuilderProperties["cacheLifetime"], $queryBuilder->_getPrettyPrint());
   }
 
   /**

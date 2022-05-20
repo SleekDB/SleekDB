@@ -8,6 +8,7 @@ use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Query;
 use SleekDB\Store;
+use function basteyy\VariousPhpSnippets\varDebug;
 
 /**
  * Class DocumentUpdater
@@ -18,11 +19,13 @@ class DocumentUpdater
 
   protected $storePath;
   protected $primaryKey;
+  protected $prettyPrint = false;
 
-  public function __construct(string $storePath, string $primaryKey)
+  public function __construct(string $storePath, string $primaryKey, bool $prettyPrint)
   {
     $this->storePath = $storePath;
     $this->primaryKey = $primaryKey;
+    $this->prettyPrint = $prettyPrint;
   }
 
   /**
@@ -61,7 +64,7 @@ class DocumentUpdater
           NestedHelper::updateNestedValue($fieldName, $data, $value);
         }
       }
-      IoHelper::writeContentToFile($filePath, json_encode($data));
+      IoHelper::writeContentToFile($filePath, $this->encodeJson($data));
       $results[$key] = $data;
     }
     return ($returnUpdatedDocuments === true) ? $results : true;
@@ -143,7 +146,7 @@ class DocumentUpdater
         }
       }
       $filePath = $dataPath . $document[$primaryKey] . '.json';
-      IoHelper::writeContentToFile($filePath, json_encode($document));
+      IoHelper::writeContentToFile($filePath, $this->encodeJson($document));
     }
     return $results;
   }
@@ -155,5 +158,20 @@ class DocumentUpdater
   {
     return $this->storePath . Store::dataDirectory;
   }
+
+    /**
+     * Encode the array to a json string
+     * @param array $json_object
+     * @return string
+     */
+    public function encodeJson(array $json_object): string
+    {
+        try {
+            return $this->prettyPrint ? json_encode($json_object, JSON_PRETTY_PRINT) : json_encode($json_object);
+        } catch (\Exception $exception) {
+            varDebug($exception);
+        }
+    }
+
 
 }
