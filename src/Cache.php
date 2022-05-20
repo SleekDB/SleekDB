@@ -7,7 +7,6 @@ use Exception;
 use ReflectionFunction;
 use SleekDB\Classes\IoHelper;
 use SleekDB\Exceptions\IOException;
-use function basteyy\VariousPhpSnippets\varDebug;
 
 /**
  * Class Cache
@@ -322,7 +321,7 @@ class Cache
         try {
             return $this->prettyPrint ? json_encode($json_object, JSON_PRETTY_PRINT) : json_encode($json_object);
         } catch (\Exception $exception) {
-            varDebug($exception);
+            return '';
         }
     }
 

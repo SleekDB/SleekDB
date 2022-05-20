@@ -10,7 +10,6 @@ use SleekDB\Exceptions\IdNotAllowedException;
 use SleekDB\Exceptions\InvalidConfigurationException;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Exceptions\JsonException;
-use function basteyy\VariousPhpSnippets\varDebug;
 
 // To provide usage without composer, we need to require all files.
 if(false === class_exists("\Composer\Autoload\ClassLoader")) {
@@ -910,13 +909,14 @@ class Store
      * Encode the array to a json string
      * @param array $json_object
      * @return string
+     * @todo Log the exception
      */
     public function encodeJson(array $json_object): string
     {
         try {
             return $this->prettyPrint ? json_encode($json_object, JSON_PRETTY_PRINT) : json_encode($json_object);
         } catch (\Exception $exception) {
-            varDebug($exception);
+            return '';
         }
     }
 

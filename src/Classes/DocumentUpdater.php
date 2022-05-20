@@ -8,7 +8,6 @@ use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Query;
 use SleekDB\Store;
-use function basteyy\VariousPhpSnippets\varDebug;
 
 /**
  * Class DocumentUpdater
@@ -169,7 +168,7 @@ class DocumentUpdater
         try {
             return $this->prettyPrint ? json_encode($json_object, JSON_PRETTY_PRINT) : json_encode($json_object);
         } catch (\Exception $exception) {
-            varDebug($exception);
+            return '';
         }
     }
 
