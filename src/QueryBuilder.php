@@ -18,7 +18,7 @@ class QueryBuilder
   protected $cache;
 
   /** @var bool $prettyPrint State of using JSON_PRETTY_PRINT for writing the JSON Files */
-  protected bool $prettyPrint = false;
+  protected $prettyPrint = false;
 
   protected $whereConditions = [];
 

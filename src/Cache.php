@@ -31,14 +31,15 @@ class Cache
   protected $tokenArray;
 
     /** @var bool $prettyPrint State of using JSON_PRETTY_PRINT for writing the JSON Files */
-    protected bool $prettyPrint = false;
+    protected $prettyPrint = false;
 
-  /**
-   * Cache constructor.
-   * @param string $storePath
-   * @param array $cacheTokenArray
-   * @param int|null $cacheLifetime
-   */
+    /**
+     * Cache constructor.
+     * @param string $storePath
+     * @param array $cacheTokenArray
+     * @param int|null $cacheLifetime
+     * @param bool $prettyPrint
+     */
   public function __construct(string $storePath, array &$cacheTokenArray, $cacheLifetime, bool $prettyPrint)
   {
     // TODO make it possible to define custom cache directory.

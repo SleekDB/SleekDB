@@ -38,7 +38,7 @@ class Store
   protected $databasePath = "";
 
   /** @var bool $prettyPrint State of using JSON_PRETTY_PRINT for writing the JSON Files */
-  protected bool $prettyPrint = false;
+  protected $prettyPrint = false;
 
   protected $useCache = true;
   protected $defaultCacheLifetime;
