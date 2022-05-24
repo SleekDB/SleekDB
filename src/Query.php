@@ -52,7 +52,7 @@ class Query
 
     $this->cacheHandler = new CacheHandler($store->getStorePath(), $queryBuilder);
     $this->documentFinder = new DocumentFinder($store->getStorePath(), $queryBuilder->_getConditionProperties(), $primaryKey);
-    $this->documentUpdater = new DocumentUpdater($store->getStorePath(), $primaryKey);
+    $this->documentUpdater = new DocumentUpdater($store->getStorePath(), $primaryKey, $queryBuilder->_getPrettyPrint());
   }
 
   /**

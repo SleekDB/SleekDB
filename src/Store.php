@@ -37,6 +37,9 @@ class Store
 
   protected $databasePath = "";
 
+  /** @var bool $prettyPrint State of using JSON_PRETTY_PRINT for writing the JSON Files */
+  protected $prettyPrint = false;
+
   protected $useCache = true;
   protected $defaultCacheLifetime;
   protected $primaryKey = "_id";
@@ -340,7 +343,7 @@ class Store
 
     // save to access file with primary key value because we secured it above
     $storePath = $this->getDataPath() . "$data[$primaryKey].json";
-    IoHelper::writeContentToFile($storePath, json_encode($data));
+    IoHelper::writeContentToFile($storePath, $this->encodeJson($data));
 
     $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
 
@@ -393,7 +396,7 @@ class Store
     foreach ($data as $document) {
       // save to access file with primary key value because we secured it above
       $storePath = $this->getDataPath() . "$document[$primaryKey].json";
-      IoHelper::writeContentToFile($storePath, json_encode($document));
+      IoHelper::writeContentToFile($storePath, $this->encodeJson($document));
     }
 
     $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
@@ -447,7 +450,7 @@ class Store
     foreach ($updatable as $document) {
       // save to access file with primary key value because we secured it above
       $storePath = $this->getDataPath() . "$document[$primaryKey].json";
-      IoHelper::writeContentToFile($storePath, json_encode($document));
+      IoHelper::writeContentToFile($storePath, $this->encodeJson($document));
     }
 
     $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
@@ -489,7 +492,7 @@ class Store
       foreach ($updatable as $key => $value){
         NestedHelper::updateNestedValue($key, $content, $value);
       }
-      return json_encode($content);
+      return $this->encodeJson($content);
     });
 
     $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
@@ -636,6 +639,15 @@ class Store
     return $value["count"];
   }
 
+    /**
+     * Returns if pretty_print is enabled store wide.
+     * @return bool
+     */
+    public function _getPrettyPrint(): bool
+    {
+        return $this->prettyPrint;
+    }
+
   /**
    * Returns the search options of the store.
    * @return array
@@ -715,6 +727,14 @@ class Store
    */
   private function setConfiguration(array $configuration)
   {
+      /** Pretty Print Configuration */
+      if(array_key_exists("pretty_print", $configuration)){
+          if(!is_bool($configuration["pretty_print"])){
+              throw new InvalidConfigurationException("pretty_print has to be boolean");
+          }
+          $this->prettyPrint = $configuration["pretty_print"];
+      }
+
     if(array_key_exists("auto_cache", $configuration)){
       $autoCache = $configuration["auto_cache"];
       if(!is_bool($configuration["auto_cache"])){
@@ -815,7 +835,7 @@ class Store
     // Add the system ID with the store data array.
     $storeData[$primaryKey] = $id;
     // Prepare storable data
-    $storableJSON = @json_encode($storeData);
+    $storableJSON = $this->encodeJson($storeData);
     if ($storableJSON === false) {
       throw new JsonException('Unable to encode the data array, 
         please provide a valid PHP associative array');
@@ -884,5 +904,20 @@ class Store
   {
     return $this->getStorePath() . self::dataDirectory;
   }
+
+    /**
+     * Encode the array to a json string
+     * @param array $json_object
+     * @return string
+     * @todo Log the exception
+     */
+    public function encodeJson(array $json_object): string
+    {
+        try {
+            return $this->prettyPrint ? json_encode($json_object, JSON_PRETTY_PRINT) : json_encode($json_object);
+        } catch (\Exception $exception) {
+            return '';
+        }
+    }
 
 }

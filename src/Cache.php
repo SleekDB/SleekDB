@@ -30,19 +30,25 @@ class Cache
 
   protected $tokenArray;
 
-  /**
-   * Cache constructor.
-   * @param string $storePath
-   * @param array $cacheTokenArray
-   * @param int|null $cacheLifetime
-   */
-  public function __construct(string $storePath, array &$cacheTokenArray, $cacheLifetime)
+    /** @var bool $prettyPrint State of using JSON_PRETTY_PRINT for writing the JSON Files */
+    protected $prettyPrint = false;
+
+    /**
+     * Cache constructor.
+     * @param string $storePath
+     * @param array $cacheTokenArray
+     * @param int|null $cacheLifetime
+     * @param bool $prettyPrint
+     */
+  public function __construct(string $storePath, array &$cacheTokenArray, $cacheLifetime, bool $prettyPrint)
   {
     // TODO make it possible to define custom cache directory.
 //    $cacheDir = "";
 //    $this->setCacheDir($cacheDir);
 
     $this->setCachePath($storePath);
+
+    $this->prettyPrint = $prettyPrint;
 
     $this->setTokenArray($cacheTokenArray);
 
@@ -115,7 +121,7 @@ class Cache
       $cacheFile = $cachePath . $token . ".$lifetime.json";
     }
 
-    IoHelper::writeContentToFile($cacheFile, json_encode($content));
+    IoHelper::writeContentToFile($cacheFile, $this->encodeJson($content));
   }
 
   /**
@@ -306,4 +312,18 @@ class Cache
   {
     return (!empty($this->cacheDir)) ? $this->cacheDir : self::DEFAULT_CACHE_DIR;
   }
+    /**
+     * Encode the array to a json string
+     * @param array $json_object
+     * @return string
+     */
+    public function encodeJson(array $json_object): string
+    {
+        try {
+            return $this->prettyPrint ? json_encode($json_object, JSON_PRETTY_PRINT) : json_encode($json_object);
+        } catch (\Exception $exception) {
+            return '';
+        }
+    }
+
 }

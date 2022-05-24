@@ -17,6 +17,9 @@ class QueryBuilder
    */
   protected $cache;
 
+  /** @var bool $prettyPrint State of using JSON_PRETTY_PRINT for writing the JSON Files */
+  protected $prettyPrint = false;
+
   protected $whereConditions = [];
 
   protected $skip = 0;
@@ -68,6 +71,7 @@ class QueryBuilder
     $this->useCache = $store->_getUseCache();
     $this->cacheLifetime = $store->_getDefaultCacheLifetime();
     $this->searchOptions = $store->_getSearchOptions();
+    $this->prettyPrint = $store->_getPrettyPrint();
   }
 
   /**
@@ -398,6 +402,15 @@ class QueryBuilder
     $this->havingConditions = $criteria;
     return $this;
   }
+
+    /**
+     * Returns if pretty_print is enabled store wide.
+     * @return bool
+     */
+    public function _getPrettyPrint(): bool
+    {
+        return $this->prettyPrint;
+    }
 
   /**
    * Returns a an array used to generate a unique token for the current query.
