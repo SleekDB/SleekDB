@@ -38,7 +38,7 @@ class Store
   protected $databasePath = "";
 
   protected $useCache = true;
-  protected $defaultChmod = 0777;
+  protected $folderPermissions = 0777;
   protected $defaultCacheLifetime;
   protected $primaryKey = "_id";
   protected $timeout = 120;
@@ -680,7 +680,7 @@ class Store
   private function createDatabasePath()
   {
     $databasePath = $this->getDatabasePath();
-    IoHelper::createFolder($databasePath, $this->defaultChmod);
+    IoHelper::createFolder($databasePath, $this->folderPermissions);
   }
 
   /**
@@ -694,14 +694,14 @@ class Store
     // Store directory path.
     $this->storePath = $this->getDatabasePath() . $storeName;
     $storePath = $this->getStorePath();
-    IoHelper::createFolder($storePath, $this->defaultChmod);
+    IoHelper::createFolder($storePath, $this->folderPermissions);
 
     // Create the cache directory.
     $cacheDirectory = $storePath . 'cache';
-    IoHelper::createFolder($cacheDirectory, $this->defaultChmod);
+    IoHelper::createFolder($cacheDirectory, $this->folderPermissions);
 
     // Create the data directory.
-    IoHelper::createFolder($storePath . self::dataDirectory, $this->defaultChmod);
+    IoHelper::createFolder($storePath . self::dataDirectory, $this->folderPermissions);
 
     // Create the store counter file.
     $counterFile = $storePath . '_cnt.sdb';
@@ -794,12 +794,12 @@ class Store
       }
     }
 
-    if ( array_key_exists("default_chmod", $configuration) ) {
-      $defaultChmod = $configuration["default_chmod"];
-      if ( !is_int($defaultChmod) ) {
-        throw new InvalidConfigurationException("default_chmod has to be an integer (e.g. 0777)");
+    if ( array_key_exists("folder_permissions", $configuration) ) {
+      $folderPermissions = $configuration["folder_permissions"];
+      if ( !is_int($folderPermissions) ) {
+        throw new InvalidConfigurationException("folder_permissions has to be an integer (e.g. 0777)");
       }
-      $this->defaultChmod = $defaultChmod;
+      $this->folderPermissions = $folderPermissions;
     }
   }
 
