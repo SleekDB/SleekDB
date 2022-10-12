@@ -70,15 +70,40 @@ class ConditionsHandler
         // https://www.php.net/manual/en/function.preg-quote.php
         // We can not use preg_quote because the following characters are also wildcard characters in sql
         // so we will not escape them: [ ^ ] -
-        $charactersToEscape = [".", "\\", "+", "*", "?", "$", "(", ")", "{", "}", "=", "!", "<", ">", "|", ":",  "#"];
-        foreach ($charactersToEscape as $characterToEscape){
-          $value = str_replace($characterToEscape, "\\".$characterToEscape, $value);
-        }
-
-        $value = str_replace(array('%', '_'), array('.*', '.{1}'), $value); // (zero or more characters) and (single character)
-        $pattern = "/^" . $value . "$/i";
+        $charactersToEscape = array(
+            '\\' => '\\\\', // Escape backslash to prevent unwanted behaviour
+            '/' => '\/', // slash needs to be escaped because it's used as delimiter
+            '.' => '\.',
+            '+' => '\+',
+            '*' => '\*',
+            '?' => '\?',
+            '$' => '\$',
+            '(' => '\(',
+            ')' => '\)',
+            '{' => '\{',
+            '}' => '\}',
+            '=' => '\=',
+            '!' => '\!',
+            '<' => '\<',
+            '>' => '\>',
+            '|' => '\|',
+            ':' => '\:',
+            '#' => '\#',
+            '%' => '.*',
+            '_' => '.{1}',
+            // Allow escaping of % and _ with backslash
+            '\.*' => '%',
+            '\.{1}' => '_',
+            // Allow escaping of wildcards
+            '\\\\[' => '\[',
+            '\\\\^' => '\^',
+            '\\\\]' => '\]',
+            '\\\\-' => '\-',
+        );
+        $value = str_replace(array_keys($charactersToEscape), array_values($charactersToEscape), $value); // (zero or more characters) and (single character)
+        $pattern = '/^' . $value . '$/i';
         $result = (preg_match($pattern, $fieldValue) === 1);
-        return ($condition === "not like") ? !$result : $result;
+        return ($condition === 'not like') ? !$result : $result;
 
       case "not in":
       case "in":
