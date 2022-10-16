@@ -38,6 +38,7 @@ class Store
   protected $databasePath = "";
 
   protected $useCache = true;
+  protected $folderPermissions = 0777;
   protected $defaultCacheLifetime;
   protected $primaryKey = "_id";
   protected $timeout = 120;
@@ -679,7 +680,7 @@ class Store
   private function createDatabasePath()
   {
     $databasePath = $this->getDatabasePath();
-    IoHelper::createFolder($databasePath);
+    IoHelper::createFolder($databasePath, $this->folderPermissions);
   }
 
   /**
@@ -693,14 +694,14 @@ class Store
     // Store directory path.
     $this->storePath = $this->getDatabasePath() . $storeName;
     $storePath = $this->getStorePath();
-    IoHelper::createFolder($storePath);
+    IoHelper::createFolder($storePath, $this->folderPermissions);
 
     // Create the cache directory.
     $cacheDirectory = $storePath . 'cache';
-    IoHelper::createFolder($cacheDirectory);
+    IoHelper::createFolder($cacheDirectory, $this->folderPermissions);
 
     // Create the data directory.
-    IoHelper::createFolder($storePath . self::dataDirectory);
+    IoHelper::createFolder($storePath . self::dataDirectory, $this->folderPermissions);
 
     // Create the store counter file.
     $counterFile = $storePath . '_cnt.sdb';
@@ -791,6 +792,14 @@ class Store
         }
         $this->searchOptions["algorithm"] = $searchAlgorithm;
       }
+    }
+
+    if ( array_key_exists("folder_permissions", $configuration) ) {
+      $folderPermissions = $configuration["folder_permissions"];
+      if ( !is_int($folderPermissions) ) {
+        throw new InvalidConfigurationException("folder_permissions has to be an integer (e.g. 0777)");
+      }
+      $this->folderPermissions = $folderPermissions;
     }
   }
 
