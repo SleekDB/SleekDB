@@ -1,7 +1,8 @@
 <h1 align="center">Please give it a Star if you like the project 🎉 <img width="100" src="https://i.imgur.com/YaY5arh.gif"> ❤️<h1>
 
 <p align="center">
-<a href="https://sleekdb.github.io/"><img src="https://sleekdb.github.io/assets/SleekDB-Logo.jpg"></a>
+<a href="https://sleekdb.github.io/">
+  <img src="https://raw.githubusercontent.com/Jakiboy/SleekDB/master/SleekDB-bg.svg" width="600px" alt="SleekDB - NoSQL PHP Library">
 </p>
 
 # SleekDB - A NoSQL Database made using PHP
