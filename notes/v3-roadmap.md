@@ -28,3 +28,4 @@ SleekDB v3 is on idea stage.
 ## Discussion points:
 - Should we keep the old Mono engine as an optional engine?
 - Should we implement indexing for Poly engine? There is a huge potential for implementing a new indexing system for Poly engine. Although with schema less document it can be a challange to implement a good indexing system. Let's discuss!
+- Should we keep using the old documentation management system or should we move to a new one? (I'm thinking about using a wiki system). Let's discuss!
