@@ -35,7 +35,7 @@ class DocumentUpdater
    */
   public function updateResults(array $results, array $updatable, bool $returnUpdatedDocuments)
   {
-    if(count($results) === 0) {
+    if (count($results) === 0) {
       return false;
     }
 
@@ -48,12 +48,12 @@ class DocumentUpdater
       $results[$key] = $data;
 
       $filePath = $dataPath . $primaryKeyValue . '.json';
-      if(!file_exists($filePath)){
+      if (!file_exists($filePath)) {
         return false;
       }
     }
 
-    foreach ($results as $key => $data){
+    foreach ($results as $key => $data) {
       $filePath = $dataPath . $data[$primaryKey] . '.json';
       foreach ($updatable as $fieldName => $value) {
         // Do not update the primary key reserved index of a store.
@@ -79,7 +79,7 @@ class DocumentUpdater
   {
     $primaryKey = $this->primaryKey;
     $dataPath = $this->getDataPath();
-    switch ($returnOption){
+    switch ($returnOption) {
       case Query::DELETE_RETURN_BOOL:
         $returnValue = !empty($results);
         break;
@@ -102,11 +102,11 @@ class DocumentUpdater
     foreach ($results as $key => $data) {
       $primaryKeyValue = IoHelper::secureStringForFileAccess($data[$primaryKey]);
       $filePath = $dataPath . $primaryKeyValue . '.json';
-      if(false === IoHelper::deleteFile($filePath)){
+      if (false === IoHelper::deleteFile($filePath)) {
         throw new IOException(
           'Unable to delete document! 
-            Already deleted documents: '.$key.'. 
-            Location: "' . $filePath .'"'
+            Already deleted documents: ' . $key . '. 
+            Location: "' . $filePath . '"'
         );
       }
     }
@@ -131,14 +131,14 @@ class DocumentUpdater
       $results[$key] = $data;
 
       $filePath = $dataPath . $primaryKeyValue . '.json';
-      if(!file_exists($filePath)){
+      if (!file_exists($filePath)) {
         return false;
       }
     }
 
-    foreach ($results as &$document){
-      foreach ($fieldsToRemove as $fieldToRemove){
-        if($fieldToRemove !== $primaryKey){
+    foreach ($results as &$document) {
+      foreach ($fieldsToRemove as $fieldToRemove) {
+        if ($fieldToRemove !== $primaryKey) {
           NestedHelper::removeNestedField($document, $fieldToRemove);
         }
       }
@@ -155,5 +155,4 @@ class DocumentUpdater
   {
     return $this->storePath . Store::dataDirectory;
   }
-
 }

@@ -54,18 +54,18 @@ class CacheHandler
    */
   public function getCacheContent($getOneDocument)
   {
-    if($this->getUseCache() !== true){
+    if ($this->getUseCache() !== true) {
       return null;
     }
 
     $this->updateCacheTokenArray(['oneDocument' => $getOneDocument]);
 
-    if($this->regenerateCache === true) {
+    if ($this->regenerateCache === true) {
       $this->getCache()->delete();
     }
 
     $cacheResults = $this->getCache()->get();
-    if(is_array($cacheResults)) {
+    if (is_array($cacheResults)) {
       return $cacheResults;
     }
 
@@ -79,7 +79,7 @@ class CacheHandler
    */
   public function setCacheContent(array $results)
   {
-    if($this->getUseCache() === true){
+    if ($this->getUseCache() === true) {
       $this->getCache()->set($results);
     }
   }
@@ -107,11 +107,11 @@ class CacheHandler
    */
   private function updateCacheTokenArray(array $tokenUpdate)
   {
-    if(empty($tokenUpdate)) {
+    if (empty($tokenUpdate)) {
       return;
     }
     $cacheTokenArray = $this->_getCacheTokenArray();
-    foreach ($tokenUpdate as $key => $value){
+    foreach ($tokenUpdate as $key => $value) {
       $cacheTokenArray[$key] = $value;
     }
     $this->cacheTokenArray = $cacheTokenArray;
@@ -125,5 +125,4 @@ class CacheHandler
   {
     return $this->useCache;
   }
-
 }

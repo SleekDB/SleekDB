@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace SleekDB\Tests;
 
@@ -11,26 +13,29 @@ final class SelectTest extends SleekDBTestCase
   /**
    * @before
    */
-  public function fillStores(){
-    foreach ($this->stores as $storeName => $store){
+  public function fillStores()
+  {
+    foreach ($this->stores as $storeName => $store) {
       $store->insertMany(self::DATABASE_DATA[$storeName]);
     }
   }
 
-  public function testCanGetResultWithSpecificFields(){
+  public function testCanGetResultWithSpecificFields()
+  {
     $userStore = $this->stores["users"];
     $userQueryBuilder = $userStore->createQueryBuilder();
 
     $users = $userQueryBuilder->select(["_id", "price"])->where(["_id", "=", 1])->getQuery()->fetch();
 
-    foreach ($users as $user){
+    foreach ($users as $user) {
       self::assertArrayHasKey("_id", $user);
       self::assertArrayHasKey("price", $user);
       self::assertArrayNotHasKey("name", $user);
     }
   }
 
-  public function testConcatFunction(){
+  public function testConcatFunction()
+  {
     $userStore = $this->stores["users"];
     $userQueryBuilder = $userStore->createQueryBuilder();
 
@@ -45,14 +50,15 @@ final class SelectTest extends SleekDBTestCase
       ->getQuery()
       ->fetch();
 
-    foreach ($users as $key => $user){
+    foreach ($users as $key => $user) {
       $referenceUser = $usersReference[$key];
       $expectedString = $referenceUser["name"] . " " . $referenceUser["country"] . " " . $referenceUser["likes"];
       self::assertSame($expectedString, $user["test"]);
     }
   }
 
-  public function testLengthFunction(){
+  public function testLengthFunction()
+  {
     $userStore = $this->stores["users"];
     $userQueryBuilder = $userStore->createQueryBuilder();
 
@@ -67,14 +73,15 @@ final class SelectTest extends SleekDBTestCase
       ->getQuery()
       ->fetch();
 
-    foreach ($users as $key => $user){
+    foreach ($users as $key => $user) {
       $referenceUser = $usersReference[$key];
       $expected = strlen($referenceUser["name"]);
       self::assertSame($expected, $user["test"]);
     }
   }
 
-  public function testLowerFunction(){
+  public function testLowerFunction()
+  {
     $userStore = $this->stores["users"];
     $userQueryBuilder = $userStore->createQueryBuilder();
 
@@ -89,14 +96,15 @@ final class SelectTest extends SleekDBTestCase
       ->getQuery()
       ->fetch();
 
-    foreach ($users as $key => $user){
+    foreach ($users as $key => $user) {
       $referenceUser = $usersReference[$key];
       $expected = strtolower($referenceUser["name"]);
       self::assertSame($expected, $user["test"]);
     }
   }
 
-  public function testPositionFunction(){
+  public function testPositionFunction()
+  {
     $userStore = $this->stores["users"];
     $userQueryBuilder = $userStore->createQueryBuilder();
 
@@ -111,14 +119,15 @@ final class SelectTest extends SleekDBTestCase
       ->getQuery()
       ->fetch();
 
-    foreach ($users as $key => $user){
+    foreach ($users as $key => $user) {
       $referenceUser = $usersReference[$key];
       $expected = (strpos($referenceUser["name"], "d") + 1);
       self::assertSame($expected, $user["test"]);
     }
   }
 
-  public function testUpperFunction(){
+  public function testUpperFunction()
+  {
     $userStore = $this->stores["users"];
     $userQueryBuilder = $userStore->createQueryBuilder();
 
@@ -133,14 +142,15 @@ final class SelectTest extends SleekDBTestCase
       ->getQuery()
       ->fetch();
 
-    foreach ($users as $key => $user){
+    foreach ($users as $key => $user) {
       $referenceUser = $usersReference[$key];
       $expected = strtoupper($referenceUser["name"]);
       self::assertSame($expected, $user["test"]);
     }
   }
 
-  public function testAbsFunction(){
+  public function testAbsFunction()
+  {
     $populationStore = $this->stores["populationStatistics"];
     $populationQueryBuilder = $populationStore->createQueryBuilder();
 
@@ -155,14 +165,15 @@ final class SelectTest extends SleekDBTestCase
       ->getQuery()
       ->fetch();
 
-    foreach ($users as $key => $user){
+    foreach ($users as $key => $user) {
       $referenceDoc = $reference[$key];
       $expected = abs($referenceDoc["populationGrowth"]);
       self::assertSame($expected, $user["test"]);
     }
   }
 
-  public function testRoundFunction(){
+  public function testRoundFunction()
+  {
     $populationStore = $this->stores["populationStatistics"];
     $populationQueryBuilder = $populationStore->createQueryBuilder();
 
@@ -177,14 +188,15 @@ final class SelectTest extends SleekDBTestCase
       ->getQuery()
       ->fetch();
 
-    foreach ($users as $key => $user){
+    foreach ($users as $key => $user) {
       $referenceDoc = $reference[$key];
       $expected = round($referenceDoc["employmentPercentage"], 1);
       self::assertSame($expected, $user["test"]);
     }
   }
 
-  public function testAvgFunction(){
+  public function testAvgFunction()
+  {
     $store = $this->stores["users"];
     $queryBuilder = $store->createQueryBuilder();
 
@@ -199,17 +211,18 @@ final class SelectTest extends SleekDBTestCase
 
     // calculate average
     $expected = 0;
-    foreach ($reference as $referenceDoc){
+    foreach ($reference as $referenceDoc) {
       $expected += $referenceDoc["likes"];
     }
     $expected /= (count($reference) + 1);
 
-    foreach ($users as $key => $user){
+    foreach ($users as $key => $user) {
       self::assertSame($expected, $user["test"]);
     }
   }
 
-  public function testMaxFunction(){
+  public function testMaxFunction()
+  {
     $store = $this->stores["users"];
     $queryBuilder = $store->createQueryBuilder();
 
@@ -224,19 +237,20 @@ final class SelectTest extends SleekDBTestCase
 
     // calculate average
     $max = -INF;
-    foreach ($reference as $referenceDoc){
-      if($referenceDoc["likes"] > $max){
+    foreach ($reference as $referenceDoc) {
+      if ($referenceDoc["likes"] > $max) {
         $max = $referenceDoc["likes"];
       }
     }
     $expected = $max;
 
-    foreach ($users as $key => $user){
+    foreach ($users as $key => $user) {
       self::assertSame($expected, $user["test"]);
     }
   }
 
-  public function testMinFunction(){
+  public function testMinFunction()
+  {
     $store = $this->stores["users"];
     $queryBuilder = $store->createQueryBuilder();
 
@@ -251,19 +265,20 @@ final class SelectTest extends SleekDBTestCase
 
     // calculate average
     $min = INF;
-    foreach ($reference as $referenceDoc){
-      if($referenceDoc["likes"] < $min){
+    foreach ($reference as $referenceDoc) {
+      if ($referenceDoc["likes"] < $min) {
         $min = $referenceDoc["likes"];
       }
     }
     $expected = $min;
 
-    foreach ($users as $key => $user){
+    foreach ($users as $key => $user) {
       self::assertSame($expected, $user["test"]);
     }
   }
 
-  public function testSumFunction(){
+  public function testSumFunction()
+  {
     $store = $this->stores["users"];
     $queryBuilder = $store->createQueryBuilder();
 
@@ -278,13 +293,12 @@ final class SelectTest extends SleekDBTestCase
 
     // calculate average
     $expected = 0;
-    foreach ($reference as $referenceDoc){
+    foreach ($reference as $referenceDoc) {
       $expected += $referenceDoc["likes"];
     }
 
-    foreach ($users as $key => $user){
+    foreach ($users as $key => $user) {
       self::assertSame($expected, $user["test"]);
     }
   }
-
 }

@@ -64,10 +64,11 @@ class NestedHelper
     return true;
   }
 
-  public static function updateNestedValue(string $fieldName, array &$data, $newValue){
+  public static function updateNestedValue(string $fieldName, array &$data, $newValue)
+  {
     $fieldNameArray = explode(".", $fieldName);
     $value = $newValue;
-    if(count($fieldNameArray) > 1){
+    if (count($fieldNameArray) > 1) {
       $data = self::_updateNestedValueHelper($fieldNameArray, $data, $newValue, count($fieldNameArray));
       return;
     }
@@ -80,7 +81,7 @@ class NestedHelper
     $fieldNameArray = explode('.', $fieldName);
     $fieldNameArrayReverse = array_reverse($fieldNameArray);
     foreach ($fieldNameArrayReverse as $index => $i) {
-      if($index === 0){
+      if ($index === 0) {
         $temp = array($i => $fieldValue);
       } else {
         $temp = array($i => $temp);
@@ -90,7 +91,8 @@ class NestedHelper
     return $temp;
   }
 
-  public static function removeNestedField(array &$document, string $fieldToRemove){
+  public static function removeNestedField(array &$document, string $fieldToRemove)
+  {
     if (array_key_exists($fieldToRemove, $document)) {
       unset($document[$fieldToRemove]);
       return;
@@ -101,13 +103,13 @@ class NestedHelper
     $fieldNameArrayCount = count($fieldNameArray);
     foreach ($fieldNameArray as $index => $i) {
       // last iteration
-      if(($fieldNameArrayCount - 1) === $index){
-        if(is_array($temp) && array_key_exists($i, $temp)) {
+      if (($fieldNameArrayCount - 1) === $index) {
+        if (is_array($temp) && array_key_exists($i, $temp)) {
           unset($temp[$i]);
         }
         break;
       }
-      if(!is_array($temp) || !array_key_exists($i, $temp)){
+      if (!is_array($temp) || !array_key_exists($i, $temp)) {
         break;
       }
       $temp = &$temp[$i];
@@ -123,14 +125,14 @@ class NestedHelper
    */
   private static function _updateNestedValueHelper(array $keysArray, $data, $newValue, int $originalKeySize)
   {
-    if(empty($keysArray)){
+    if (empty($keysArray)) {
       return $newValue;
     }
     $currentKey = $keysArray[0];
     $result = (is_array($data)) ? $data : [];
-    if(!is_array($data) || !array_key_exists($currentKey, $data)){
+    if (!is_array($data) || !array_key_exists($currentKey, $data)) {
       $result[$currentKey] = self::_updateNestedValueHelper(array_slice($keysArray, 1), $data, $newValue, $originalKeySize);
-      if(count($keysArray) !== $originalKeySize){
+      if (count($keysArray) !== $originalKeySize) {
         return $result;
       }
     }

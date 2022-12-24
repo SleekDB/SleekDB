@@ -78,7 +78,7 @@ class QueryBuilder
   public function select(array $fieldNames): QueryBuilder
   {
     foreach ($fieldNames as $key => $fieldName) {
-      if(is_string($key)){
+      if (is_string($key)) {
         $this->fieldsToSelect[$key] = $fieldName;
       } else {
         $this->fieldsToSelect[] = $fieldName;
@@ -152,15 +152,15 @@ class QueryBuilder
    */
   public function skip($skip = 0): QueryBuilder
   {
-    if((!is_string($skip) || !is_numeric($skip)) && !is_int($skip)){
+    if ((!is_string($skip) || !is_numeric($skip)) && !is_int($skip)) {
       throw new InvalidArgumentException("Skip has to be an integer or a numeric string");
     }
 
-    if(!is_int($skip)){
+    if (!is_int($skip)) {
       $skip = (int) $skip;
     }
 
-    if($skip < 0){
+    if ($skip < 0) {
       throw new InvalidArgumentException("Skip has to be an integer >= 0");
     }
 
@@ -178,15 +178,15 @@ class QueryBuilder
   public function limit($limit = 0): QueryBuilder
   {
 
-    if((!is_string($limit) || !is_numeric($limit)) && !is_int($limit)){
+    if ((!is_string($limit) || !is_numeric($limit)) && !is_int($limit)) {
       throw new InvalidArgumentException("Limit has to be an integer or a numeric string");
     }
 
-    if(!is_int($limit)){
+    if (!is_int($limit)) {
       $limit = (int) $limit;
     }
 
-    if($limit <= 0){
+    if ($limit <= 0) {
       throw new InvalidArgumentException("Limit has to be an integer > 0");
     }
 
@@ -201,17 +201,17 @@ class QueryBuilder
    * @return QueryBuilder
    * @throws InvalidArgumentException
    */
-  public function orderBy( array $criteria): QueryBuilder
+  public function orderBy(array $criteria): QueryBuilder
   {
-    foreach ($criteria as $fieldName => $order){
+    foreach ($criteria as $fieldName => $order) {
 
-      if(!is_string($order)) {
+      if (!is_string($order)) {
         throw new InvalidArgumentException('Order has to be a string! Please use "asc" or "desc" only.');
       }
 
       $order = strtolower($order);
 
-      if(!is_string($fieldName)) {
+      if (!is_string($fieldName)) {
         throw new InvalidArgumentException("Field name has to be a string");
       }
 
@@ -238,11 +238,11 @@ class QueryBuilder
    */
   public function search($fields, string $query, array $options = []): QueryBuilder
   {
-    if(!is_array($fields) && !is_string($fields)){
+    if (!is_array($fields) && !is_string($fields)) {
       throw new InvalidArgumentException("Fields to search through have to be either a string or an array.");
     }
 
-    if(!is_array($fields)){
+    if (!is_array($fields)) {
       $fields = (array)$fields;
     }
 
@@ -250,7 +250,7 @@ class QueryBuilder
       throw new InvalidArgumentException('Cant perform search due to no field name was provided');
     }
 
-    if(count($fields) > 100){
+    if (count($fields) > 100) {
       trigger_error('Searching through more than 100 fields is not recommended and can be resource heavy.', E_USER_WARNING);
     }
 
@@ -259,20 +259,20 @@ class QueryBuilder
         'fields' => $fields,
         'query' => $query
       ];
-      if(!empty($options)){
-        if(array_key_exists("minLength", $options) && is_int($options["minLength"]) && $options["minLength"] > 0){
+      if (!empty($options)) {
+        if (array_key_exists("minLength", $options) && is_int($options["minLength"]) && $options["minLength"] > 0) {
           $this->searchOptions["minLength"] = $options["minLength"];
         }
-        if(array_key_exists("mode", $options) && is_string($options["mode"])){
+        if (array_key_exists("mode", $options) && is_string($options["mode"])) {
           $searchMode = strtolower(trim($options["mode"]));
-          if(in_array($searchMode, ["and", "or"])){
+          if (in_array($searchMode, ["and", "or"])) {
             $this->searchOptions["mode"] = $searchMode;
           }
         }
-        if(array_key_exists("scoreKey", $options) && (is_string($options["scoreKey"]) || is_null($options["scoreKey"]))){
+        if (array_key_exists("scoreKey", $options) && (is_string($options["scoreKey"]) || is_null($options["scoreKey"]))) {
           $this->searchOptions["scoreKey"] = $options["scoreKey"];
         }
-        if(array_key_exists("algorithm", $options) && in_array($options["algorithm"], Query::SEARCH_ALGORITHM, true)){
+        if (array_key_exists("algorithm", $options) && in_array($options["algorithm"], Query::SEARCH_ALGORITHM, true)) {
           $this->searchOptions["algorithm"] = $options["algorithm"];
         }
       }
@@ -333,7 +333,7 @@ class QueryBuilder
   public function useCache(int $lifetime = null): QueryBuilder
   {
     $this->useCache = true;
-    if((!is_int($lifetime) || $lifetime < 0) && !is_null($lifetime)){
+    if ((!is_int($lifetime) || $lifetime < 0) && !is_null($lifetime)) {
       throw new InvalidArgumentException("lifetime has to be int >= 0 or null");
     }
     $this->cacheLifetime = $lifetime;
@@ -408,8 +408,8 @@ class QueryBuilder
     $properties = [];
     $conditionsArray = $this->_getConditionProperties();
 
-    foreach ($conditionsArray as $propertyName => $propertyValue){
-      if(!in_array($propertyName, $this->propertiesNotUsedForCacheToken, true)){
+    foreach ($conditionsArray as $propertyName => $propertyValue) {
+      if (!in_array($propertyName, $this->propertiesNotUsedForCacheToken, true)) {
         $properties[$propertyName] = $propertyValue;
       }
     }
@@ -426,8 +426,8 @@ class QueryBuilder
     $allProperties = get_object_vars($this);
     $properties = [];
 
-    foreach ($allProperties as $propertyName => $propertyValue){
-      if(!in_array($propertyName, $this->propertiesNotUsedInConditionsArray, true)){
+    foreach ($allProperties as $propertyName => $propertyValue) {
+      if (!in_array($propertyName, $this->propertiesNotUsedInConditionsArray, true)) {
         $properties[$propertyName] = $propertyValue;
       }
     }
@@ -439,8 +439,9 @@ class QueryBuilder
    * Returns the Store object used to create the QueryBuilder object.
    * @return Store
    */
-  public function _getStore(): Store{
-      return $this->store;
+  public function _getStore(): Store
+  {
+    return $this->store;
   }
 
   /**
@@ -491,11 +492,11 @@ class QueryBuilder
   public function nestedWhere(array $conditions): QueryBuilder
   {
     // TODO remove with version 3.0
-    if(empty($conditions)){
+    if (empty($conditions)) {
       throw new InvalidArgumentException("You need to specify nested where clauses");
     }
 
-    if(count($conditions) > 1){
+    if (count($conditions) > 1) {
       throw new InvalidArgumentException("You are not allowed to specify multiple elements at the first depth!");
     }
 
@@ -504,7 +505,7 @@ class QueryBuilder
 
     $allowedOuterMostOperations = [0, "and", "or"];
 
-    if(!in_array($outerMostOperation, $allowedOuterMostOperations, true)){
+    if (!in_array($outerMostOperation, $allowedOuterMostOperations, true)) {
       throw new InvalidArgumentException("Outer most operation has to one of the following: ( 0 / and / or ) ");
     }
 
@@ -512,5 +513,4 @@ class QueryBuilder
 
     return $this;
   }
-
 }

@@ -70,9 +70,9 @@ class DocumentFinder
 
         $documentPath = $dataPath . $entry;
 
-        try{
+        try {
           $data = IoHelper::getFileContent($documentPath);
-        } catch (Exception $exception){
+        } catch (Exception $exception) {
           continue;
         }
         $data = @json_decode($data, true);
@@ -85,7 +85,7 @@ class DocumentFinder
         // Append only passed data from this store.
 
         // Process conditions
-        if(!empty($conditions)) {
+        if (!empty($conditions)) {
           // Iterate each conditions.
           $storePassed = ConditionsHandler::handleWhereConditions($conditions, $data);
         }
@@ -111,7 +111,7 @@ class DocumentFinder
 
     // apply additional changes to result like sort and limit
 
-    if($reduceAndJoinPossible === true){
+    if ($reduceAndJoinPossible === true) {
       DocumentReducer::joinData($found, $listOfJoins);
     }
 
@@ -128,32 +128,32 @@ class DocumentFinder
       );
     }
 
-    if($reduceAndJoinPossible === true && empty($groupBy) && count($found) > 0){
+    if ($reduceAndJoinPossible === true && empty($groupBy) && count($found) > 0) {
       // select specific fields
       DocumentReducer::selectFields($found, $primaryKey, $fieldsToSelect);
     }
 
-    if(count($found) > 0){
+    if (count($found) > 0) {
       self::handleHaving($found, $havingConditions);
     }
 
-    if($reduceAndJoinPossible === true && count($found) > 0){
+    if ($reduceAndJoinPossible === true && count($found) > 0) {
       // exclude specific fields
       DocumentReducer::excludeFields($found, $fieldsToExclude);
     }
 
-    if(count($found) > 0){
+    if (count($found) > 0) {
       // sort the data.
       self::sort($found, $orderBy);
     }
 
 
-    if(count($found) > 0) {
+    if (count($found) > 0) {
       // Skip data
       self::skip($found, $skip);
     }
 
-    if(count($found) > 0) {
+    if (count($found) > 0) {
       // Limit data.
       self::limit($found, $limit);
     }
@@ -174,12 +174,13 @@ class DocumentFinder
    * @param array $orderBy
    * @throws InvalidArgumentException
    */
-  private static function sort(array &$found, array $orderBy){
+  private static function sort(array &$found, array $orderBy)
+  {
     if (!empty($orderBy)) {
 
       $resultSortArray = [];
 
-      foreach ($orderBy as $orderByClause){
+      foreach ($orderBy as $orderByClause) {
         // Start sorting on all data.
         $order = $orderByClause['order'];
         $fieldName = $orderByClause['fieldName'];
@@ -195,10 +196,9 @@ class DocumentFinder
         // Decide the order direction.
         // order will be asc or desc (check is done in QueryBuilder class)
         $resultSortArray[] = ($order === 'asc') ? SORT_ASC : SORT_DESC;
-
       }
 
-      if(!empty($resultSortArray)){
+      if (!empty($resultSortArray)) {
         $resultSortArray[] = &$found;
         array_multisort(...$resultSortArray);
       }
@@ -210,7 +210,8 @@ class DocumentFinder
    * @param array $found
    * @param $skip
    */
-  private static function skip(array &$found, $skip){
+  private static function skip(array &$found, $skip)
+  {
     if (empty($skip) || $skip <= 0) {
       return;
     }
@@ -221,7 +222,8 @@ class DocumentFinder
    * @param array $found
    * @param $limit
    */
-  private static function limit(array &$found, $limit){
+  private static function limit(array &$found, $limit)
+  {
     if (empty($limit) || $limit <= 0) {
       return;
     }
@@ -237,7 +239,7 @@ class DocumentFinder
    */
   private static function performSearch(array &$found, array $search, array $searchOptions)
   {
-    if(empty($search)){
+    if (empty($search)) {
       return;
     }
     $minLength = $searchOptions["minLength"];
@@ -270,22 +272,22 @@ class DocumentFinder
 
     // apply min word length
     $temp = [];
-    foreach ($searchWords as $searchWord){
-      if(strlen($searchWord) >= $minLength){
+    foreach ($searchWords as $searchWord) {
+      if (strlen($searchWord) >= $minLength) {
         $temp[] = $searchWord;
       }
     }
     $searchWords = $temp;
     unset($temp);
-    $searchWords = array_map(static function($value){
+    $searchWords = array_map(static function ($value) {
       return preg_quote($value, "/");
     }, $searchWords);
 
     // apply mode
-    if($searchMode === "and"){
+    if ($searchMode === "and") {
       $preg = "";
-      foreach ($searchWords as $searchWord){
-        $preg .= "(?=.*".$searchWord.")";
+      foreach ($searchWords as $searchWord) {
+        $preg .= "(?=.*" . $searchWord . ")";
       }
       $preg = '/^' . $preg . '.*/im';
       $pregOr = '!(' . implode('|', $searchWords) . ')!i';
@@ -298,7 +300,7 @@ class DocumentFinder
       $searchHits = 0;
       $searchScore = 0;
       foreach ($fields as $key => $field) {
-        if($prioritizeAlgorithm){
+        if ($prioritizeAlgorithm) {
           $score = $highestScore / ($scoreMultiplier ** $key);
         } else {
           $score = $scoreMultiplier;
@@ -322,9 +324,9 @@ class DocumentFinder
         } elseif ($matches = preg_match_all('!' . $exactQuery . '!i', $value)) {
           // exact query match
           $searchHits += $matches;
-//          $searchScore += 2 * $score;
+          //          $searchScore += 2 * $score;
           $searchScore += $matches * 2 * $score;
-          if($searchAlgorithm === Query::SEARCH_ALGORITHM["hits_prioritize"]){
+          if ($searchAlgorithm === Query::SEARCH_ALGORITHM["hits_prioritize"]) {
             $searchScore += $matches * ($fieldsLength - $key);
           }
         }
@@ -337,28 +339,28 @@ class DocumentFinder
           // any match
           $searchHits += $matches;
           $searchScore += $matches * $score;
-          if($searchAlgorithm === Query::SEARCH_ALGORITHM["hits_prioritize"]) {
+          if ($searchAlgorithm === Query::SEARCH_ALGORITHM["hits_prioritize"]) {
             $searchScore += $matches * ($fieldsLength - $key);
           }
           // because the "and" search algorithm at most finds one match we also use the amount of word occurrences
-          if($searchMode === "and" && isset($pregOr) && ($matches = preg_match_all($pregOr, $value, $matchesArray, PREG_OFFSET_CAPTURE))){
+          if ($searchMode === "and" && isset($pregOr) && ($matches = preg_match_all($pregOr, $value, $matchesArray, PREG_OFFSET_CAPTURE))) {
             $searchHits += $matches;
             $searchScore += $matches * $score;
           }
         }
 
         // we apply a small very small number to the score to differentiate the distance from the beginning
-        if($positionAlgorithm && $matches && !empty($matchesArray)){
+        if ($positionAlgorithm && $matches && !empty($matchesArray)) {
           $hitPosition = $matchesArray[0][0][1];
-          if(!is_int($hitPosition) || !($hitPosition > 0)){
+          if (!is_int($hitPosition) || !($hitPosition > 0)) {
             $hitPosition = 1;
           }
           $searchScore += ($score / $highestScore) * ($hitPosition / ($hitPosition * $hitPosition));
         }
       }
 
-      if($searchHits > 0){
-        if(!is_null($searchScoreKey)){
+      if ($searchHits > 0) {
+        if (!is_null($searchScoreKey)) {
           $document[$searchScoreKey] = $searchScore;
         }
       } else {
@@ -372,16 +374,16 @@ class DocumentFinder
    * @param array $havingConditions
    * @throws InvalidArgumentException
    */
-  private static function handleHaving(array &$found, array $havingConditions){
-    if(empty($havingConditions)){
+  private static function handleHaving(array &$found, array $havingConditions)
+  {
+    if (empty($havingConditions)) {
       return;
     }
 
-    foreach ($found as $key => $document){
-      if(false === ConditionsHandler::handleWhereConditions($havingConditions, $document)){
+    foreach ($found as $key => $document) {
+      if (false === ConditionsHandler::handleWhereConditions($havingConditions, $document)) {
         unset($found[$key]);
       }
     }
   }
-
 }

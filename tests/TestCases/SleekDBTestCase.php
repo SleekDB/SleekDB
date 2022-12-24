@@ -15,8 +15,9 @@ class SleekDBTestCase extends SleekDBTestCasePlain
   /**
    * @before
    */
-  public function createStore(){
-    foreach (self::DATABASE_DATA as $storeName => $databaseData){
+  public function createStore()
+  {
+    foreach (self::DATABASE_DATA as $storeName => $databaseData) {
       $this->stores[$storeName] = new Store($storeName, self::DATA_DIR);
     }
   }
@@ -25,20 +26,21 @@ class SleekDBTestCase extends SleekDBTestCasePlain
   /**
    * @after
    */
-  public function deleteStore(){
-    foreach ($this->stores as $store){
+  public function deleteStore()
+  {
+    foreach ($this->stores as $store) {
       $store->deleteStore();
     }
   }
 
-//  /**
-//   * @after
-//   */
-//  public function clearStores(){
-//    foreach (self::$stores as $store){
-//      $store->delete();
-//      $storeData = $store->fetch();
-//      $this->assertEmpty($storeData);
-//    }
-//  }
+  //  /**
+  //   * @after
+  //   */
+  //  public function clearStores(){
+  //    foreach (self::$stores as $store){
+  //      $store->delete();
+  //      $storeData = $store->fetch();
+  //      $this->assertEmpty($storeData);
+  //    }
+  //  }
 }

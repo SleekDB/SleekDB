@@ -97,9 +97,10 @@ class Query
    * @throws InvalidArgumentException
    * @throws IOException
    */
-  public function update(array $updatable, bool $returnUpdatedDocuments = false){
+  public function update(array $updatable, bool $returnUpdatedDocuments = false)
+  {
 
-    if(empty($updatable)){
+    if (empty($updatable)) {
       throw new InvalidArgumentException("You have to define what you want to update.");
     }
 
@@ -117,7 +118,8 @@ class Query
    * @throws InvalidArgumentException
    * @throws IOException
    */
-  public function delete(int $returnOption = self::DELETE_RETURN_BOOL){
+  public function delete(int $returnOption = self::DELETE_RETURN_BOOL)
+  {
     $results = $this->documentFinder->findDocuments(false, false);
 
     $this->getCacheHandler()->deleteAllWithNoLifetime();
@@ -134,7 +136,7 @@ class Query
    */
   public function removeFields(array $fieldsToRemove)
   {
-    if(empty($fieldsToRemove)){
+    if (empty($fieldsToRemove)) {
       throw new InvalidArgumentException("You have to define what fields you want to remove.");
     }
     $results = $this->documentFinder->findDocuments(false, false);
@@ -165,7 +167,7 @@ class Query
 
     $results = $this->getCacheHandler()->getCacheContent($getOneDocument);
 
-    if($results !== null) {
+    if ($results !== null) {
       return $results;
     }
 

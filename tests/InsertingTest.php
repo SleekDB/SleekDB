@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace SleekDB\Tests;
 
@@ -9,7 +11,8 @@ use SleekDB\Tests\TestCases\SleekDBTestCase;
 final class InsertingTest extends SleekDBTestCase
 {
 
-  public function testCanInsertSingleData(){
+  public function testCanInsertSingleData()
+  {
     $userStore = $this->stores["users"];
 
     $usersData = self::DATABASE_DATA['users'][0];
@@ -19,7 +22,8 @@ final class InsertingTest extends SleekDBTestCase
     self::assertCount(1, $users);
   }
 
-  public function testCanInsertMultipleData(){
+  public function testCanInsertMultipleData()
+  {
     $userStore = $this->stores["users"];
 
     $usersData = self::DATABASE_DATA['users'];
@@ -29,16 +33,17 @@ final class InsertingTest extends SleekDBTestCase
     self::assertSameSize($usersFetched, $users);
   }
 
-  public function testCannotInsertSingleEmptyData(){
+  public function testCannotInsertSingleEmptyData()
+  {
 
     $userStore = $this->stores["users"];
     $this->expectException(InvalidArgumentException::class);
     $usersData = [];
     $userStore->insert($usersData);
-
   }
 
-  public function testCannotInsertSingleStringData(){
+  public function testCannotInsertSingleStringData()
+  {
 
     $userStore = $this->stores["users"];
 
@@ -47,16 +52,17 @@ final class InsertingTest extends SleekDBTestCase
     $userStore->insert($usersData);
   }
 
-  public function testCannotInsertMultipleEmptyData(){
+  public function testCannotInsertMultipleEmptyData()
+  {
 
     $userStore = $this->stores["users"];
     $this->expectException(InvalidArgumentException::class);
     $usersData = [];
     $userStore->insertMany($usersData);
-
   }
 
-  public function testCannotInsertMultipleStringData(){
+  public function testCannotInsertMultipleStringData()
+  {
 
     $userStore = $this->stores["users"];
 
@@ -65,13 +71,12 @@ final class InsertingTest extends SleekDBTestCase
     $userStore->insertMany($usersData);
   }
 
-  public function testCannotInsertDocumentWithPrimaryKey(){
+  public function testCannotInsertDocumentWithPrimaryKey()
+  {
 
     $userStore = $this->stores["users"];
 
     $this->expectException(IdNotAllowedException::class);
     $userStore->insert(["_id" => 3, "test" => "test"]);
   }
-
-
 }

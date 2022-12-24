@@ -39,8 +39,8 @@ class Cache
   public function __construct(string $storePath, array &$cacheTokenArray, $cacheLifetime)
   {
     // TODO make it possible to define custom cache directory.
-//    $cacheDir = "";
-//    $this->setCacheDir($cacheDir);
+    //    $cacheDir = "";
+    //    $this->setCacheDir($cacheDir);
 
     $this->setCachePath($storePath);
 
@@ -85,7 +85,7 @@ class Cache
    */
   public function deleteAll(): bool
   {
-    return IoHelper::deleteFiles(glob($this->getCachePath()."*"));
+    return IoHelper::deleteFiles(glob($this->getCachePath() . "*"));
   }
 
   /**
@@ -95,7 +95,7 @@ class Cache
   public function deleteAllWithNoLifetime(): bool
   {
     $noLifetimeFileString = self::NO_LIFETIME_FILE_STRING;
-    return IoHelper::deleteFiles(glob($this->getCachePath()."*.$noLifetimeFileString.json"));
+    return IoHelper::deleteFiles(glob($this->getCachePath() . "*.$noLifetimeFileString.json"));
   }
 
   /**
@@ -103,7 +103,8 @@ class Cache
    * @param array $content
    * @throws IOException if cache folder is not writable or saving failed.
    */
-  public function set(array $content){
+  public function set(array $content)
+  {
     $lifetime = $this->getLifetime();
     $cachePath = $this->getCachePath();
     $token = $this->getToken();
@@ -111,7 +112,7 @@ class Cache
     $noLifetimeFileString = self::NO_LIFETIME_FILE_STRING;
     $cacheFile = $cachePath . $token . ".$noLifetimeFileString.json";
 
-    if(is_int($lifetime)){
+    if (is_int($lifetime)) {
       $cacheFile = $cachePath . $token . ".$lifetime.json";
     }
 
@@ -123,7 +124,8 @@ class Cache
    * @return array|null array on success, else null
    * @throws IOException if cache file is not readable or does not exist.
    */
-  public function get(){
+  public function get()
+  {
     $cachePath = $this->getCachePath();
     $token = $this->getToken();
 
@@ -131,27 +133,27 @@ class Cache
 
     IoHelper::checkRead($cachePath);
 
-    $cacheFiles = glob($cachePath.$token."*.json");
+    $cacheFiles = glob($cachePath . $token . "*.json");
 
-    if($cacheFiles !== false && count($cacheFiles) > 0){
+    if ($cacheFiles !== false && count($cacheFiles) > 0) {
       $cacheFile = $cacheFiles[0];
     }
 
-    if(!empty($cacheFile)){
+    if (!empty($cacheFile)) {
       $cacheParts = explode(".", $cacheFile);
-      if(count($cacheParts) >= 3){
+      if (count($cacheParts) >= 3) {
         $lifetime = $cacheParts[count($cacheParts) - 2];
-        if(is_numeric($lifetime)){
-          if($lifetime === "0"){
+        if (is_numeric($lifetime)) {
+          if ($lifetime === "0") {
             return json_decode(IoHelper::getFileContent($cacheFile), true);
           }
           $fileExpiredAfter = filemtime($cacheFile) + (int) $lifetime;
-          if(time() <= $fileExpiredAfter){
+          if (time() <= $fileExpiredAfter) {
             return json_decode(IoHelper::getFileContent($cacheFile), true);
           }
           IoHelper::deleteFile($cacheFile);
-        } else if($lifetime === self::NO_LIFETIME_FILE_STRING){
-            return json_decode(IoHelper::getFileContent($cacheFile), true);
+        } else if ($lifetime === self::NO_LIFETIME_FILE_STRING) {
+          return json_decode(IoHelper::getFileContent($cacheFile), true);
         }
       }
     }
@@ -164,7 +166,7 @@ class Cache
    */
   public function delete(): bool
   {
-    return IoHelper::deleteFiles(glob($this->getCachePath().$this->getToken()."*.json"));
+    return IoHelper::deleteFiles(glob($this->getCachePath() . $this->getToken() . "*.json"));
   }
 
   /**
@@ -176,7 +178,7 @@ class Cache
     $cachePath = "";
     $cacheDir = $this->getCacheDir();
 
-    if(!empty($storePath)){
+    if (!empty($storePath)) {
       IoHelper::normalizeDirectory($storePath);
       $cachePath = $storePath . $cacheDir;
     }
@@ -211,17 +213,18 @@ class Cache
    * @param mixed $data
    * @return mixed
    */
-  private static function convertClosuresToString($data){
-    if(!is_array($data)){
-      if($data instanceof \Closure){
+  private static function convertClosuresToString($data)
+  {
+    if (!is_array($data)) {
+      if ($data instanceof \Closure) {
         return self::getClosureAsString($data);
       }
       return $data;
     }
-    foreach ($data as $key => $token){
-      if(is_array($token)){
+    foreach ($data as $key => $token) {
+      if (is_array($token)) {
         $data[$key] = self::convertClosuresToString($token);
-      } else if($token instanceof \Closure){
+      } else if ($token instanceof \Closure) {
         $data[$key] = self::getClosureAsString($token);
       }
     }
@@ -236,9 +239,9 @@ class Cache
    */
   private static function getClosureAsString(Closure $closure)
   {
-    try{
+    try {
       $reflectionFunction = new ReflectionFunction($closure); // get reflection object
-    } catch (Exception $exception){
+    } catch (Exception $exception) {
       return false;
     }
     $filePath = $reflectionFunction->getFileName();  // absolute path of php file containing function
@@ -249,7 +252,7 @@ class Cache
     $staticVariables = $reflectionFunction->getStaticVariables();
     $staticVariables = var_export($staticVariables, true);
 
-    if($filePath === false || $startLine === false || $endLine === false){
+    if ($filePath === false || $startLine === false || $endLine === false) {
       return false;
     }
 
@@ -257,32 +260,32 @@ class Cache
 
     $startLine--; // -1 to use it with the array representation of the file
 
-    if($startLine < 0 || $startEndDifference < 0){
+    if ($startLine < 0 || $startEndDifference < 0) {
       return false;
     }
 
     // get content of file containing function
     $fp = fopen($filePath, 'rb');
     $fileContent = "";
-    if(flock($fp, LOCK_SH)){
+    if (flock($fp, LOCK_SH)) {
       $fileContent = @stream_get_contents($fp);
     }
     flock($fp, LOCK_UN);
     fclose($fp);
 
-    if(empty($fileContent)){
+    if (empty($fileContent)) {
       return false;
     }
 
     // separate the file into an array containing every line as one element
     $fileContentArray = explode($lineSeparator, $fileContent);
-    if(count($fileContentArray) < $endLine){
+    if (count($fileContentArray) < $endLine) {
       return false;
     }
 
     // return the part of the file containing the function as a string.
     $functionString = implode("", array_slice($fileContentArray, $startLine, $startEndDifference + 1));
-    $functionString .= "|staticScopeVariables:".$staticVariables;
+    $functionString .= "|staticScopeVariables:" . $staticVariables;
     return $functionString;
   }
 
