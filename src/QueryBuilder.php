@@ -17,38 +17,27 @@ class QueryBuilder
    */
   protected $cache;
 
-  protected $whereConditions = [];
-
-  protected $skip = 0;
-  protected $limit = 0;
-  protected $orderBy = [];
-  protected $search = [];
-  protected $searchOptions = [
-    "minLength" => 2,
-    "scoreKey" => "searchScore",
-    "mode" => "or",
-    "algorithm" => Query::SEARCH_ALGORITHM["hits"]
-  ];
-
-  protected $fieldsToSelect = [];
-  protected $fieldsToExclude = [];
-  protected $groupBy = [];
-  protected $havingConditions = [];
-
-  protected $listOfJoins = [];
-  protected $distinctFields = [];
-
-  protected $useCache;
-  protected $regenerateCache = false;
-  protected $cacheLifetime;
-
-
-  // will also not be used for cache token
-  protected $propertiesNotUsedInConditionsArray = [
-    "propertiesNotUsedInConditionsArray",
-    "propertiesNotUsedForCacheToken",
-    "store",
-    "cache",
+  protected $queryConditions = [
+    "whereConditions" => [],
+    "skip" => 0,
+    "limit" => 0,
+    "orderBy" => [],
+    "search" => [],
+    "searchOptions" => [
+      "minLength" => 2,
+      "scoreKey" => "searchScore",
+      "mode" => "or",
+      "algorithm" => Query::SEARCH_ALGORITHM["hits"]
+    ],
+    "fieldsToSelect" => [],
+    "fieldsToExclude" => [],
+    "groupBy" => [],
+    "havingConditions" => [],
+    "listOfJoins" => [],
+    "distinctFields" => [],
+    "useCache" => 1,
+    "regenerateCache" => false,
+    "cacheLifetime" => 0
   ];
 
   protected $propertiesNotUsedForCacheToken = [
@@ -64,9 +53,9 @@ class QueryBuilder
   public function __construct(Store $store)
   {
     $this->store = $store;
-    $this->useCache = $store->_getUseCache();
-    $this->cacheLifetime = $store->_getDefaultCacheLifetime();
-    $this->searchOptions = $store->_getSearchOptions();
+    $this->queryConditions["useCache"] = $store->_getUseCache();
+    $this->queryConditions["cacheLifetime"] = $store->_getDefaultCacheLifetime();
+    $this->queryConditions["searchOptions"] = $store->_getSearchOptions();
   }
 
   /**
@@ -78,9 +67,9 @@ class QueryBuilder
   {
     foreach ($fieldNames as $key => $fieldName) {
       if (is_string($key)) {
-        $this->fieldsToSelect[$key] = $fieldName;
+        $this->queryConditions["fieldsToSelect"][$key] = $fieldName;
       } else {
-        $this->fieldsToSelect[] = $fieldName;
+        $this->queryConditions["fieldsToSelect"][] = $fieldName;
       }
     }
     return $this;
@@ -102,7 +91,7 @@ class QueryBuilder
       if (!is_string($fieldName)) {
         throw new InvalidArgumentException($errorMsg);
       }
-      $this->fieldsToExclude[] = $fieldName;
+      $this->queryConditions["fieldsToExclude"][] = $fieldName;
     }
     return $this;
   }
@@ -119,7 +108,7 @@ class QueryBuilder
       throw new InvalidArgumentException("You need to specify a where clause");
     }
 
-    $this->whereConditions[] = $conditions;
+    $this->queryConditions["whereConditions"][] = $conditions;
 
     return $this;
   }
@@ -137,8 +126,8 @@ class QueryBuilder
       throw new InvalidArgumentException("You need to specify a where clause");
     }
 
-    $this->whereConditions[] = "or";
-    $this->whereConditions[] = $conditions;
+    $this->queryConditions["whereConditions"][] = "or";
+    $this->queryConditions["whereConditions"][] = $conditions;
 
     return $this;
   }
@@ -163,7 +152,7 @@ class QueryBuilder
       throw new InvalidArgumentException("Skip has to be an integer >= 0");
     }
 
-    $this->skip = $skip;
+    $this->queryConditions["skip"] = $skip;
 
     return $this;
   }
@@ -189,7 +178,7 @@ class QueryBuilder
       throw new InvalidArgumentException("Limit has to be an integer > 0");
     }
 
-    $this->limit = $limit;
+    $this->queryConditions["limit"] = $limit;
 
     return $this;
   }
@@ -218,7 +207,7 @@ class QueryBuilder
         throw new InvalidArgumentException('Please use "asc" or "desc" only.');
       }
 
-      $this->orderBy[] = [
+      $this->queryConditions["orderBy"][] = [
         'fieldName' => $fieldName,
         'order' => $order
       ];
@@ -254,25 +243,25 @@ class QueryBuilder
     }
 
     if (!empty($query)) {
-      $this->search = [
+      $this->queryConditions["search"] = [
         'fields' => $fields,
         'query' => $query
       ];
       if (!empty($options)) {
         if (array_key_exists("minLength", $options) && is_int($options["minLength"]) && $options["minLength"] > 0) {
-          $this->searchOptions["minLength"] = $options["minLength"];
+          $this->queryConditions["searchOptions"]["minLength"] = $options["minLength"];
         }
         if (array_key_exists("mode", $options) && is_string($options["mode"])) {
           $searchMode = strtolower(trim($options["mode"]));
           if (in_array($searchMode, ["and", "or"])) {
-            $this->searchOptions["mode"] = $searchMode;
+            $this->queryConditions["searchOptions"]["mode"] = $searchMode;
           }
         }
         if (array_key_exists("scoreKey", $options) && (is_string($options["scoreKey"]) || is_null($options["scoreKey"]))) {
-          $this->searchOptions["scoreKey"] = $options["scoreKey"];
+          $this->queryConditions["searchOptions"]["scoreKey"] = $options["scoreKey"];
         }
         if (array_key_exists("algorithm", $options) && in_array($options["algorithm"], Query::SEARCH_ALGORITHM, true)) {
-          $this->searchOptions["algorithm"] = $options["algorithm"];
+          $this->queryConditions["searchOptions"]["algorithm"] = $options["algorithm"];
         }
       }
     }
@@ -286,7 +275,7 @@ class QueryBuilder
    */
   public function join(Closure $joinFunction, string $propertyName): QueryBuilder
   {
-    $this->listOfJoins[] = [
+    $this->queryConditions["listOfJoins"][] = [
       'propertyName' => $propertyName,
       'joinFunction' => $joinFunction
     ];
@@ -306,7 +295,7 @@ class QueryBuilder
     if ($fieldType === 'array') {
       if ($fields === array_values($fields)) {
         // Append fields.
-        $this->distinctFields = array_merge($this->distinctFields, $fields);
+        $this->queryConditions["distinctFields"] = array_merge($this->queryConditions["distinctFields"], $fields);
       } else {
         throw new InvalidArgumentException(
           'Field value in distinct() method can not be an associative array, 
@@ -314,7 +303,7 @@ class QueryBuilder
         );
       }
     } else if ($fieldType === 'string' && !empty($fields)) {
-      $this->distinctFields[] = trim($fields);
+      $this->queryConditions["distinctFields"][] = trim($fields);
     } else {
       throw new InvalidArgumentException(
         'Field value in distinct() is invalid.'
@@ -331,11 +320,11 @@ class QueryBuilder
    */
   public function useCache(int $lifetime = null): QueryBuilder
   {
-    $this->useCache = true;
+    $this->queryConditions["useCache"] = true;
     if ((!is_int($lifetime) || $lifetime < 0) && !is_null($lifetime)) {
       throw new InvalidArgumentException("lifetime has to be int >= 0 or null");
     }
-    $this->cacheLifetime = $lifetime;
+    $this->queryConditions["cacheLifetime"] = $lifetime;
     return $this;
   }
 
@@ -345,7 +334,7 @@ class QueryBuilder
    */
   public function disableCache(): QueryBuilder
   {
-    $this->useCache = false;
+    $this->queryConditions["useCache"] = false;
     return $this;
   }
 
@@ -355,7 +344,7 @@ class QueryBuilder
    */
   public function regenerateCache(): QueryBuilder
   {
-    $this->regenerateCache = true;
+    $this->queryConditions["regenerateCache"] = true;
     return $this;
   }
 
@@ -375,7 +364,7 @@ class QueryBuilder
    */
   public function groupBy(array $groupByFields, string $countKeyName = null, bool $allowEmpty = false): QueryBuilder
   {
-    $this->groupBy = [
+    $this->queryConditions["groupBy"] = [
       "groupByFields" => $groupByFields,
       "countKeyName" => $countKeyName,
       "allowEmpty" => $allowEmpty
@@ -394,7 +383,7 @@ class QueryBuilder
     if (empty($criteria)) {
       throw new InvalidArgumentException("You need to specify a having clause");
     }
-    $this->havingConditions = $criteria;
+    $this->queryConditions["havingConditions"] = $criteria;
     return $this;
   }
 
@@ -405,9 +394,8 @@ class QueryBuilder
   public function _getCacheTokenArray(): array
   {
     $properties = [];
-    $conditionsArray = $this->_getConditionProperties();
 
-    foreach ($conditionsArray as $propertyName => $propertyValue) {
+    foreach ($this->queryConditions as $propertyName => $propertyValue) {
       if (!in_array($propertyName, $this->propertiesNotUsedForCacheToken, true)) {
         $properties[$propertyName] = $propertyValue;
       }
@@ -422,18 +410,8 @@ class QueryBuilder
    */
   public function _getConditionProperties(): array
   {
-    $allProperties = get_object_vars($this);
-    $properties = [];
 
-    foreach ($allProperties as $propertyName => $propertyValue) {
-      if (!in_array($propertyName, $this->propertiesNotUsedInConditionsArray, true)) {
-        $properties[$propertyName] = $propertyValue;
-      }
-    }
-
-    echo "properties: " . print_r($properties, true);
-
-    return $properties;
+    return $this->queryConditions;
   }
 
   /**
@@ -460,7 +438,7 @@ class QueryBuilder
     }
 
     // Add to conditions with "AND" operation
-    $this->whereConditions[] = [$fieldName, "in", $values];
+    $this->queryConditions["whereConditions"][] = [$fieldName, "in", $values];
     return $this;
   }
 
@@ -479,7 +457,7 @@ class QueryBuilder
     }
 
     // Add to conditions with "AND" operation
-    $this->whereConditions[] = [$fieldName, "not in", $values];
+    $this->queryConditions["whereConditions"][] = [$fieldName, "not in", $values];
     return $this;
   }
 }
