@@ -196,20 +196,20 @@ final class StoreTest extends SleekDBTestCasePlain
   public function testCanChangeStore()
   {
     $testStore = new Store(self::STORE_NAME, self::DATA_DIR);
-    $oldStorePath = $testStore->getStorePath();
+    $oldStorePath = $testStore::getStorePath();
     $oldDataPath = $testStore->getDatabasePath();
     $testStore->changeStore(self::STORE_NAME . "2", self::DATA_DIR);
-    self::assertNotSame($oldStorePath, $testStore->getStorePath());
+    self::assertNotSame($oldStorePath, $testStore::getStorePath());
     self::assertSame($oldDataPath, $testStore->getDatabasePath());
   }
 
   public function testCanChangeStoreWithEmptyDataDir()
   {
     $testStore = new Store(self::STORE_NAME, self::DATA_DIR);
-    $oldStorePath = $testStore->getStorePath();
+    $oldStorePath = $testStore::getStorePath();
     $oldDataPath = $testStore->getDatabasePath();
     $testStore->changeStore(self::STORE_NAME . "2");
-    self::assertNotSame($oldStorePath, $testStore->getStorePath());
+    self::assertNotSame($oldStorePath, $testStore::getStorePath());
     self::assertSame($oldDataPath, $testStore->getDatabasePath());
     $testStore->deleteStore();
   }

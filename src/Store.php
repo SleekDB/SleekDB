@@ -6,6 +6,7 @@ use Exception;
 use \SleekDB\Classes\Engine;
 use SleekDB\Classes\IoHelper;
 use SleekDB\Classes\NestedHelper;
+use SleekDB\Classes\MonoEngine;
 use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\IdNotAllowedException;
 use SleekDB\Exceptions\InvalidConfigurationException;
@@ -21,7 +22,7 @@ if (false === class_exists("\Composer\Autoload\ClassLoader")) {
     require_once $traits;
   }
   foreach (glob(__DIR__ . '/*.php') as $class) {
-    if (strpos($class, 'SleekDB.php') !== false || strpos($class, 'Store.php') !== false) {
+    if (strpos($class, 'Store.php') !== false) {
       continue;
     }
     require_once $class;
@@ -30,9 +31,8 @@ if (false === class_exists("\Composer\Autoload\ClassLoader")) {
 
 class Store
 {
-  protected $root = __DIR__;
-  protected $storeName = "";
-  protected $storePath = "";
+  protected static $storeName = "";
+  protected static $storePath = "";
   protected $databasePath = "";
   protected $useCache = true;
   protected $folderPermissions = 0777;
@@ -51,6 +51,7 @@ class Store
 
   /**
    * Store constructor.
+   * 
    * @param string $storeName
    * @param string $databasePath
    * @param array $configuration
@@ -64,7 +65,7 @@ class Store
     if (empty($storeName)) {
       throw new InvalidArgumentException('store name can not be empty');
     }
-    $this->storeName = $storeName;
+    self::$storeName = $storeName;
 
     $databasePath = trim($databasePath);
     if (empty($databasePath)) {
@@ -79,6 +80,8 @@ class Store
     // boot store
     $this->createDatabasePath();
     $this->createStore();
+
+    $me = new MonoEngine('x');
   }
 
   /**
@@ -103,9 +106,9 @@ class Store
   /**
    * @return string
    */
-  public function getStoreName(): string
+  public static function getStoreName(): string
   {
-    return $this->storeName;
+    return self::$storeName;
   }
 
   /**
@@ -183,8 +186,7 @@ class Store
    */
   public function deleteStore(): bool
   {
-    $storePath = $this->getStorePath();
-    return IoHelper::deleteFolder($storePath);
+    return IoHelper::deleteFolder(self::getStorePath());
   }
 
 
@@ -195,7 +197,7 @@ class Store
    */
   public function getLastInsertedId(): int
   {
-    $counterPath = $this->getStorePath() . '_cnt.sdb';
+    $counterPath = self::getStorePath() . '_cnt.sdb';
 
     return (int) IoHelper::getFileContent($counterPath);
   }
@@ -203,9 +205,9 @@ class Store
   /**
    * @return string
    */
-  public function getStorePath(): string
+  public static function getStorePath(): string
   {
-    return $this->storePath;
+    return self::$storePath;
   }
 
   /**
@@ -338,8 +340,8 @@ class Store
     // One document to update or insert
 
     // save to access file with primary key value because we secured it above
-    $storePath = $this->getDataPath() . "$data[$primaryKey].json";
-    IoHelper::writeContentToFile($storePath, json_encode($data));
+    $documentPath = $this->getDataPath() . "$data[$primaryKey].json";
+    IoHelper::writeContentToFile($documentPath, json_encode($data));
 
     $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
 
@@ -391,8 +393,8 @@ class Store
     // One or multiple documents to update or insert
     foreach ($data as $document) {
       // save to access file with primary key value because we secured it above
-      $storePath = $this->getDataPath() . "$document[$primaryKey].json";
-      IoHelper::writeContentToFile($storePath, json_encode($document));
+      $documentPath = $this->getDataPath() . "$document[$primaryKey].json";
+      IoHelper::writeContentToFile($documentPath, json_encode($document));
     }
 
     $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
@@ -435,9 +437,9 @@ class Store
       // after the stripping and checking we apply it back to the updatable array.
       $updatable[$key] = $document;
 
-      $storePath = $this->getDataPath() . "$document[$primaryKey].json";
+      $documentPath = $this->getDataPath() . "$document[$primaryKey].json";
 
-      if (!file_exists($storePath)) {
+      if (!file_exists($documentPath)) {
         return false;
       }
     }
@@ -445,8 +447,8 @@ class Store
     // One or multiple documents to update
     foreach ($updatable as $document) {
       // save to access file with primary key value because we secured it above
-      $storePath = $this->getDataPath() . "$document[$primaryKey].json";
-      IoHelper::writeContentToFile($storePath, json_encode($document));
+      $documentPath = $this->getDataPath() . "$document[$primaryKey].json";
+      IoHelper::writeContentToFile($documentPath, json_encode($document));
     }
 
     $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
@@ -621,7 +623,7 @@ class Store
   {
     if ($this->_getUseCache() === true) {
       $cacheTokenArray = ["count" => true];
-      $cache = new Cache($this->getStorePath(), $cacheTokenArray, null);
+      $cache = new Cache(self::getStorePath(), $cacheTokenArray, null);
       $cacheValue = $cache->get();
       if (is_array($cacheValue) && array_key_exists("count", $cacheValue)) {
         return $cacheValue["count"];
@@ -678,8 +680,7 @@ class Store
    */
   private function createDatabasePath()
   {
-    $databasePath = $this->getDatabasePath();
-    IoHelper::createFolder($databasePath, $this->folderPermissions);
+    IoHelper::createFolder($this->getDatabasePath(), $this->folderPermissions);
   }
 
   /**
@@ -690,20 +691,21 @@ class Store
     $storeName = $this->getStoreName();
     // Prepare store name.
     IoHelper::normalizeDirectory($storeName);
+
     // Store directory path.
-    $this->storePath = $this->getDatabasePath() . $storeName;
-    $storePath = $this->getStorePath();
-    IoHelper::createFolder($storePath, $this->folderPermissions);
+    self::$storePath = $this->getDatabasePath() . $storeName;
+
+    IoHelper::createFolder(self::$storePath, $this->folderPermissions);
 
     // Create the cache directory.
-    $cacheDirectory = $storePath . 'cache';
+    $cacheDirectory = self::$storePath . 'cache';
     IoHelper::createFolder($cacheDirectory, $this->folderPermissions);
 
     // Create the data directory.
-    IoHelper::createFolder($storePath . self::dataDirectory, $this->folderPermissions);
+    IoHelper::createFolder(self::$storePath . self::dataDirectory, $this->folderPermissions);
 
     // Create the store counter file.
-    $counterFile = $storePath . '_cnt.sdb';
+    $counterFile = self::$storePath . '_cnt.sdb';
     if (!file_exists($counterFile)) {
       IoHelper::writeContentToFile($counterFile, '0');
     }
@@ -845,7 +847,7 @@ class Store
    */
   private function increaseCounterAndGetNextId(): int
   {
-    $counterPath = $this->getStorePath() . '_cnt.sdb';
+    $counterPath = self::getStorePath() . '_cnt.sdb';
 
     if (!file_exists($counterPath)) {
       throw new IOException("File $counterPath does not exist.");
@@ -891,6 +893,6 @@ class Store
    */
   private function getDataPath(): string
   {
-    return $this->getStorePath() . self::dataDirectory;
+    return self::getStorePath() . self::dataDirectory;
   }
 }

@@ -50,9 +50,9 @@ class Query
     $store = $queryBuilder->_getStore();
     $primaryKey = $store->getPrimaryKey();
 
-    $this->cacheHandler = new CacheHandler($store->getStorePath(), $queryBuilder);
-    $this->documentFinder = new DocumentFinder($store->getStorePath(), $queryBuilder->_getConditionProperties(), $primaryKey);
-    $this->documentUpdater = new DocumentUpdater($store->getStorePath(), $primaryKey);
+    $this->cacheHandler = new CacheHandler($store::getStorePath(), $queryBuilder);
+    $this->documentFinder = new DocumentFinder($store::getStorePath(), $queryBuilder->_getConditionProperties(), $primaryKey);
+    $this->documentUpdater = new DocumentUpdater($store::getStorePath(), $primaryKey);
   }
 
   /**
