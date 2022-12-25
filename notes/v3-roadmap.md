@@ -14,7 +14,6 @@ SleekDB v3 is in implementation stage.
 - [x] Remove "SleekDB.php" legacy API.
 - [x] Remove "timeout" config.
 - [x] Remove "nestedWhere" depricated method which was introduced in (v2.3).
-- [ ] Remove `_getStore` method. (internal method)
 - [ ] Remove the "\_id" field requirement with the new Poly engine.
 - [ ] Introduce new configurations for Poly engine:
   - engine (v3 will support both Mono and Poly engine)
