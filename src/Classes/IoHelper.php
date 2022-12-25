@@ -237,8 +237,10 @@ class IoHelper
    */
   public static function normalizeDirectory(string &$directory)
   {
-    if (!empty($directory) && substr($directory, -1) !== "/") {
-      $directory .= "/";
+    if (!empty($directory)) {
+      $directory = rtrim($directory, "/\\");
+      $directory = rtrim($directory, "/");
+      $directory .= DIRECTORY_SEPARATOR;
     }
   }
 
