@@ -1,6 +1,6 @@
 # SleekDB V3
 
-SleekDB v3 is on idea stage. 
+SleekDB v3 is in implementation stage.
 
 ## Goal:
 
@@ -11,11 +11,13 @@ SleekDB v3 is on idea stage.
 
 ## Roadmap:
 
+- [x] Remove "SleekDB.php" legacy API.
 - [x] Remove "timeout" config.
-- [ ] Remove the "_id" field requirement with the new Poly engine.
+- [x] Remove "nestedWhere" depricated method which was introduced in (v2.3).
+- [ ] Remove the "\_id" field requirement with the new Poly engine.
 - [ ] Introduce new configurations for Poly engine:
-    -   engine (v3 will support both Mono and Poly engine)
-    -   documentSize (fixed allocation size for each document)
+  - engine (v3 will support both Mono and Poly engine)
+  - documentSize (fixed allocation size for each document)
 - [ ] Implement the Poly engine.
 - [ ] Keep the API compatible with both engine.
 - [ ] Modify the `IoHelper` class to support the new Poly engine.
@@ -26,6 +28,7 @@ SleekDB v3 is on idea stage.
 - [ ] Prepare the documentation for v3.
 
 ## Discussion points:
+
 - Should we keep the old Mono engine as an optional engine?
 - Should we implement indexing for Poly engine? There is a huge potential for implementing a new indexing system for Poly engine. Although with schema less document it can be a challange to implement a good indexing system. Let's discuss!
 - Should we keep using the old documentation management system or should we move to a new one? (I'm thinking about using a wiki system). Let's discuss!
