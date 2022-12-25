@@ -31,8 +31,8 @@ if (false === class_exists("\Composer\Autoload\ClassLoader")) {
 
 class Store
 {
-  protected static $storeName = "";
-  protected static $storePath = "";
+  protected $storeName = "";
+  protected $storePath = "";
   protected $databasePath = "";
   protected $useCache = true;
   protected $folderPermissions = 0777;
@@ -65,7 +65,7 @@ class Store
     if (empty($storeName)) {
       throw new InvalidArgumentException('store name can not be empty');
     }
-    self::$storeName = $storeName;
+    $this->storeName = $storeName;
 
     $databasePath = trim($databasePath);
     if (empty($databasePath)) {
@@ -74,9 +74,7 @@ class Store
 
     IoHelper::normalizeDirectory($databasePath);
     $this->databasePath = $databasePath;
-
     $this->setConfiguration($configuration);
-
     // boot store
     $this->createDatabasePath();
     $this->createStore();
@@ -106,9 +104,9 @@ class Store
   /**
    * @return string
    */
-  public static function getStoreName(): string
+  public function getStoreName(): string
   {
-    return self::$storeName;
+    return $this->storeName;
   }
 
   /**
@@ -186,7 +184,7 @@ class Store
    */
   public function deleteStore(): bool
   {
-    return IoHelper::deleteFolder(self::getStorePath());
+    return IoHelper::deleteFolder($this->getStorePath());
   }
 
 
@@ -197,7 +195,7 @@ class Store
    */
   public function getLastInsertedId(): int
   {
-    $counterPath = self::getStorePath() . '_cnt.sdb';
+    $counterPath = $this->getStorePath() . '_cnt.sdb';
 
     return (int) IoHelper::getFileContent($counterPath);
   }
@@ -205,9 +203,9 @@ class Store
   /**
    * @return string
    */
-  public static function getStorePath(): string
+  public function getStorePath(): string
   {
-    return self::$storePath;
+    return $this->storePath;
   }
 
   /**
@@ -623,7 +621,7 @@ class Store
   {
     if ($this->_getUseCache() === true) {
       $cacheTokenArray = ["count" => true];
-      $cache = new Cache(self::getStorePath(), $cacheTokenArray, null);
+      $cache = new Cache($this->getStorePath(), $cacheTokenArray, null);
       $cacheValue = $cache->get();
       if (is_array($cacheValue) && array_key_exists("count", $cacheValue)) {
         return $cacheValue["count"];
@@ -693,19 +691,19 @@ class Store
     IoHelper::normalizeDirectory($storeName);
 
     // Store directory path.
-    self::$storePath = $this->getDatabasePath() . $storeName;
+    $this->storePath = $this->getDatabasePath() . $storeName;
 
-    IoHelper::createFolder(self::$storePath, $this->folderPermissions);
+    IoHelper::createFolder($this->storePath, $this->folderPermissions);
 
     // Create the cache directory.
-    $cacheDirectory = self::$storePath . 'cache';
+    $cacheDirectory = $this->storePath . 'cache';
     IoHelper::createFolder($cacheDirectory, $this->folderPermissions);
 
     // Create the data directory.
-    IoHelper::createFolder(self::$storePath . self::dataDirectory, $this->folderPermissions);
+    IoHelper::createFolder($this->storePath . self::dataDirectory, $this->folderPermissions);
 
     // Create the store counter file.
-    $counterFile = self::$storePath . '_cnt.sdb';
+    $counterFile = $this->storePath . '_cnt.sdb';
     if (!file_exists($counterFile)) {
       IoHelper::writeContentToFile($counterFile, '0');
     }
@@ -847,7 +845,7 @@ class Store
    */
   private function increaseCounterAndGetNextId(): int
   {
-    $counterPath = self::getStorePath() . '_cnt.sdb';
+    $counterPath = $this->getStorePath() . '_cnt.sdb';
 
     if (!file_exists($counterPath)) {
       throw new IOException("File $counterPath does not exist.");
@@ -893,6 +891,6 @@ class Store
    */
   private function getDataPath(): string
   {
-    return self::getStorePath() . self::dataDirectory;
+    return $this->getStorePath() . self::dataDirectory;
   }
 }
