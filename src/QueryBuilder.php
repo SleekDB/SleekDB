@@ -22,7 +22,6 @@ class QueryBuilder
   protected $skip = 0;
   protected $limit = 0;
   protected $orderBy = [];
-  protected $nestedWhere = []; // TODO remove with version 3.0
   protected $search = [];
   protected $searchOptions = [
     "minLength" => 2,
@@ -432,6 +431,8 @@ class QueryBuilder
       }
     }
 
+    echo "properties: " . print_r($properties, true);
+
     return $properties;
   }
 
@@ -479,38 +480,6 @@ class QueryBuilder
 
     // Add to conditions with "AND" operation
     $this->whereConditions[] = [$fieldName, "not in", $values];
-    return $this;
-  }
-
-  /**
-   * Add a where statement that is nested. ( $x or ($y and $z) )
-   * @param array $conditions
-   * @return QueryBuilder
-   * @throws InvalidArgumentException
-   * @deprecated since version 2.3, use where or orWhere instead.
-   */
-  public function nestedWhere(array $conditions): QueryBuilder
-  {
-    // TODO remove with version 3.0
-    if (empty($conditions)) {
-      throw new InvalidArgumentException("You need to specify nested where clauses");
-    }
-
-    if (count($conditions) > 1) {
-      throw new InvalidArgumentException("You are not allowed to specify multiple elements at the first depth!");
-    }
-
-    $outerMostOperation = (array_keys($conditions))[0];
-    $outerMostOperation = (is_string($outerMostOperation)) ? strtolower($outerMostOperation) : $outerMostOperation;
-
-    $allowedOuterMostOperations = [0, "and", "or"];
-
-    if (!in_array($outerMostOperation, $allowedOuterMostOperations, true)) {
-      throw new InvalidArgumentException("Outer most operation has to one of the following: ( 0 / and / or ) ");
-    }
-
-    $this->nestedWhere = $conditions;
-
     return $this;
   }
 }

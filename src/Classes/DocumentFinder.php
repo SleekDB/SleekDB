@@ -46,7 +46,6 @@ class DocumentFinder
 
     $conditions = $queryBuilderProperties["whereConditions"];
     $distinctFields = $queryBuilderProperties["distinctFields"];
-    $nestedWhereConditions = $queryBuilderProperties["nestedWhere"];
     $listOfJoins = $queryBuilderProperties["listOfJoins"];
     $search = $queryBuilderProperties["search"];
     $searchOptions = $queryBuilderProperties["searchOptions"];
@@ -89,9 +88,6 @@ class DocumentFinder
           // Iterate each conditions.
           $storePassed = ConditionsHandler::handleWhereConditions($conditions, $data);
         }
-
-        // TODO remove nested where with version 3.0
-        $storePassed = ConditionsHandler::handleNestedWhere($data, $storePassed, $nestedWhereConditions);
 
         if ($storePassed === true && count($distinctFields) > 0) {
           $storePassed = ConditionsHandler::handleDistinct($found, $data, $distinctFields);
