@@ -2,16 +2,15 @@
 
 namespace SleekDB;
 
-use Exception;
 use \SleekDB\Classes\Engine;
 use SleekDB\Classes\IoHelper;
-use SleekDB\Classes\NestedHelper;
 use SleekDB\Classes\MonoEngine;
-use SleekDB\Exceptions\InvalidArgumentException;
-use SleekDB\Exceptions\IdNotAllowedException;
-use SleekDB\Exceptions\InvalidConfigurationException;
+use SleekDB\Classes\PolyEngine;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Exceptions\JsonException;
+use SleekDB\Exceptions\IdNotAllowedException;
+use SleekDB\Exceptions\InvalidArgumentException;
+use SleekDB\Exceptions\InvalidConfigurationException;
 
 // To provide usage without composer, we need to require all files.
 if (false === class_exists("\Composer\Autoload\ClassLoader")) {
@@ -31,23 +30,17 @@ if (false === class_exists("\Composer\Autoload\ClassLoader")) {
 
 class Store
 {
-  protected $storeName = "";
-  protected $storePath = "";
   protected $databasePath = "";
   protected $useCache = true;
-  protected $folderPermissions = 0777;
-  protected $engine = Engine::POLY;
-  protected $documentSize = 1000;
+  protected $engineName = Engine::POLY;
+  protected $engine = null;
   protected $defaultCacheLifetime;
-  protected $primaryKey = "_id";
   protected $searchOptions = [
     "minLength" => 2,
     "scoreKey" => "searchScore",
     "mode" => "or",
     "algorithm" => Query::SEARCH_ALGORITHM["hits"]
   ];
-
-  const dataDirectory = "data/";
 
   /**
    * Store constructor.
@@ -65,21 +58,20 @@ class Store
     if (empty($storeName)) {
       throw new InvalidArgumentException('store name can not be empty');
     }
-    $this->storeName = $storeName;
 
     $databasePath = trim($databasePath);
     if (empty($databasePath)) {
-      throw new InvalidArgumentException('data directory can not be empty');
+      throw new InvalidArgumentException('Store root directory (Database Path) can not be empty');
     }
 
     IoHelper::normalizeDirectory($databasePath);
-    $this->databasePath = $databasePath;
-    $this->setConfiguration($configuration);
-    // boot store
-    $this->createDatabasePath();
-    $this->createStore();
 
-    $me = new MonoEngine('x');
+    $this->setConfiguration($configuration);
+
+    // Engine should be based on config later.
+    $primaryKey = array_key_exists("primary_key", $configuration) ? $configuration["primary_key"] : null;
+    $folderPermissions = array_key_exists("folder_permissions", $configuration) ? $configuration["folder_permissions"] : 0777;
+    $this->engine = new MonoEngine($storeName, $databasePath, $primaryKey, $folderPermissions);
   }
 
   /**
@@ -95,26 +87,18 @@ class Store
   public function changeStore(string $storeName, string $databasePath = null, array $configuration = []): Store
   {
     if (empty($databasePath)) {
-      $databasePath = $this->getDatabasePath();
+      $databasePath = $this->getEngine()->getDatabasePath();
     }
     $this->__construct($storeName, $databasePath, $configuration);
     return $this;
   }
 
   /**
-   * @return string
+   * @return MonoEngine | PolyEngine
    */
-  public function getStoreName(): string
+  public function getEngine(): MonoEngine | PolyEngine
   {
-    return $this->storeName;
-  }
-
-  /**
-   * @return string
-   */
-  public function getDatabasePath(): string
-  {
-    return $this->databasePath;
+    return $this->engine;
   }
 
   /**
@@ -184,7 +168,7 @@ class Store
    */
   public function deleteStore(): bool
   {
-    return IoHelper::deleteFolder($this->getStorePath());
+    return $this->getEngine()->deleteStore();
   }
 
 
@@ -195,17 +179,7 @@ class Store
    */
   public function getLastInsertedId(): int
   {
-    $counterPath = $this->getStorePath() . '_cnt.sdb';
-
-    return (int) IoHelper::getFileContent($counterPath);
-  }
-
-  /**
-   * @return string
-   */
-  public function getStorePath(): string
-  {
-    return $this->storePath;
+    return $this->getEngine()->getLastInsertedId();
   }
 
   /**
@@ -240,18 +214,7 @@ class Store
    */
   public function findById($id)
   {
-
-    $id = $this->checkAndStripId($id);
-
-    $filePath = $this->getDataPath() . "$id.json";
-
-    try {
-      $content = IoHelper::getFileContent($filePath);
-    } catch (Exception $exception) {
-      return null;
-    }
-
-    return @json_decode($content, true);
+    return $this->getEngine()->findById($id);
   }
 
   /**
@@ -312,38 +275,7 @@ class Store
    */
   public function updateOrInsert(array $data, bool $autoGenerateIdOnInsert = true): array
   {
-    $primaryKey = $this->getPrimaryKey();
-
-    if (empty($data)) {
-      throw new InvalidArgumentException("No document to update or insert.");
-    }
-
-    //    // we can use this check to determine if multiple documents are given
-    //    // because documents have to have at least the primary key.
-    //    if(array_keys($data) !== range(0, (count($data) - 1))){
-    //      $data = [ $data ];
-    //    }
-
-    if (!array_key_exists($primaryKey, $data)) {
-      //        $documentString = var_export($document, true);
-      //        throw new InvalidArgumentException("Documents have to have the primary key \"$primaryKey\". Got data: $documentString");
-      $data[$primaryKey] = $this->increaseCounterAndGetNextId();
-    } else {
-      $data[$primaryKey] = $this->checkAndStripId($data[$primaryKey]);
-      if ($autoGenerateIdOnInsert && $this->findById($data[$primaryKey]) === null) {
-        $data[$primaryKey] = $this->increaseCounterAndGetNextId();
-      }
-    }
-
-    // One document to update or insert
-
-    // save to access file with primary key value because we secured it above
-    $documentPath = $this->getDataPath() . "$data[$primaryKey].json";
-    IoHelper::writeContentToFile($documentPath, json_encode($data));
-
-    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
-
-    return $data;
+    return $this->getEngine()->updateOrInsert($data, $autoGenerateIdOnInsert, $this->createQueryBuilder());
   }
 
   /**
@@ -357,47 +289,7 @@ class Store
    */
   public function updateOrInsertMany(array $data, bool $autoGenerateIdOnInsert = true): array
   {
-    $primaryKey = $this->getPrimaryKey();
-
-    if (empty($data)) {
-      throw new InvalidArgumentException("No documents to update or insert.");
-    }
-
-    //    // we can use this check to determine if multiple documents are given
-    //    // because documents have to have at least the primary key.
-    //    if(array_keys($data) !== range(0, (count($data) - 1))){
-    //      $data = [ $data ];
-    //    }
-
-    // Check if all documents have the primary key before updating or inserting any
-    foreach ($data as $key => $document) {
-      if (!is_array($document)) {
-        throw new InvalidArgumentException('Documents have to be an arrays.');
-      }
-      if (!array_key_exists($primaryKey, $document)) {
-        //        $documentString = var_export($document, true);
-        //        throw new InvalidArgumentException("Documents have to have the primary key \"$primaryKey\". Got data: $documentString");
-        $document[$primaryKey] = $this->increaseCounterAndGetNextId();
-      } else {
-        $document[$primaryKey] = $this->checkAndStripId($document[$primaryKey]);
-        if ($autoGenerateIdOnInsert && $this->findById($document[$primaryKey]) === null) {
-          $document[$primaryKey] = $this->increaseCounterAndGetNextId();
-        }
-      }
-      // after the stripping and checking we apply it back
-      $data[$key] = $document;
-    }
-
-    // One or multiple documents to update or insert
-    foreach ($data as $document) {
-      // save to access file with primary key value because we secured it above
-      $documentPath = $this->getDataPath() . "$document[$primaryKey].json";
-      IoHelper::writeContentToFile($documentPath, json_encode($document));
-    }
-
-    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
-
-    return $data;
+    return $this->getEngine()->updateOrInsertMany($data, $autoGenerateIdOnInsert, $this->createQueryBuilder());
   }
 
 
@@ -410,48 +302,7 @@ class Store
    */
   public function update(array $updatable): bool
   {
-    $primaryKey = $this->getPrimaryKey();
-
-    if (empty($updatable)) {
-      throw new InvalidArgumentException("No documents to update.");
-    }
-
-    // we can use this check to determine if multiple documents are given
-    // because documents have to have at least the primary key.
-    if (array_keys($updatable) !== range(0, (count($updatable) - 1))) {
-      $updatable = [$updatable];
-    }
-
-    // Check if all documents exist and have the primary key before updating any
-    foreach ($updatable as $key => $document) {
-      if (!is_array($document)) {
-        throw new InvalidArgumentException('Documents have to be an arrays.');
-      }
-      if (!array_key_exists($primaryKey, $document)) {
-        throw new InvalidArgumentException("Documents have to have the primary key \"$primaryKey\".");
-      }
-
-      $document[$primaryKey] = $this->checkAndStripId($document[$primaryKey]);
-      // after the stripping and checking we apply it back to the updatable array.
-      $updatable[$key] = $document;
-
-      $documentPath = $this->getDataPath() . "$document[$primaryKey].json";
-
-      if (!file_exists($documentPath)) {
-        return false;
-      }
-    }
-
-    // One or multiple documents to update
-    foreach ($updatable as $document) {
-      // save to access file with primary key value because we secured it above
-      $documentPath = $this->getDataPath() . "$document[$primaryKey].json";
-      IoHelper::writeContentToFile($documentPath, json_encode($document));
-    }
-
-    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
-
-    return true;
+    return $this->getEngine()->update($updatable, $this->createQueryBuilder());
   }
 
   /**
@@ -465,35 +316,7 @@ class Store
    */
   public function updateById($id, array $updatable)
   {
-
-    $id = $this->checkAndStripId($id);
-
-    $filePath = $this->getDataPath() . "$id.json";
-
-    $primaryKey = $this->getPrimaryKey();
-
-    if (array_key_exists($primaryKey, $updatable)) {
-      throw new InvalidArgumentException("You can not update the primary key \"$primaryKey\" of documents.");
-    }
-
-    if (!file_exists($filePath)) {
-      return false;
-    }
-
-    $content = IoHelper::updateFileContent($filePath, function ($content) use ($filePath, $updatable) {
-      $content = @json_decode($content, true);
-      if (!is_array($content)) {
-        throw new JsonException("Could not decode content of \"$filePath\" with json_decode.");
-      }
-      foreach ($updatable as $key => $value) {
-        NestedHelper::updateNestedValue($key, $content, $value);
-      }
-      return json_encode($content);
-    });
-
-    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
-
-    return json_decode($content, true);
+    return $this->getEngine()->updateById($id, $updatable, $this->createQueryBuilder());
   }
 
   /**
@@ -506,12 +329,7 @@ class Store
    */
   public function deleteBy(array $criteria, int $returnOption = Query::DELETE_RETURN_BOOL)
   {
-
-    $query = $this->createQueryBuilder()->where($criteria)->getQuery();
-
-    $query->getCache()->deleteAllWithNoLifetime();
-
-    return $query->delete($returnOption);
+    return $this->getEngine()->deleteBy($criteria, $returnOption, $this->createQueryBuilder());
   }
 
   /**
@@ -522,14 +340,7 @@ class Store
    */
   public function deleteById($id): bool
   {
-
-    $id = $this->checkAndStripId($id);
-
-    $filePath = $this->getDataPath() . "$id.json";
-
-    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
-
-    return (!file_exists($filePath) || true === @unlink($filePath));
+    return $this->getEngine()->deleteById($id, $this->createQueryBuilder());
   }
 
   /**
@@ -543,31 +354,7 @@ class Store
    */
   public function removeFieldsById($id, array $fieldsToRemove)
   {
-    $id = $this->checkAndStripId($id);
-    $filePath = $this->getDataPath() . "$id.json";
-    $primaryKey = $this->getPrimaryKey();
-
-    if (in_array($primaryKey, $fieldsToRemove, false)) {
-      throw new InvalidArgumentException("You can not remove the primary key \"$primaryKey\" of documents.");
-    }
-    if (!file_exists($filePath)) {
-      return false;
-    }
-
-    $content = IoHelper::updateFileContent($filePath, function ($content) use ($filePath, $fieldsToRemove) {
-      $content = @json_decode($content, true);
-      if (!is_array($content)) {
-        throw new JsonException("Could not decode content of \"$filePath\" with json_decode.");
-      }
-      foreach ($fieldsToRemove as $fieldToRemove) {
-        NestedHelper::removeNestedField($content, $fieldToRemove);
-      }
-      return $content;
-    });
-
-    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
-
-    return json_decode($content, true);
+    return $this->getEngine()->removeFieldsById($id, $fieldsToRemove, $this->createQueryBuilder());
   }
 
   /**
@@ -604,36 +391,13 @@ class Store
   }
 
   /**
-   * Get the name of the field used as the primary key.
-   * @return string
-   */
-  public function getPrimaryKey(): string
-  {
-    return $this->primaryKey;
-  }
-
-  /**
    * Returns the amount of documents in the store.
    * @return int
    * @throws IOException
    */
   public function count(): int
   {
-    if ($this->_getUseCache() === true) {
-      $cacheTokenArray = ["count" => true];
-      $cache = new Cache($this->getStorePath(), $cacheTokenArray, null);
-      $cacheValue = $cache->get();
-      if (is_array($cacheValue) && array_key_exists("count", $cacheValue)) {
-        return $cacheValue["count"];
-      }
-    }
-    $value = [
-      "count" => IoHelper::countFolderContent($this->getDataPath())
-    ];
-    if (isset($cache)) {
-      $cache->set($value);
-    }
-    return $value["count"];
+    return $this->getEngine()->count($this->useCache);
   }
 
   /**
@@ -664,52 +428,6 @@ class Store
   }
 
   /**
-   * @return string
-   * @deprecated since version 2.7, use getDatabasePath instead.
-   */
-  public function getDataDirectory(): string
-  {
-    // TODO remove with version 3.0
-    return $this->databasePath;
-  }
-
-  /**
-   * @throws IOException
-   */
-  private function createDatabasePath()
-  {
-    IoHelper::createFolder($this->getDatabasePath(), $this->folderPermissions);
-  }
-
-  /**
-   * @throws IOException
-   */
-  private function createStore()
-  {
-    $storeName = $this->getStoreName();
-    // Prepare store name.
-    IoHelper::normalizeDirectory($storeName);
-
-    // Store directory path.
-    $this->storePath = $this->getDatabasePath() . $storeName;
-
-    IoHelper::createFolder($this->storePath, $this->folderPermissions);
-
-    // Create the cache directory.
-    $cacheDirectory = $this->storePath . 'cache';
-    IoHelper::createFolder($cacheDirectory, $this->folderPermissions);
-
-    // Create the data directory.
-    IoHelper::createFolder($this->storePath . self::dataDirectory, $this->folderPermissions);
-
-    // Create the store counter file.
-    $counterFile = $this->storePath . '_cnt.sdb';
-    if (!file_exists($counterFile)) {
-      IoHelper::writeContentToFile($counterFile, '0');
-    }
-  }
-
-  /**
    * @param array $configuration
    * @throws InvalidConfigurationException
    */
@@ -731,14 +449,6 @@ class Store
       }
 
       $this->defaultCacheLifetime = $defaultCacheLifetime;
-    }
-
-    if (array_key_exists("primary_key", $configuration)) {
-      $primaryKey = $configuration["primary_key"];
-      if (!is_string($primaryKey)) {
-        throw new InvalidConfigurationException("primary key has to be a string");
-      }
-      $this->primaryKey = $primaryKey;
     }
 
     if (array_key_exists("search", $configuration)) {
@@ -778,28 +488,12 @@ class Store
       }
     }
 
-    if (array_key_exists("folder_permissions", $configuration)) {
-      $folderPermissions = $configuration["folder_permissions"];
-      if (!is_int($folderPermissions)) {
-        throw new InvalidConfigurationException("folder_permissions has to be an integer (e.g. 0777)");
-      }
-      $this->folderPermissions = $folderPermissions;
-    }
-
     if (array_key_exists("engine", $configuration)) {
       $engine = $configuration["engine"];
       if (!is_string($engine)) {
         throw new InvalidConfigurationException("Engine has to be a string");
       }
-      $this->engine = $engine;
-    }
-
-    if (array_key_exists("documentSize", $configuration)) {
-      $documentSize = $configuration["documentSize"];
-      if (!is_int($documentSize)) {
-        throw new InvalidConfigurationException("Document Size has to be a integer representing the size in bytes. Default is 1033 bytes or 1KB.");
-      }
-      $this->documentSize = $documentSize;
+      $this->engineName = $engine;
     }
   }
 
@@ -813,84 +507,6 @@ class Store
    */
   private function writeNewDocumentToStore(array $storeData): array
   {
-    $primaryKey = $this->getPrimaryKey();
-    // Check if it has the primary key
-    if (isset($storeData[$primaryKey])) {
-      throw new IdNotAllowedException(
-        "The \"$primaryKey\" index is reserved by SleekDB, please delete the $primaryKey key and try again"
-      );
-    }
-    $id = $this->increaseCounterAndGetNextId();
-    // Add the system ID with the store data array.
-    $storeData[$primaryKey] = $id;
-    // Prepare storable data
-    $storableJSON = @json_encode($storeData);
-    if ($storableJSON === false) {
-      throw new JsonException('Unable to encode the data array, 
-        please provide a valid PHP associative array');
-    }
-    // Define the store path
-    $filePath = $this->getDataPath() . "$id.json";
-
-    IoHelper::writeContentToFile($filePath, $storableJSON);
-
-    return $storeData;
-  }
-
-  /**
-   * Increments the store wide unique store object ID and returns it.
-   * @return int
-   * @throws IOException
-   * @throws JsonException
-   */
-  private function increaseCounterAndGetNextId(): int
-  {
-    $counterPath = $this->getStorePath() . '_cnt.sdb';
-
-    if (!file_exists($counterPath)) {
-      throw new IOException("File $counterPath does not exist.");
-    }
-
-    $dataPath = $this->getDataPath();
-
-    return (int) IoHelper::updateFileContent($counterPath, function ($counter) use ($dataPath) {
-      $newCounter = ((int) $counter) + 1;
-
-      while (file_exists($dataPath . "$newCounter.json") === true) {
-        $newCounter++;
-      }
-      return (string)$newCounter;
-    });
-  }
-
-
-  /**
-   * @param string|int $id
-   * @return int
-   * @throws InvalidArgumentException
-   */
-  private function checkAndStripId($id): int
-  {
-    if (!is_string($id) && !is_int($id)) {
-      throw new InvalidArgumentException("The id of the document has to be an integer or string");
-    }
-
-    if (is_string($id)) {
-      $id = IoHelper::secureStringForFileAccess($id);
-    }
-
-    if (!is_numeric($id)) {
-      throw new InvalidArgumentException("The id of the document has to be numeric");
-    }
-
-    return (int) $id;
-  }
-
-  /**
-   * @return string
-   */
-  private function getDataPath(): string
-  {
-    return $this->getStorePath() . self::dataDirectory;
+    return $this->getEngine()->newDocument($storeData);
   }
 }
