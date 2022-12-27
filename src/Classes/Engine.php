@@ -30,4 +30,18 @@ class Engine
      * This engine is optional and only suggested to handle old data from SleekDB v2 or lower.
      */
     const MONO = "mono";
+
+    /**
+     * const DATA_DIRECTORY
+     * 
+     * The name of the data directory.
+     */
+    const DATA_DIRECTORY = "data" . DIRECTORY_SEPARATOR;
+
+    /**
+     * const CACHE_DIRECTORY
+     * 
+     * The name of the cache directory.
+     */
+    const CACHE_DIRECTORY = "cache" . DIRECTORY_SEPARATOR;
 }

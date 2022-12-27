@@ -6,6 +6,7 @@ use Closure;
 use Exception;
 use ReflectionFunction;
 use SleekDB\Classes\IoHelper;
+use SleekDB\Classes\Engine;
 use SleekDB\Exceptions\IOException;
 
 /**
@@ -15,7 +16,6 @@ use SleekDB\Exceptions\IOException;
 class Cache
 {
 
-  const DEFAULT_CACHE_DIR = "cache/";
   const NO_LIFETIME_FILE_STRING = "no_lifetime";
 
   /**
@@ -38,10 +38,6 @@ class Cache
    */
   public function __construct(string $storePath, array &$cacheTokenArray, $cacheLifetime)
   {
-    // TODO make it possible to define custom cache directory.
-    //    $cacheDir = "";
-    //    $this->setCacheDir($cacheDir);
-
     $this->setCachePath($storePath);
 
     $this->setTokenArray($cacheTokenArray);
@@ -307,6 +303,6 @@ class Cache
    */
   private function getCacheDir(): string
   {
-    return (!empty($this->cacheDir)) ? $this->cacheDir : self::DEFAULT_CACHE_DIR;
+    return (!empty($this->cacheDir)) ? $this->cacheDir : Engine::CACHE_DIRECTORY;
   }
 }
