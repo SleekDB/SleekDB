@@ -3,7 +3,6 @@
 
 namespace SleekDB\Classes;
 
-
 use SleekDB\Exceptions\InvalidArgumentException;
 
 /**

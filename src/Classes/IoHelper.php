@@ -4,8 +4,8 @@ namespace SleekDB\Classes;
 
 use Closure;
 use Exception;
-use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
+use RecursiveDirectoryIterator;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Exceptions\JsonException;
 

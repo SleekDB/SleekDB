@@ -5,8 +5,8 @@ namespace SleekDB\Classes;
 
 
 use SleekDB\Cache;
-use SleekDB\Exceptions\IOException;
 use SleekDB\QueryBuilder;
+use SleekDB\Exceptions\IOException;
 
 /**
  * Class CacheHandler

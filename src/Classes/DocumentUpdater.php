@@ -3,11 +3,10 @@
 
 namespace SleekDB\Classes;
 
-
-use SleekDB\Exceptions\InvalidArgumentException;
-use SleekDB\Exceptions\IOException;
 use SleekDB\Query;
-use SleekDB\Store;
+use \SleekDB\Classes\Engine;
+use SleekDB\Exceptions\IOException;
+use SleekDB\Exceptions\InvalidArgumentException;
 
 /**
  * Class DocumentUpdater
@@ -153,6 +152,6 @@ class DocumentUpdater
    */
   private function getDataPath(): string
   {
-    return $this->storePath . Store::dataDirectory;
+    return $this->storePath . Engine::DATA_DIRECTORY;
   }
 }

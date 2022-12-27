@@ -120,7 +120,7 @@ final class StoreTest extends SleekDBTestCasePlain
     $testStore = new Store(self::STORE_NAME, self::DATA_DIR, $configuration);
     self::assertSame($configuration["auto_cache"], $testStore->_getUseCache());
     self::assertSame($configuration["cache_lifetime"], $testStore->_getDefaultCacheLifetime());
-    self::assertSame($configuration["primary_key"], $testStore->getPrimaryKey());
+    self::assertSame($configuration["primary_key"], $testStore->getEngine()->getPrimaryKey());
   }
 
   public function testCanNotApplyAutoCacheConfigNotBoolean()
@@ -167,21 +167,21 @@ final class StoreTest extends SleekDBTestCasePlain
   public function testCanChangeStore()
   {
     $testStore = new Store(self::STORE_NAME, self::DATA_DIR);
-    $oldStorePath = $testStore->getStorePath();
-    $oldDataPath = $testStore->getDatabasePath();
+    $oldStorePath = $testStore->getEngine()->getStoreDirectory();
+    $oldDataPath = $testStore->getEngine()->getDatabasePath();
     $testStore->changeStore(self::STORE_NAME . "2", self::DATA_DIR);
-    self::assertNotSame($oldStorePath, $testStore->getStorePath());
-    self::assertSame($oldDataPath, $testStore->getDatabasePath());
+    self::assertNotSame($oldStorePath, $testStore->getEngine()->getStoreDirectory());
+    self::assertSame($oldDataPath, $testStore->getEngine()->getDatabasePath());
   }
 
   public function testCanChangeStoreWithEmptyDataDir()
   {
     $testStore = new Store(self::STORE_NAME, self::DATA_DIR);
-    $oldStorePath = $testStore->getStorePath();
-    $oldDataPath = $testStore->getDatabasePath();
+    $oldStorePath = $testStore->getEngine()->getStoreDirectory();
+    $oldDataPath = $testStore->getEngine()->getDatabasePath();
     $testStore->changeStore(self::STORE_NAME . "2");
-    self::assertNotSame($oldStorePath, $testStore->getStorePath());
-    self::assertSame($oldDataPath, $testStore->getDatabasePath());
+    self::assertNotSame($oldStorePath, $testStore->getEngine()->getStoreDirectory());
+    self::assertSame($oldDataPath, $testStore->getEngine()->getDatabasePath());
     $testStore->deleteStore();
   }
 

@@ -1,13 +1,11 @@
 <?php
 
-
 namespace SleekDB\Classes;
 
-
-use SleekDB\Exceptions\InvalidArgumentException;
 use DateTime;
 use Exception;
 use Throwable;
+use SleekDB\Exceptions\InvalidArgumentException;
 
 /**
  * Class ConditionsHandler

@@ -5,10 +5,10 @@ namespace SleekDB\Classes;
 
 
 use Closure;
-use SleekDB\Exceptions\InvalidArgumentException;
-use SleekDB\Exceptions\IOException;
-use SleekDB\QueryBuilder;
 use SleekDB\SleekDB;
+use SleekDB\QueryBuilder;
+use SleekDB\Exceptions\IOException;
+use SleekDB\Exceptions\InvalidArgumentException;
 
 /**
  * Class DocumentReducer
