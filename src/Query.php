@@ -4,9 +4,9 @@ namespace SleekDB;
 
 use SleekDB\Classes\CacheHandler;
 use SleekDB\Classes\DocumentFinder;
+use SleekDB\Exceptions\IOException;
 use SleekDB\Classes\DocumentUpdater;
 use SleekDB\Exceptions\InvalidArgumentException;
-use SleekDB\Exceptions\IOException;
 
 /**
  * Class Query
@@ -48,11 +48,12 @@ class Query
   public function __construct(QueryBuilder $queryBuilder)
   {
     $store = $queryBuilder->_getStore();
-    $primaryKey = $store->getPrimaryKey();
+    $primaryKey = $store->getEngine()->getPrimaryKey();
+    $storeDirectory = $store->getEngine()->getStoreDirectory();
 
-    $this->cacheHandler = new CacheHandler($store->getStorePath(), $queryBuilder);
-    $this->documentFinder = new DocumentFinder($store->getStorePath(), $queryBuilder->_getConditionProperties(), $primaryKey);
-    $this->documentUpdater = new DocumentUpdater($store->getStorePath(), $primaryKey);
+    $this->cacheHandler = new CacheHandler($storeDirectory, $queryBuilder);
+    $this->documentFinder = new DocumentFinder($storeDirectory, $queryBuilder->_getConditionProperties(), $primaryKey);
+    $this->documentUpdater = new DocumentUpdater($storeDirectory, $primaryKey);
   }
 
   /**
