@@ -3,8 +3,8 @@
 namespace SleekDB\Classes;
 
 use Exception;
-use \SleekDB\Cache;
-use \SleekDB\Classes\Engine;
+use SleekDB\Cache;
+use SleekDB\Classes\Engine;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Exceptions\JsonException;
 use SleekDB\Exceptions\IdNotAllowedException;
