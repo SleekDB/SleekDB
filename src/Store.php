@@ -33,6 +33,7 @@ class Store
   protected $databasePath = "";
   protected $useCache = true;
   protected $engineName = Engine::POLY;
+  // protected $engineName = Engine::MONO;
   protected $engine = null;
   protected $defaultCacheLifetime;
   protected $searchOptions = [
@@ -69,9 +70,21 @@ class Store
     $this->setConfiguration($configuration);
 
     // Engine should be based on config later.
-    $primaryKey = array_key_exists("primary_key", $configuration) ? $configuration["primary_key"] : null;
-    $folderPermissions = array_key_exists("folder_permissions", $configuration) ? $configuration["folder_permissions"] : 0777;
-    $this->engine = new MonoEngine($storeName, $databasePath, $primaryKey, $folderPermissions);
+    $primaryKey = array_key_exists("primary_key", $configuration)
+      ? $configuration["primary_key"]
+      : null;
+
+    $folderPermissions = array_key_exists("folder_permissions", $configuration)
+      ? $configuration["folder_permissions"]
+      : 0777;
+
+    $polyEngineDocSize = array_key_exists("document_size", $configuration)
+      ? $configuration["document_size"]
+      : null;
+
+    $this->engine = $this->engineName === Engine::POLY
+      ? new PolyEngine($storeName, $databasePath, $primaryKey, $folderPermissions, $polyEngineDocSize)
+      : new MonoEngine($storeName, $databasePath, $primaryKey, $folderPermissions);
   }
 
   /**
@@ -128,7 +141,9 @@ class Store
 
     $data = $this->writeNewDocumentToStore($data);
 
-    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
+    if ($this->getEngine() === Engine::MONO) {
+      $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
+    }
 
     return $data;
   }
@@ -156,7 +171,9 @@ class Store
       $results[] = $this->writeNewDocumentToStore($document);
     }
 
-    $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
+    if ($this->getEngine() === Engine::MONO) {
+      $this->createQueryBuilder()->getQuery()->getCache()->deleteAllWithNoLifetime();
+    }
     return $results;
   }
 
