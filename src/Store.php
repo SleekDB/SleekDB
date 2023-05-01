@@ -41,7 +41,7 @@ class Store
   protected $folderPermissions = 0777;
   protected $defaultCacheLifetime;
   protected $primaryKey = "_id";
-  protected $timeout = 120;
+  protected $timeout = false;
   protected $searchOptions = [
     "minLength" => 2,
     "scoreKey" => "searchScore",
