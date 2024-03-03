@@ -11,6 +11,7 @@ use SleekDB\Exceptions\JsonException;
 
 class PolyIoHelper extends IoHelper
 {
+
     public static function addRow(string $filePath, string $content, string $uniqueId, int $documentSize)
     {
 
@@ -24,7 +25,12 @@ class PolyIoHelper extends IoHelper
             throw new IOException('Unable to lock file');
         }
 
-        $preparedRow = $uniqueId . "|" . str_pad(trim($content), $documentSize) . PHP_EOL;
+        $rowPrefix = $uniqueId . "|";
+        $preparedRow = $rowPrefix . str_pad(trim($content), $documentSize) . PHP_EOL;
+
+        if (strlen($preparedRow) !== ($documentSize + strlen($rowPrefix) + 1)) {
+            throw new IOException('The provided document is more than the allowed document size of ' . $documentSize . ' bytes');
+        }
 
         // Write the row to the file
         fwrite($file, $preparedRow);
@@ -34,5 +40,17 @@ class PolyIoHelper extends IoHelper
 
         // Close the file
         fclose($file);
+    }
+
+    public static function updateRow()
+    {
+    }
+
+    public static function deleteRow()
+    {
+    }
+
+    public static function defragment()
+    {
     }
 }
