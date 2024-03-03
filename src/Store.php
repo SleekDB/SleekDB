@@ -13,18 +13,17 @@ use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Exceptions\InvalidConfigurationException;
 
 // To provide usage without composer, we need to require all files.
-if (false === class_exists("\Composer\Autoload\ClassLoader")) {
-  foreach (glob(__DIR__ . '/Exceptions/*.php') as $exception) {
-    require_once $exception;
-  }
-  foreach (glob(__DIR__ . '/Classes/*.php') as $traits) {
-    require_once $traits;
-  }
-  foreach (glob(__DIR__ . '/*.php') as $class) {
-    if (strpos($class, 'Store.php') !== false) {
-      continue;
+if (!class_exists("\Composer\Autoload\ClassLoader")) {
+  $files = array_merge(
+    glob(__DIR__ . '/Exceptions/*.php'),
+    glob(__DIR__ . '/Classes/*.php'),
+    glob(__DIR__ . '/*.php')
+  );
+
+  foreach ($files as $file) {
+    if (basename($file) !== 'Store.php') {
+      require_once $file;
     }
-    require_once $class;
   }
 }
 
@@ -32,8 +31,8 @@ class Store
 {
   protected $databasePath = "";
   protected $useCache = true;
-  protected $engineName = Engine::POLY;
-  // protected $engineName = Engine::MONO;
+  // protected $engineName = Engine::POLY;
+  protected $engineName = Engine::MONO;
   protected $engine = null;
   protected $defaultCacheLifetime;
   protected $searchOptions = [
