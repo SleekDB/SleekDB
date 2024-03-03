@@ -18,6 +18,20 @@ SleekDB is a NoSQL database crafted in PHP, relying on plain JSON files for data
 - **Actively Maintained:** Developed by [@rakibtg](https://twitter.com/rakibtg) and Timucin [GoodSoft](https://www.goodsoft.de) as an active contributor, ensuring quality and ongoing enhancements.
 - **Well Documented:** Comprehensive [documentation](https://sleekdb.github.io/) with detailed examples.
 
+## Tests
+
+To run tests you need to install the dev dependencies using composer:
+
+```bash
+composer install
+```
+
+Then you can run the tests using the following command:
+
+```bash
+composer run test
+```
+
 ## Support SleekDB
 
 Loving SleekDB? Consider sponsoring the project to help it grow and improve! Your support will contribute to the development of new features, maintenance, and better documentation. Visit our [GitHub sponsors page](https://github.com/sponsors/sleekdb) to show your support. Every contribution makes a difference!
