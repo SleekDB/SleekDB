@@ -2,16 +2,37 @@
 
 namespace SleekDB\Tests;
 
-use SleekDB\Exceptions\InvalidArgumentException;
+use PHPUnit\Framework\Attributes\Before;
+use PHPUnit\Framework\Attributes\CoversClass;
+use SleekDB\Cache;
+use SleekDB\Classes\CacheHandler;
+use SleekDB\Classes\ConditionsHandler;
+use SleekDB\Classes\DocumentFinder;
+use SleekDB\Classes\DocumentReducer;
+use SleekDB\Classes\DocumentUpdater;
+use SleekDB\Classes\IoHelper;
+use SleekDB\Classes\NestedHelper;
+use SleekDB\Query;
+use SleekDB\QueryBuilder;
+use SleekDB\Store;
 use SleekDB\Tests\TestCases\SleekDBTestCase;
 
+#[CoversClass(Cache::class)]
+#[CoversClass(CacheHandler::class)]
+#[CoversClass(ConditionsHandler::class)]
+#[CoversClass(DocumentFinder::class)]
+#[CoversClass(DocumentReducer::class)]
+#[CoversClass(DocumentUpdater::class)]
+#[CoversClass(Query::class)]
+#[CoversClass(QueryBuilder::class)]
+#[CoversClass(Store::class)]
+#[CoversClass(IoHelper::class)]
+#[CoversClass(NestedHelper::class)]
 final class SelectTest extends SleekDBTestCase
 {
 
-  /**
-   * @before
-   */
-  public function fillStores(){
+  #[Before] public function fillStores(): void
+  {
     foreach ($this->stores as $storeName => $store){
       $store->insertMany(self::DATABASE_DATA[$storeName]);
     }

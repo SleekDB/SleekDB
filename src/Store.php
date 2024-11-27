@@ -11,6 +11,7 @@ use SleekDB\Exceptions\InvalidConfigurationException;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Exceptions\JsonException;
 
+// @codeCoverageIgnoreStart
 // To provide usage without composer, we need to require all files.
 if(false === class_exists("\Composer\Autoload\ClassLoader")) {
     foreach (glob(__DIR__ . '/Exceptions/*.php') as $exception) {
@@ -26,6 +27,7 @@ if(false === class_exists("\Composer\Autoload\ClassLoader")) {
         require_once $class;
     }
 }
+// @codeCoverageIgnoreEnd
 
 class Store
 {

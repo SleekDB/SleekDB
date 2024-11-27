@@ -2,10 +2,34 @@
 
 namespace SleekDB\Tests;
 
+use PHPUnit\Framework\Attributes\CoversClass;
+use SleekDB\Cache;
+use SleekDB\Classes\CacheHandler;
+use SleekDB\Classes\ConditionsHandler;
+use SleekDB\Classes\DocumentFinder;
+use SleekDB\Classes\DocumentReducer;
+use SleekDB\Classes\DocumentUpdater;
+use SleekDB\Classes\IoHelper;
+use SleekDB\Classes\NestedHelper;
 use SleekDB\Exceptions\IdNotAllowedException;
 use SleekDB\Exceptions\InvalidArgumentException;
+use SleekDB\Query;
+use SleekDB\QueryBuilder;
+use SleekDB\Store;
 use SleekDB\Tests\TestCases\SleekDBTestCase;
+use TypeError;
 
+#[CoversClass(Cache::class)]
+#[CoversClass(CacheHandler::class)]
+#[CoversClass(ConditionsHandler::class)]
+#[CoversClass(DocumentFinder::class)]
+#[CoversClass(DocumentReducer::class)]
+#[CoversClass(DocumentUpdater::class)]
+#[CoversClass(Query::class)]
+#[CoversClass(QueryBuilder::class)]
+#[CoversClass(Store::class)]
+#[CoversClass(IoHelper::class)]
+#[CoversClass(NestedHelper::class)]
 final class InsertingTest extends SleekDBTestCase
 {
 
@@ -42,7 +66,7 @@ final class InsertingTest extends SleekDBTestCase
 
     $userStore = $this->stores["users"];
 
-    $this->expectException(\TypeError::class);
+    $this->expectException(TypeError::class);
     $usersData = "This is a String";
     $userStore->insert($usersData);
   }
@@ -60,7 +84,7 @@ final class InsertingTest extends SleekDBTestCase
 
     $userStore = $this->stores["users"];
 
-    $this->expectException(\TypeError::class);
+    $this->expectException(TypeError::class);
     $usersData = "This is a String";
     $userStore->insertMany($usersData);
   }

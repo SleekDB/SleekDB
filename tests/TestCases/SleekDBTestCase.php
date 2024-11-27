@@ -2,6 +2,8 @@
 
 namespace SleekDB\Tests\TestCases;
 
+use PHPUnit\Framework\Attributes\After;
+use PHPUnit\Framework\Attributes\Before;
 use SleekDB\Store;
 
 class SleekDBTestCase extends SleekDBTestCasePlain
@@ -12,20 +14,16 @@ class SleekDBTestCase extends SleekDBTestCasePlain
    */
   protected $stores = [];
 
-  /**
-   * @before
-   */
-  public function createStore(){
+  #[Before] public function createStore(): void
+  {
     foreach (self::DATABASE_DATA as $storeName => $databaseData){
       $this->stores[$storeName] = new Store($storeName, self::DATA_DIR);
     }
   }
 
 
-  /**
-   * @after
-   */
-  public function deleteStore(){
+  #[After] public function deleteStore(): void
+  {
     foreach ($this->stores as $store){
       $store->deleteStore();
     }

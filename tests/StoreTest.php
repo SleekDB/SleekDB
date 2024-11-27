@@ -2,21 +2,40 @@
 
 namespace SleekDB\Tests;
 
+use PHPUnit\Framework\Attributes\After;
+use PHPUnit\Framework\Attributes\CoversClass;
+use SleekDB\Cache;
+use SleekDB\Classes\CacheHandler;
+use SleekDB\Classes\ConditionsHandler;
+use SleekDB\Classes\DocumentFinder;
+use SleekDB\Classes\DocumentReducer;
+use SleekDB\Classes\DocumentUpdater;
+use SleekDB\Classes\IoHelper;
 use SleekDB\Exceptions\InvalidConfigurationException;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Exceptions\JsonException;
+use SleekDB\Query;
+use SleekDB\QueryBuilder;
 use SleekDB\Store;
 use SleekDB\Exceptions\InvalidArgumentException;
 use SleekDB\Tests\TestCases\SleekDBTestCasePlain;
 
 
+#[CoversClass(Cache::class)]
+#[CoversClass(CacheHandler::class)]
+#[CoversClass(ConditionsHandler::class)]
+#[CoversClass(DocumentFinder::class)]
+#[CoversClass(DocumentReducer::class)]
+#[CoversClass(DocumentUpdater::class)]
+#[CoversClass(Query::class)]
+#[CoversClass(QueryBuilder::class)]
+#[CoversClass(Store::class)]
+#[CoversClass(IoHelper::class)]
 final class StoreTest extends SleekDBTestCasePlain
 {
 
-  /**
-   * @after
-   */
-  public function deleteDefaultStore(){
+  #[After] public function deleteDefaultStore(): void
+  {
     $store = new Store(self::STORE_NAME, self::DATA_DIR);
     $store->deleteStore();
   }
@@ -48,7 +67,7 @@ final class StoreTest extends SleekDBTestCasePlain
 
     $store->deleteStore();
 
-    self::assertDirectoryNotExists($storePath);
+    self::assertDirectoryDoesNotExist($storePath);
   }
 
   public function testCannotCreateStoreWithEmptyStoreName(){
