@@ -93,14 +93,15 @@ class Store
    * @throws InvalidArgumentException
    * @throws InvalidConfigurationException
    */
-  public function changeStore(string $storeName, string $databasePath = null, array $configuration = []): Store
-  {
-    if(empty($databasePath)){
-      $databasePath = $this->getDatabasePath();
+public function changeStore(string $storeName, ?string $databasePath = null, array $configuration = []): Store
+{
+    if (empty($databasePath)) {
+        $databasePath = $this->getDatabasePath();
     }
     $this->__construct($storeName, $databasePath, $configuration);
     return $this;
-  }
+}
+
 
   /**
    * @return string
@@ -219,20 +220,21 @@ class Store
    * @throws IOException
    * @throws InvalidArgumentException
    */
-  public function findAll(array $orderBy = null, int $limit = null, int $offset = null): array
-  {
+public function findAll(?array $orderBy = null, ?int $limit = null, ?int $offset = null): array
+{
     $qb = $this->createQueryBuilder();
-    if(!is_null($orderBy)){
-      $qb->orderBy($orderBy);
+    if (!is_null($orderBy)) {
+        $qb->orderBy($orderBy);
     }
-    if(!is_null($limit)){
-      $qb->limit($limit);
+    if (!is_null($limit)) {
+        $qb->limit($limit);
     }
-    if(!is_null($offset)){
-      $qb->skip($offset);
+    if (!is_null($offset)) {
+        $qb->skip($offset);
     }
     return $qb->getQuery()->fetch();
-  }
+}
+
 
   /**
    * Retrieve one document by its primary key. Very fast because it finds the document by its file path.
@@ -265,24 +267,25 @@ class Store
    * @throws IOException
    * @throws InvalidArgumentException
    */
-  public function findBy(array $criteria, array $orderBy = null, int $limit = null, int $offset = null): array
-  {
+public function findBy(array $criteria, ?array $orderBy = null, ?int $limit = null, ?int $offset = null): array
+{
     $qb = $this->createQueryBuilder();
 
     $qb->where($criteria);
 
-    if($orderBy !== null) {
-      $qb->orderBy($orderBy);
+    if ($orderBy !== null) {
+        $qb->orderBy($orderBy);
     }
-    if($limit !== null) {
-      $qb->limit($limit);
+    if ($limit !== null) {
+        $qb->limit($limit);
     }
-    if($offset !== null) {
-      $qb->skip($offset);
+    if ($offset !== null) {
+        $qb->skip($offset);
     }
 
     return $qb->getQuery()->fetch();
-  }
+}
+
 
   /**
    * Retrieve one document.
@@ -582,27 +585,27 @@ class Store
    * @throws IOException
    * @throws InvalidArgumentException
    */
-  public function search(array $fields, string $query, array $orderBy = null, int $limit = null, int $offset = null): array
-  {
-
+public function search(array $fields, string $query, ?array $orderBy = null, ?int $limit = null, ?int $offset = null): array
+{
     $qb = $this->createQueryBuilder();
 
     $qb->search($fields, $query);
 
-    if($orderBy !== null) {
-      $qb->orderBy($orderBy);
+    if ($orderBy !== null) {
+        $qb->orderBy($orderBy);
     }
 
-    if($limit !== null) {
-      $qb->limit($limit);
+    if ($limit !== null) {
+        $qb->limit($limit);
     }
 
-    if($offset !== null) {
-      $qb->skip($offset);
+    if ($offset !== null) {
+        $qb->skip($offset);
     }
 
     return $qb->getQuery()->fetch();
-  }
+}
+
 
   /**
    * Get the name of the field used as the primary key.

@@ -330,15 +330,16 @@ class QueryBuilder
    * @return QueryBuilder
    * @throws InvalidArgumentException
    */
-  public function useCache(int $lifetime = null): QueryBuilder
-  {
+public function useCache(?int $lifetime = null): QueryBuilder
+{
     $this->useCache = true;
-    if((!is_int($lifetime) || $lifetime < 0) && !is_null($lifetime)){
-      throw new InvalidArgumentException("lifetime has to be int >= 0 or null");
+    if ((!is_int($lifetime) || $lifetime < 0) && !is_null($lifetime)) {
+        throw new InvalidArgumentException("lifetime has to be int >= 0 or null");
     }
     $this->cacheLifetime = $lifetime;
     return $this;
-  }
+}
+
 
   /**
    * Disable cache for the query.
@@ -374,15 +375,16 @@ class QueryBuilder
    * @param bool $allowEmpty
    * @return QueryBuilder
    */
-  public function groupBy(array $groupByFields, string $countKeyName = null, bool $allowEmpty = false): QueryBuilder
-  {
+public function groupBy(array $groupByFields, ?string $countKeyName = null, bool $allowEmpty = false): QueryBuilder
+{
     $this->groupBy = [
-      "groupByFields" => $groupByFields,
-      "countKeyName" => $countKeyName,
-      "allowEmpty" => $allowEmpty
+        "groupByFields" => $groupByFields,
+        "countKeyName" => $countKeyName,
+        "allowEmpty" => $allowEmpty
     ];
     return $this;
-  }
+}
+
 
   /**
    * Filter result data of groupBy
