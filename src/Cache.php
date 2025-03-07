@@ -20,7 +20,7 @@ class Cache
 
   /**
    * Lifetime in seconds or deletion with deleteAll
-   * @var int|null
+   * @var int
    */
   protected $lifetime;
 
