@@ -12,19 +12,19 @@ use SleekDB\Exceptions\IOException;
 use SleekDB\Exceptions\JsonException;
 
 // To provide usage without composer, we need to require all files.
-if(false === class_exists("\Composer\Autoload\ClassLoader")) {
-    foreach (glob(__DIR__ . '/Exceptions/*.php') as $exception) {
-        require_once $exception;
+if (false === class_exists("\Composer\Autoload\ClassLoader")) {
+  foreach (glob(__DIR__ . '/Exceptions/*.php') as $exception) {
+    require_once $exception;
+  }
+  foreach (glob(__DIR__ . '/Classes/*.php') as $traits) {
+    require_once $traits;
+  }
+  foreach (glob(__DIR__ . '/*.php') as $class) {
+    if (strpos($class, 'SleekDB.php') !== false || strpos($class, 'Store.php') !== false) {
+      continue;
     }
-    foreach (glob(__DIR__ . '/Classes/*.php') as $traits) {
-      require_once $traits;
-    }
-    foreach (glob(__DIR__ . '/*.php') as $class) {
-        if (strpos($class, 'SleekDB.php') !== false || strpos($class, 'Store.php') !== false) {
-          continue;
-        }
-        require_once $class;
-    }
+    require_once $class;
+  }
 }
 
 class Store
@@ -86,16 +86,16 @@ class Store
   /**
    * Change the destination of the store object.
    * @param string $storeName
-   * @param string|null $databasePath If empty, previous database path will be used.
+   * @param string $databasePath If empty, previous database path will be used.
    * @param array $configuration
    * @return Store
    * @throws IOException
    * @throws InvalidArgumentException
    * @throws InvalidConfigurationException
    */
-  public function changeStore(string $storeName, string $databasePath = null, array $configuration = []): Store
+  public function changeStore(string $storeName, string $databasePath = "", array $configuration = []): Store
   {
-    if(empty($databasePath)){
+    if (empty($databasePath)) {
       $databasePath = $this->getDatabasePath();
     }
     $this->__construct($storeName, $databasePath, $configuration);
@@ -212,23 +212,23 @@ class Store
 
   /**
    * Retrieve all documents.
-   * @param array|null $orderBy array($fieldName => $order). $order can be "asc" or "desc"
-   * @param int|null $limit the amount of data record to limit
-   * @param int|null $offset the amount of data record to skip
+   * @param array $orderBy array($fieldName => $order). $order can be "asc" or "desc"
+   * @param int $limit the amount of data record to limit
+   * @param int $offset the amount of data record to skip
    * @return array
    * @throws IOException
    * @throws InvalidArgumentException
    */
-  public function findAll(array $orderBy = null, int $limit = null, int $offset = null): array
+  public function findAll(array $orderBy = [], int $limit = 0, int $offset = 0): array
   {
     $qb = $this->createQueryBuilder();
-    if(!is_null($orderBy)){
+    if (isset($orderBy)) {
       $qb->orderBy($orderBy);
     }
-    if(!is_null($limit)){
+    if ($limit) {
       $qb->limit($limit);
     }
-    if(!is_null($offset)){
+    if ($offset) {
       $qb->skip($offset);
     }
     return $qb->getQuery()->fetch();
@@ -240,15 +240,16 @@ class Store
    * @return array|null
    * @throws InvalidArgumentException
    */
-  public function findById($id){
+  public function findById($id)
+  {
 
     $id = $this->checkAndStripId($id);
 
     $filePath = $this->getDataPath() . "$id.json";
 
-    try{
+    try {
       $content = IoHelper::getFileContent($filePath);
-    } catch (Exception $exception){
+    } catch (Exception $exception) {
       return null;
     }
 
@@ -265,19 +266,19 @@ class Store
    * @throws IOException
    * @throws InvalidArgumentException
    */
-  public function findBy(array $criteria, array $orderBy = null, int $limit = null, int $offset = null): array
+  public function findBy(array $criteria, array $orderBy = [], int $limit = 0, int $offset = 0): array
   {
     $qb = $this->createQueryBuilder();
 
     $qb->where($criteria);
 
-    if($orderBy !== null) {
+    if (!empty($orderBy)) {
       $qb->orderBy($orderBy);
     }
-    if($limit !== null) {
+    if ($limit) {
       $qb->limit($limit);
     }
-    if($offset !== null) {
+    if ($offset) {
       $qb->skip($offset);
     }
 
@@ -299,8 +300,7 @@ class Store
 
     $result = $qb->getQuery()->first();
 
-    return (!empty($result))? $result : null;
-
+    return (!empty($result)) ? $result : null;
   }
 
   /**
@@ -316,23 +316,23 @@ class Store
   {
     $primaryKey = $this->getPrimaryKey();
 
-    if(empty($data)) {
+    if (empty($data)) {
       throw new InvalidArgumentException("No document to update or insert.");
     }
 
-//    // we can use this check to determine if multiple documents are given
-//    // because documents have to have at least the primary key.
-//    if(array_keys($data) !== range(0, (count($data) - 1))){
-//      $data = [ $data ];
-//    }
+    //    // we can use this check to determine if multiple documents are given
+    //    // because documents have to have at least the primary key.
+    //    if(array_keys($data) !== range(0, (count($data) - 1))){
+    //      $data = [ $data ];
+    //    }
 
-    if(!array_key_exists($primaryKey, $data)) {
-//        $documentString = var_export($document, true);
-//        throw new InvalidArgumentException("Documents have to have the primary key \"$primaryKey\". Got data: $documentString");
+    if (!array_key_exists($primaryKey, $data)) {
+      //        $documentString = var_export($document, true);
+      //        throw new InvalidArgumentException("Documents have to have the primary key \"$primaryKey\". Got data: $documentString");
       $data[$primaryKey] = $this->increaseCounterAndGetNextId();
     } else {
       $data[$primaryKey] = $this->checkAndStripId($data[$primaryKey]);
-      if($autoGenerateIdOnInsert && $this->findById($data[$primaryKey]) === null){
+      if ($autoGenerateIdOnInsert && $this->findById($data[$primaryKey]) === null) {
         $data[$primaryKey] = $this->increaseCounterAndGetNextId();
       }
     }
@@ -361,28 +361,28 @@ class Store
   {
     $primaryKey = $this->getPrimaryKey();
 
-    if(empty($data)) {
+    if (empty($data)) {
       throw new InvalidArgumentException("No documents to update or insert.");
     }
 
-//    // we can use this check to determine if multiple documents are given
-//    // because documents have to have at least the primary key.
-//    if(array_keys($data) !== range(0, (count($data) - 1))){
-//      $data = [ $data ];
-//    }
+    //    // we can use this check to determine if multiple documents are given
+    //    // because documents have to have at least the primary key.
+    //    if(array_keys($data) !== range(0, (count($data) - 1))){
+    //      $data = [ $data ];
+    //    }
 
     // Check if all documents have the primary key before updating or inserting any
-    foreach ($data as $key => $document){
-      if(!is_array($document)) {
+    foreach ($data as $key => $document) {
+      if (!is_array($document)) {
         throw new InvalidArgumentException('Documents have to be an arrays.');
       }
-      if(!array_key_exists($primaryKey, $document)) {
-//        $documentString = var_export($document, true);
-//        throw new InvalidArgumentException("Documents have to have the primary key \"$primaryKey\". Got data: $documentString");
+      if (!array_key_exists($primaryKey, $document)) {
+        //        $documentString = var_export($document, true);
+        //        throw new InvalidArgumentException("Documents have to have the primary key \"$primaryKey\". Got data: $documentString");
         $document[$primaryKey] = $this->increaseCounterAndGetNextId();
       } else {
         $document[$primaryKey] = $this->checkAndStripId($document[$primaryKey]);
-        if($autoGenerateIdOnInsert && $this->findById($document[$primaryKey]) === null){
+        if ($autoGenerateIdOnInsert && $this->findById($document[$primaryKey]) === null) {
           $document[$primaryKey] = $this->increaseCounterAndGetNextId();
         }
       }
@@ -414,22 +414,22 @@ class Store
   {
     $primaryKey = $this->getPrimaryKey();
 
-    if(empty($updatable)) {
+    if (empty($updatable)) {
       throw new InvalidArgumentException("No documents to update.");
     }
 
     // we can use this check to determine if multiple documents are given
     // because documents have to have at least the primary key.
-    if(array_keys($updatable) !== range(0, (count($updatable) - 1))){
-      $updatable = [ $updatable ];
+    if (array_keys($updatable) !== range(0, (count($updatable) - 1))) {
+      $updatable = [$updatable];
     }
 
     // Check if all documents exist and have the primary key before updating any
-    foreach ($updatable as $key => $document){
-      if(!is_array($document)) {
+    foreach ($updatable as $key => $document) {
+      if (!is_array($document)) {
         throw new InvalidArgumentException('Documents have to be an arrays.');
       }
-      if(!array_key_exists($primaryKey, $document)) {
+      if (!array_key_exists($primaryKey, $document)) {
         throw new InvalidArgumentException("Documents have to have the primary key \"$primaryKey\".");
       }
 
@@ -474,20 +474,20 @@ class Store
 
     $primaryKey = $this->getPrimaryKey();
 
-    if(array_key_exists($primaryKey, $updatable)) {
+    if (array_key_exists($primaryKey, $updatable)) {
       throw new InvalidArgumentException("You can not update the primary key \"$primaryKey\" of documents.");
     }
 
-    if(!file_exists($filePath)){
+    if (!file_exists($filePath)) {
       return false;
     }
 
-    $content = IoHelper::updateFileContent($filePath, function($content) use ($filePath, $updatable){
+    $content = IoHelper::updateFileContent($filePath, function ($content) use ($filePath, $updatable) {
       $content = @json_decode($content, true);
-      if(!is_array($content)){
+      if (!is_array($content)) {
         throw new JsonException("Could not decode content of \"$filePath\" with json_decode.");
       }
-      foreach ($updatable as $key => $value){
+      foreach ($updatable as $key => $value) {
         NestedHelper::updateNestedValue($key, $content, $value);
       }
       return json_encode($content);
@@ -506,7 +506,8 @@ class Store
    * @throws IOException
    * @throws InvalidArgumentException
    */
-  public function deleteBy(array $criteria, int $returnOption = Query::DELETE_RETURN_BOOL){
+  public function deleteBy(array $criteria, int $returnOption = Query::DELETE_RETURN_BOOL)
+  {
 
     $query = $this->createQueryBuilder()->where($criteria)->getQuery();
 
@@ -548,19 +549,19 @@ class Store
     $filePath = $this->getDataPath() . "$id.json";
     $primaryKey = $this->getPrimaryKey();
 
-    if(in_array($primaryKey, $fieldsToRemove, false)) {
+    if (in_array($primaryKey, $fieldsToRemove, false)) {
       throw new InvalidArgumentException("You can not remove the primary key \"$primaryKey\" of documents.");
     }
-    if(!file_exists($filePath)){
+    if (!file_exists($filePath)) {
       return false;
     }
 
-    $content = IoHelper::updateFileContent($filePath, function($content) use ($filePath, $fieldsToRemove){
+    $content = IoHelper::updateFileContent($filePath, function ($content) use ($filePath, $fieldsToRemove) {
       $content = @json_decode($content, true);
-      if(!is_array($content)){
+      if (!is_array($content)) {
         throw new JsonException("Could not decode content of \"$filePath\" with json_decode.");
       }
-      foreach ($fieldsToRemove as $fieldToRemove){
+      foreach ($fieldsToRemove as $fieldToRemove) {
         NestedHelper::removeNestedField($content, $fieldToRemove);
       }
       return $content;
@@ -575,29 +576,29 @@ class Store
    * Do a fulltext like search against one or multiple fields.
    * @param array $fields
    * @param string $query
-   * @param array|null $orderBy
-   * @param int|null $limit
-   * @param int|null $offset
+   * @param array $orderBy
+   * @param int $limit
+   * @param int $offset
    * @return array
    * @throws IOException
    * @throws InvalidArgumentException
    */
-  public function search(array $fields, string $query, array $orderBy = null, int $limit = null, int $offset = null): array
+  public function search(array $fields, string $query, array $orderBy = [], int $limit = 0, int $offset = 0): array
   {
 
     $qb = $this->createQueryBuilder();
 
     $qb->search($fields, $query);
 
-    if($orderBy !== null) {
+    if (!empty($orderBy)) {
       $qb->orderBy($orderBy);
     }
 
-    if($limit !== null) {
+    if ($offset) {
       $qb->limit($limit);
     }
 
-    if($offset !== null) {
+    if ($offset) {
       $qb->skip($offset);
     }
 
@@ -620,18 +621,18 @@ class Store
    */
   public function count(): int
   {
-    if($this->_getUseCache() === true){
+    if ($this->_getUseCache() === true) {
       $cacheTokenArray = ["count" => true];
       $cache = new Cache($this->getStorePath(), $cacheTokenArray, null);
       $cacheValue = $cache->get();
-      if(is_array($cacheValue) && array_key_exists("count", $cacheValue)){
+      if (is_array($cacheValue) && array_key_exists("count", $cacheValue)) {
         return $cacheValue["count"];
       }
     }
     $value = [
       "count" => IoHelper::countFolderContent($this->getDataPath())
     ];
-    if(isset($cache)) {
+    if (isset($cache)) {
       $cache->set($value);
     }
     return $value["count"];
@@ -705,7 +706,7 @@ class Store
 
     // Create the store counter file.
     $counterFile = $storePath . '_cnt.sdb';
-    if(!file_exists($counterFile)){
+    if (!file_exists($counterFile)) {
       IoHelper::writeContentToFile($counterFile, '0');
     }
   }
@@ -716,18 +717,18 @@ class Store
    */
   private function setConfiguration(array $configuration)
   {
-    if(array_key_exists("auto_cache", $configuration)){
+    if (array_key_exists("auto_cache", $configuration)) {
       $autoCache = $configuration["auto_cache"];
-      if(!is_bool($configuration["auto_cache"])){
+      if (!is_bool($configuration["auto_cache"])) {
         throw new InvalidConfigurationException("auto_cache has to be boolean");
       }
 
       $this->useCache = $autoCache;
     }
 
-    if(array_key_exists("cache_lifetime", $configuration)){
+    if (array_key_exists("cache_lifetime", $configuration)) {
       $defaultCacheLifetime = $configuration["cache_lifetime"];
-      if(!is_int($defaultCacheLifetime) && !is_null($defaultCacheLifetime)){
+      if (!is_int($defaultCacheLifetime) && !is_null($defaultCacheLifetime)) {
         throw new InvalidConfigurationException("cache_lifetime has to be null or int");
       }
 
@@ -737,56 +738,56 @@ class Store
     // TODO remove timeout on major update
     // Set timeout.
     if (array_key_exists("timeout", $configuration)) {
-      if ((!is_int($configuration['timeout']) || $configuration['timeout'] <= 0) && !($configuration['timeout'] === false)){
+      if ((!is_int($configuration['timeout']) || $configuration['timeout'] <= 0) && !($configuration['timeout'] === false)) {
         throw new InvalidConfigurationException("timeout has to be an int > 0 or false");
       }
       $this->timeout = $configuration["timeout"];
     }
-    if($this->timeout !== false){
+    if ($this->timeout !== false) {
       $message = 'The "timeout" configuration is deprecated and will be removed with the next major update.' .
         ' Set the "timeout" configuration to false and if needed use the set_timeout_limit() function in your own code.';
       trigger_error($message, E_USER_DEPRECATED);
       set_time_limit($this->timeout);
     }
 
-    if(array_key_exists("primary_key", $configuration)){
+    if (array_key_exists("primary_key", $configuration)) {
       $primaryKey = $configuration["primary_key"];
-      if(!is_string($primaryKey)){
+      if (!is_string($primaryKey)) {
         throw new InvalidConfigurationException("primary key has to be a string");
       }
       $this->primaryKey = $primaryKey;
     }
 
-    if(array_key_exists("search", $configuration)){
+    if (array_key_exists("search", $configuration)) {
       $searchConfig = $configuration["search"];
 
-      if(array_key_exists("min_length", $searchConfig)){
+      if (array_key_exists("min_length", $searchConfig)) {
         $searchMinLength = $searchConfig["min_length"];
-        if(!is_int($searchMinLength) || $searchMinLength <= 0){
+        if (!is_int($searchMinLength) || $searchMinLength <= 0) {
           throw new InvalidConfigurationException("min length for searching has to be an int >= 0");
         }
         $this->searchOptions["minLength"] = $searchMinLength;
       }
 
-      if(array_key_exists("mode", $searchConfig)){
+      if (array_key_exists("mode", $searchConfig)) {
         $searchMode = $searchConfig["mode"];
-        if(!is_string($searchMode) || !in_array(strtolower(trim($searchMode)), ["and", "or"])){
+        if (!is_string($searchMode) || !in_array(strtolower(trim($searchMode)), ["and", "or"])) {
           throw new InvalidConfigurationException("search mode can just be \"and\" or \"or\"");
         }
         $this->searchOptions["mode"] = strtolower(trim($searchMode));
       }
 
-      if(array_key_exists("score_key", $searchConfig)){
+      if (array_key_exists("score_key", $searchConfig)) {
         $searchScoreKey = $searchConfig["score_key"];
-        if((!is_string($searchScoreKey) && !is_null($searchScoreKey))){
+        if ((!is_string($searchScoreKey) && !is_null($searchScoreKey))) {
           throw new InvalidConfigurationException("search score key for search has to be a not empty string or null");
         }
         $this->searchOptions["scoreKey"] = $searchScoreKey;
       }
 
-      if(array_key_exists("algorithm", $searchConfig)){
+      if (array_key_exists("algorithm", $searchConfig)) {
         $searchAlgorithm = $searchConfig["algorithm"];
-        if(!in_array($searchAlgorithm, Query::SEARCH_ALGORITHM, true)){
+        if (!in_array($searchAlgorithm, Query::SEARCH_ALGORITHM, true)) {
           $searchAlgorithm = implode(', ', $searchAlgorithm);
           throw new InvalidConfigurationException("The search algorithm has to be one of the following integer values ($searchAlgorithm)");
         }
@@ -794,9 +795,9 @@ class Store
       }
     }
 
-    if ( array_key_exists("folder_permissions", $configuration) ) {
+    if (array_key_exists("folder_permissions", $configuration)) {
       $folderPermissions = $configuration["folder_permissions"];
-      if ( !is_int($folderPermissions) ) {
+      if (!is_int($folderPermissions)) {
         throw new InvalidConfigurationException("folder_permissions has to be an integer (e.g. 0777)");
       }
       $this->folderPermissions = $folderPermissions;
@@ -830,7 +831,7 @@ class Store
         please provide a valid PHP associative array');
     }
     // Define the store path
-    $filePath = $this->getDataPath()."$id.json";
+    $filePath = $this->getDataPath() . "$id.json";
 
     IoHelper::writeContentToFile($filePath, $storableJSON);
 
@@ -853,10 +854,10 @@ class Store
 
     $dataPath = $this->getDataPath();
 
-    return (int) IoHelper::updateFileContent($counterPath, function ($counter) use ($dataPath){
+    return (int) IoHelper::updateFileContent($counterPath, function ($counter) use ($dataPath) {
       $newCounter = ((int) $counter) + 1;
 
-      while(file_exists($dataPath."$newCounter.json") === true){
+      while (file_exists($dataPath . "$newCounter.json") === true) {
         $newCounter++;
       }
       return (string)$newCounter;
@@ -871,15 +872,15 @@ class Store
    */
   private function checkAndStripId($id): int
   {
-    if(!is_string($id) && !is_int($id)){
+    if (!is_string($id) && !is_int($id)) {
       throw new InvalidArgumentException("The id of the document has to be an integer or string");
     }
 
-    if(is_string($id)){
+    if (is_string($id)) {
       $id = IoHelper::secureStringForFileAccess($id);
     }
 
-    if(!is_numeric($id)){
+    if (!is_numeric($id)) {
       throw new InvalidArgumentException("The id of the document has to be numeric");
     }
 
@@ -893,5 +894,4 @@ class Store
   {
     return $this->getStorePath() . self::dataDirectory;
   }
-
 }
