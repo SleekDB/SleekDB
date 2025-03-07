@@ -39,7 +39,7 @@ class Store
 
   protected $useCache = true;
   protected $folderPermissions = 0777;
-  protected $defaultCacheLifetime;
+  protected $defaultCacheLifetime = -1;
   protected $primaryKey = "_id";
   protected $timeout = 120;
   protected $searchOptions = [
@@ -728,8 +728,8 @@ class Store
 
     if (array_key_exists("cache_lifetime", $configuration)) {
       $defaultCacheLifetime = $configuration["cache_lifetime"];
-      if (!is_int($defaultCacheLifetime) && !is_null($defaultCacheLifetime)) {
-        throw new InvalidConfigurationException("cache_lifetime has to be null or int");
+      if (!is_int($defaultCacheLifetime) || $defaultCacheLifetime < -1) {
+        throw new InvalidConfigurationException("cache_lifetime has to be -1 or int");
       }
 
       $this->defaultCacheLifetime = $defaultCacheLifetime;
