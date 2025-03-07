@@ -330,11 +330,11 @@ class QueryBuilder
    * @return QueryBuilder
    * @throws InvalidArgumentException
    */
-  public function useCache(int $lifetime = 0): QueryBuilder
+  public function useCache(int $lifetime = -1): QueryBuilder
   {
     $this->useCache = true;
-    if (!is_int($lifetime) || $lifetime < 0) {
-      throw new InvalidArgumentException("lifetime has to be int >= 0");
+    if (!is_int($lifetime) || $lifetime < -1) {
+      throw new InvalidArgumentException("lifetime has to be an integer >= -1");
     }
     $this->cacheLifetime = $lifetime;
     return $this;
