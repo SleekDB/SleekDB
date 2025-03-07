@@ -373,7 +373,7 @@ class SleekDB
    * @return SleekDB
    * @throws InvalidArgumentException
    */
-  public function useCache(int $lifetime = 0): SleekDB
+  public function useCache(int $lifetime = -1): SleekDB
   {
     $this->setQueryBuilder($this->getQueryBuilder()->useCache($lifetime));
     return $this;
