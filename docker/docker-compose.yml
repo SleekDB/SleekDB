@@ -1,0 +1,14 @@
+services:
+  sleekdb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sleekdb
+    volumes:
+      - ../:/var/www/html
+    ports:
+      - "8080:80"
+    environment:
+      - PHP_MEMORY_LIMIT=512M
+      - PHP_DISPLAY_ERRORS=1
+    restart: unless-stopped
