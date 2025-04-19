@@ -106,9 +106,9 @@ class Store
   }
 
   /**
-   * @return MonoEngine | PolyEngine
+   * @return MonoEngine|PolyEngine
    */
-  public function getEngine(): MonoEngine | PolyEngine
+  public function getEngine()
   {
     return $this->engine;
   }
