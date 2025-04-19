@@ -29,12 +29,12 @@ if (!class_exists("\Composer\Autoload\ClassLoader")) {
 
 class Store
 {
-  protected $databasePath = "";
-  protected $useCache = true;
-  // protected $engineName = Engine::POLY;
-  protected $engineName = Engine::MONO;
   protected $engine = null;
+  protected $storeName = "";
+  protected $useCache = true;
+  protected $databasePath = "";
   protected $defaultCacheLifetime;
+
   protected $searchOptions = [
     "minLength" => 2,
     "scoreKey" => "searchScore",
@@ -54,36 +54,19 @@ class Store
    */
   public function __construct(string $storeName, string $databasePath, array $configuration = [])
   {
-    $storeName = trim($storeName);
+    $this->storeName = trim($storeName);
     if (empty($storeName)) {
       throw new InvalidArgumentException('store name can not be empty');
     }
 
-    $databasePath = trim($databasePath);
-    if (empty($databasePath)) {
+    $this->databasePath = trim($databasePath);
+    if (empty($this->databasePath)) {
       throw new InvalidArgumentException('Store root directory (Database Path) can not be empty');
     }
 
-    IoHelper::normalizeDirectory($databasePath);
+    IoHelper::normalizeDirectory($this->databasePath);
 
     $this->setConfiguration($configuration);
-
-    // Engine should be based on config later.
-    $primaryKey = array_key_exists("primary_key", $configuration)
-      ? $configuration["primary_key"]
-      : null;
-
-    $folderPermissions = array_key_exists("folder_permissions", $configuration)
-      ? $configuration["folder_permissions"]
-      : 0777;
-
-    $polyEngineDocSize = array_key_exists("document_size", $configuration)
-      ? $configuration["document_size"]
-      : null;
-
-    $this->engine = $this->engineName === Engine::POLY
-      ? new PolyEngine($storeName, $databasePath, $primaryKey, $folderPermissions, $polyEngineDocSize)
-      : new MonoEngine($storeName, $databasePath, $primaryKey, $folderPermissions);
   }
 
   /**
@@ -96,7 +79,7 @@ class Store
    * @throws InvalidArgumentException
    * @throws InvalidConfigurationException
    */
-  public function changeStore(string $storeName, string $databasePath = null, array $configuration = []): Store
+  public function changeStore(string $storeName, ?string $databasePath = null, array $configuration = []): Store
   {
     if (empty($databasePath)) {
       $databasePath = $this->getEngine()->getDatabasePath();
@@ -207,7 +190,7 @@ class Store
    * @throws IOException
    * @throws InvalidArgumentException
    */
-  public function findAll(array $orderBy = null, int $limit = null, int $offset = null): array
+  public function findAll(?array $orderBy = null, ?int $limit = null, ?int $offset = null): array
   {
     $qb = $this->createQueryBuilder();
     if (!is_null($orderBy)) {
@@ -243,7 +226,7 @@ class Store
    * @throws IOException
    * @throws InvalidArgumentException
    */
-  public function findBy(array $criteria, array $orderBy = null, int $limit = null, int $offset = null): array
+  public function findBy(array $criteria, ?array $orderBy = null, ?int $limit = null, ?int $offset = null): array
   {
     $qb = $this->createQueryBuilder();
 
@@ -384,7 +367,7 @@ class Store
    * @throws IOException
    * @throws InvalidArgumentException
    */
-  public function search(array $fields, string $query, array $orderBy = null, int $limit = null, int $offset = null): array
+  public function search(array $fields, string $query, ?array $orderBy = null, ?int $limit = null, ?int $offset = null): array
   {
 
     $qb = $this->createQueryBuilder();
@@ -441,6 +424,40 @@ class Store
   public function _getDefaultCacheLifetime()
   {
     return $this->defaultCacheLifetime;
+  }
+
+  /**
+   * Change the database engine of the store object.
+   * @param string $engineName
+   * @param array $configuration
+   * @return Store
+   * @throws InvalidArgumentException
+   */
+  public function _setEngine(string $engineName, array $configuration = []): Store
+  {
+    if (!in_array($engineName, Engine::AVAILABLE_ENGINE_LIST, true)) {
+      throw new InvalidArgumentException("Engine name is not valid");
+    }
+
+    $primaryKey = array_key_exists("primary_key", $configuration)
+      ? $configuration["primary_key"]
+      : null;
+
+    $folderPermissions = array_key_exists("folder_permissions", $configuration)
+      ? $configuration["folder_permissions"]
+      : 0777;
+
+    $polyEngineDocSize = array_key_exists("document_size", $configuration)
+      ? $configuration["document_size"]
+      : null;
+
+    if ($engineName === Engine::POLY) {
+      $this->engine = new PolyEngine($this->storeName, $this->databasePath, $primaryKey, $folderPermissions, $polyEngineDocSize);
+    } else {
+      $this->engine = new MonoEngine($this->storeName, $this->databasePath, $primaryKey, $folderPermissions);
+    }
+
+    return $this;
   }
 
   /**
@@ -509,7 +526,9 @@ class Store
       if (!is_string($engine)) {
         throw new InvalidConfigurationException("Engine has to be a string");
       }
-      $this->engineName = $engine;
+      $this->_setEngine($engine, $configuration);
+    } else {
+      $this->_setEngine(Engine::MONO, $configuration);
     }
   }
 
