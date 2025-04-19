@@ -32,6 +32,16 @@ class Engine
     const MONO = "mono";
 
     /**
+     * const AVAILABLE_ENGINE_LIST
+     * 
+     * The list of all available engines.
+     */
+    const AVAILABLE_ENGINE_LIST = [
+        self::POLY,
+        self::MONO
+    ];
+
+    /**
      * const DATA_DIRECTORY
      * 
      * The name of the data directory.
