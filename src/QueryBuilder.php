@@ -83,13 +83,12 @@ class QueryBuilder
    */
   public function except(array $fieldNames): QueryBuilder
   {
-    $errorMsg = "If except is used an array containing strings with fieldNames has to be given";
     foreach ($fieldNames as $fieldName) {
       if (empty($fieldName)) {
         continue;
       }
       if (!is_string($fieldName)) {
-        throw new InvalidArgumentException($errorMsg);
+        throw new InvalidArgumentException("If except is used an array containing strings with fieldNames has to be given");
       }
       $this->queryConditions["fieldsToExclude"][] = $fieldName;
     }
@@ -318,7 +317,7 @@ class QueryBuilder
    * @return QueryBuilder
    * @throws InvalidArgumentException
    */
-  public function useCache(int $lifetime = null): QueryBuilder
+  public function useCache(?int $lifetime = null): QueryBuilder
   {
     $this->queryConditions["useCache"] = true;
     if ((!is_int($lifetime) || $lifetime < 0) && !is_null($lifetime)) {
@@ -362,7 +361,7 @@ class QueryBuilder
    * @param bool $allowEmpty
    * @return QueryBuilder
    */
-  public function groupBy(array $groupByFields, string $countKeyName = null, bool $allowEmpty = false): QueryBuilder
+  public function groupBy(array $groupByFields, ?string $countKeyName = null, bool $allowEmpty = false): QueryBuilder
   {
     $this->queryConditions["groupBy"] = [
       "groupByFields" => $groupByFields,
