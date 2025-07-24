@@ -13,15 +13,15 @@ use SleekDB\Exceptions\JsonException;
  * Class IoHelper
  * Helper to handle file input/ output.
  */
-class IoHelper {
-
+class IoHelper
+{
   /**
    * @param string $path
    * @throws IOException
    */
   public static function checkWrite(string $path)
   {
-    if(file_exists($path) === false){
+    if (is_file($path) === false) {
       $path = dirname($path);
     }
     // Check if PHP has write permission
@@ -46,29 +46,24 @@ class IoHelper {
     }
   }
 
-    /**
-     * @param string $filePath
-     * @return string
-     * @throws IOException
-     */
+  /**
+   * @param string $filePath
+   * @return string
+   * @throws IOException
+   */
   public static function getFileContent(string $filePath): string
   {
-
-    self::checkRead($filePath);
-
-    if(!file_exists($filePath)) {
-      throw new IOException("File does not exist: $filePath");
-    }
-
     $content = false;
-    $fp = fopen($filePath, 'rb');
-    if(flock($fp, LOCK_SH)){
+    if (!($fp = fopen($filePath, 'rb'))) {
+      throw new IOException("Could not retrieve the content of a file. Please check permissions at: $filePath");
+    }
+    if (flock($fp, LOCK_SH)) {
       $content = stream_get_contents($fp);
     }
     flock($fp, LOCK_UN);
     fclose($fp);
 
-    if($content === false) {
+    if ($content === false) {
       throw new IOException("Could not retrieve the content of a file. Please check permissions at: $filePath");
     }
 
@@ -80,12 +75,9 @@ class IoHelper {
    * @param string $content
    * @throws IOException
    */
-  public static function writeContentToFile(string $filePath, string $content){
-
-    self::checkWrite($filePath);
-
-    // Wait until it's unlocked, then write.
-    if(file_put_contents($filePath, $content, LOCK_EX) === false){
+  public static function writeContentToFile(string $filePath, string $content, bool $lock = false)
+  {
+    if (file_put_contents($filePath, $content, $lock ? LOCK_EX : null) === false) {
       throw new IOException("Could not write content to file. Please check permissions at: $filePath");
     }
   }
@@ -97,11 +89,9 @@ class IoHelper {
    */
   public static function deleteFolder(string $folderPath): bool
   {
-    self::checkWrite($folderPath);
     $it = new RecursiveDirectoryIterator($folderPath, RecursiveDirectoryIterator::SKIP_DOTS);
     $files = new RecursiveIteratorIterator($it, RecursiveIteratorIterator::CHILD_FIRST);
     foreach ($files as $file) {
-      self::checkWrite($file);
       if ($file->isDir()) {
         rmdir($file->getRealPath());
       } else {
@@ -116,12 +106,13 @@ class IoHelper {
    * @param int $chmod
    * @throws IOException
    */
-  public static function createFolder(string $folderPath, int $chmod){
+  public static function createFolder(string $folderPath, int $chmod)
+  {
     // We don't need to create a folder if it already exists.
-    if(file_exists($folderPath) === true){
+    if (file_exists($folderPath) === true) {
       return;
     }
-    self::checkWrite($folderPath);
+
     // Check if the data_directory exists or create one.
     if (!file_exists($folderPath) && !mkdir($folderPath, $chmod, true) && !is_dir($folderPath)) {
       throw new IOException(
@@ -139,38 +130,20 @@ class IoHelper {
    */
   public static function updateFileContent(string $filePath, Closure $updateContentFunction): string
   {
-    self::checkRead($filePath);
-    self::checkWrite($filePath);
-
-    $content = false;
-
-    $fp = fopen($filePath, 'rb');
-    if(flock($fp, LOCK_SH)){
-      $content = stream_get_contents($fp);
-    }
-    flock($fp, LOCK_UN);
-    fclose($fp);
-
-    if($content === false){
-      throw new IOException("Could not get shared lock for file: $filePath");
-    }
+    $content = self::getFileContent($filePath);
 
     $content = $updateContentFunction($content);
 
-    if(!is_string($content)){
+    if (!is_string($content)) {
       $encodedContent = json_encode($content);
-      if($encodedContent === false){
+      if ($encodedContent === false) {
         $content = (!is_object($content) && !is_array($content) && !is_null($content)) ? $content : gettype($content);
         throw new JsonException("Could not encode content with json_encode. Content: \"$content\".");
       }
       $content = $encodedContent;
     }
 
-
-    if(file_put_contents($filePath, $content, LOCK_EX) === false){
-      throw new IOException("Could not write content to file. Please check permissions at: $filePath");
-    }
-
+    self::writeContentToFile($filePath, $content, true);
 
     return $content;
   }
@@ -181,14 +154,8 @@ class IoHelper {
    */
   public static function deleteFile(string $filePath): bool
   {
-
-    if(false === file_exists($filePath)){
+    if (false === file_exists($filePath)) {
       return true;
-    }
-    try{
-      self::checkWrite($filePath);
-    }catch(Exception $exception){
-      return false;
     }
 
     return (@unlink($filePath) && !file_exists($filePath));
@@ -200,15 +167,14 @@ class IoHelper {
    */
   public static function deleteFiles(array $filePaths): bool
   {
-    foreach ($filePaths as $filePath){
+    foreach ($filePaths as $filePath) {
       // if a file does not exist, we do not need to delete it.
-      if(true === file_exists($filePath)){
-        try{
-          self::checkWrite($filePath);
-          if(false === @unlink($filePath) || file_exists($filePath)){
+      if (true === file_exists($filePath)) {
+        try {
+          if (false === @unlink($filePath)) {
             return false;
           }
-        } catch (Exception $exception){
+        } catch (Exception $exception) {
           // TODO trigger a warning or exception
           return false;
         }
@@ -231,8 +197,9 @@ class IoHelper {
    * Appends a slash ("/") to the given directory path if there is none.
    * @param string $directory
    */
-  public static function normalizeDirectory(string &$directory){
-    if(!empty($directory) && substr($directory, -1) !== "/") {
+  public static function normalizeDirectory(string &$directory)
+  {
+    if (!empty($directory) && substr($directory, -1) !== "/") {
       $directory .= "/";
     }
   }
@@ -245,8 +212,20 @@ class IoHelper {
    */
   public static function countFolderContent(string $folder): int
   {
-    self::checkRead($folder);
     $fi = new \FilesystemIterator($folder, \FilesystemIterator::SKIP_DOTS);
     return iterator_count($fi);
+  }
+
+  /**
+   * Return the last filename in the folder.
+   * @param string $folder
+   * @return string
+   * @throws IOException
+   */
+  public static function getLastFilename(string $folder): string
+  {
+    $fi = new \FilesystemIterator($folder, \FilesystemIterator::SKIP_DOTS);
+    $fi->seek(iterator_count($fi) - 1);
+    return $fi->getFilename();
   }
 }
