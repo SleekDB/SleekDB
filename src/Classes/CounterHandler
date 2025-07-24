@@ -1,0 +1,48 @@
+<?php
+
+namespace SleekDB\Classes;
+
+use SQLite3;
+
+class CounterHandler
+{
+  protected $db;
+
+  /**
+   * @param string $dataPath
+   * @param string $counterPath
+   */
+  public function __construct(string $dataPath, string $counterPath)
+  {
+    $rebuild = !is_file($counterPath);
+    $this->db = new SQLite3($counterPath);
+    $this->db->query('PRAGMA synchronous = OFF');
+    $this->db->query('PRAGMA journal_mode = WAL');
+    $this->db->query('PRAGMA journal_size_limit = 6144000');
+    $this->db->query('PRAGMA ignore_check_constraints = ON');
+    $this->db->query('PRAGMA cache_size = 128');
+    $this->db->query('PRAGMA temp_store = 2');
+    if ($rebuild) {
+      $this->db->query("CREATE TABLE IF NOT EXISTS counter (nil INT)");
+      $lastID = (int)str_replace('.json', '', IoHelper::getLastFilename($dataPath));
+      if ($lastID > 0) $this->db->query("INSERT INTO counter (rowid, nil) VALUES ({$lastID}, null)");
+    }
+  }
+
+  /**
+   * @return integer
+   */
+  public function increaseCounterAndGetNextId(): int
+  {
+    $this->db->query("INSERT INTO counter VALUES (null)");
+    return (int)$this->db->lastInsertRowID();
+  }
+
+  /**
+   * @return integer
+   */
+  public function getLastInsertedId(): int
+  {
+    return (int)$this->db->querySingle("SELECT seq FROM sqlite_sequence WHERE name = 'counter'");
+  }
+}
