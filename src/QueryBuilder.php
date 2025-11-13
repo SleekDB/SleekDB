@@ -330,7 +330,7 @@ class QueryBuilder
    * @return QueryBuilder
    * @throws InvalidArgumentException
    */
-  public function useCache(int $lifetime = null): QueryBuilder
+  public function useCache(?int $lifetime = null): QueryBuilder
   {
     $this->useCache = true;
     if((!is_int($lifetime) || $lifetime < 0) && !is_null($lifetime)){
@@ -374,7 +374,7 @@ class QueryBuilder
    * @param bool $allowEmpty
    * @return QueryBuilder
    */
-  public function groupBy(array $groupByFields, string $countKeyName = null, bool $allowEmpty = false): QueryBuilder
+  public function groupBy(array $groupByFields, ?string $countKeyName = null, bool $allowEmpty = false): QueryBuilder
   {
     $this->groupBy = [
       "groupByFields" => $groupByFields,
