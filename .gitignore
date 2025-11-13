@@ -3,3 +3,4 @@ vendor
 sleekdb_test_scripts
 .idea
 .vscode
+.phpunit.cache
