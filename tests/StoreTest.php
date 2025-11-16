@@ -2,6 +2,7 @@
 
 namespace SleekDB\Tests;
 
+use PHPUnit\Framework\Attributes\After;
 use SleekDB\Exceptions\InvalidConfigurationException;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Exceptions\JsonException;
@@ -13,9 +14,7 @@ use SleekDB\Tests\TestCases\SleekDBTestCasePlain;
 final class StoreTest extends SleekDBTestCasePlain
 {
 
-  /**
-   * @after
-   */
+  #[After]
   public function deleteDefaultStore(){
     $store = new Store(self::STORE_NAME, self::DATA_DIR);
     $store->deleteStore();
@@ -48,7 +47,7 @@ final class StoreTest extends SleekDBTestCasePlain
 
     $store->deleteStore();
 
-    self::assertDirectoryNotExists($storePath);
+    self::assertDirectoryDoesNotExist($storePath);
   }
 
   public function testCannotCreateStoreWithEmptyStoreName(){
@@ -102,13 +101,11 @@ final class StoreTest extends SleekDBTestCasePlain
     $configuration = [
       "auto_cache" => true,
       "cache_lifetime" => 20,
-      "timeout" => 125,
       "primary_key" => "id"
     ];
     $testStore = new Store(self::STORE_NAME, self::DATA_DIR, $configuration);
     self::assertSame($configuration["auto_cache"], $testStore->_getUseCache());
     self::assertSame($configuration["cache_lifetime"], $testStore->_getDefaultCacheLifetime());
-    self::assertSame($configuration["timeout"], (int) ini_get('max_execution_time'));
     self::assertSame($configuration["primary_key"], $testStore->getPrimaryKey());
   }
 
@@ -116,7 +113,6 @@ final class StoreTest extends SleekDBTestCasePlain
     $configuration = [
       "auto_cache" => 1,
       "cache_lifetime" => null,
-      "timeout" => 120,
       "primary_key" => "_id"
     ];
     $this->expectException(InvalidConfigurationException::class);
@@ -127,29 +123,6 @@ final class StoreTest extends SleekDBTestCasePlain
     $configuration = [
       "auto_cache" => true,
       "cache_lifetime" => "test",
-      "timeout" => 120,
-      "primary_key" => "_id"
-    ];
-    $this->expectException(InvalidConfigurationException::class);
-    $testStore = new Store(self::STORE_NAME, self::DATA_DIR, $configuration);
-  }
-
-  public function testCanNotApplyTimeoutConfigZero(){
-    $configuration = [
-      "auto_cache" => true,
-      "cache_lifetime" => null,
-      "timeout" => 0,
-      "primary_key" => "_id"
-    ];
-    $this->expectException(InvalidConfigurationException::class);
-    $testStore = new Store(self::STORE_NAME, self::DATA_DIR, $configuration);
-  }
-
-  public function testCanNotApplyTimeoutConfigBelowZero(){
-    $configuration = [
-      "auto_cache" => true,
-      "cache_lifetime" => null,
-      "timeout" => -10,
       "primary_key" => "_id"
     ];
     $this->expectException(InvalidConfigurationException::class);
@@ -160,7 +133,6 @@ final class StoreTest extends SleekDBTestCasePlain
     $configuration = [
       "auto_cache" => true,
       "cache_lifetime" => null,
-      "timeout" => 125,
       "primary_key" => 3
     ];
     $this->expectException(InvalidConfigurationException::class);

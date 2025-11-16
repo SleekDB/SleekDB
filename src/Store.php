@@ -41,7 +41,6 @@ class Store
   protected $folderPermissions = 0777;
   protected $defaultCacheLifetime;
   protected $primaryKey = "_id";
-  protected $timeout = 120;
   protected $searchOptions = [
     "minLength" => 2,
     "scoreKey" => "searchScore",
@@ -93,7 +92,7 @@ class Store
    * @throws InvalidArgumentException
    * @throws InvalidConfigurationException
    */
-  public function changeStore(string $storeName, string $databasePath = null, array $configuration = []): Store
+  public function changeStore(string $storeName, ?string $databasePath = null, array $configuration = []): Store
   {
     if(empty($databasePath)){
       $databasePath = $this->getDatabasePath();
@@ -219,7 +218,7 @@ class Store
    * @throws IOException
    * @throws InvalidArgumentException
    */
-  public function findAll(array $orderBy = null, int $limit = null, int $offset = null): array
+  public function findAll(?array $orderBy = null, ?int $limit = null, ?int $offset = null): array
   {
     $qb = $this->createQueryBuilder();
     if(!is_null($orderBy)){
@@ -265,7 +264,7 @@ class Store
    * @throws IOException
    * @throws InvalidArgumentException
    */
-  public function findBy(array $criteria, array $orderBy = null, int $limit = null, int $offset = null): array
+  public function findBy(array $criteria, ?array $orderBy = null, ?int $limit = null, ?int $offset = null): array
   {
     $qb = $this->createQueryBuilder();
 
@@ -582,7 +581,7 @@ class Store
    * @throws IOException
    * @throws InvalidArgumentException
    */
-  public function search(array $fields, string $query, array $orderBy = null, int $limit = null, int $offset = null): array
+  public function search(array $fields, string $query, ?array $orderBy = null, ?int $limit = null, ?int $offset = null): array
   {
 
     $qb = $this->createQueryBuilder();
@@ -732,21 +731,6 @@ class Store
       }
 
       $this->defaultCacheLifetime = $defaultCacheLifetime;
-    }
-
-    // TODO remove timeout on major update
-    // Set timeout.
-    if (array_key_exists("timeout", $configuration)) {
-      if ((!is_int($configuration['timeout']) || $configuration['timeout'] <= 0) && !($configuration['timeout'] === false)){
-        throw new InvalidConfigurationException("timeout has to be an int > 0 or false");
-      }
-      $this->timeout = $configuration["timeout"];
-    }
-    if($this->timeout !== false){
-      $message = 'The "timeout" configuration is deprecated and will be removed with the next major update.' .
-        ' Set the "timeout" configuration to false and if needed use the set_timeout_limit() function in your own code.';
-      trigger_error($message, E_USER_DEPRECATED);
-      set_time_limit($this->timeout);
     }
 
     if(array_key_exists("primary_key", $configuration)){

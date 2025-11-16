@@ -9,8 +9,8 @@ use SleekDB\Exceptions\InvalidConfigurationException;
 use SleekDB\Exceptions\IOException;
 use SleekDB\Exceptions\JsonException;
 
-if(false === class_exists("\Composer\Autoload\ClassLoader")){
-    require_once __DIR__.'/Store.php';
+if (false === class_exists("\Composer\Autoload\ClassLoader")) {
+  require_once __DIR__ . '/Store.php';
 }
 
 /**
@@ -42,7 +42,8 @@ class SleekDB
    * @throws IOException
    * @throws InvalidConfigurationException
    */
-  public function __construct(string $storeName, string $dataDir, array $configuration = []){
+  public function __construct(string $storeName, string $dataDir, array $configuration = [])
+  {
     $this->init($storeName, $dataDir, $configuration);
   }
 
@@ -55,7 +56,8 @@ class SleekDB
    * @throws IOException
    * @throws InvalidConfigurationException
    */
-  public function init(string $storeName, string $dataDir, array $conf = []){
+  public function init(string $storeName, string $dataDir, array $conf = [])
+  {
     $this->setStore(new Store($storeName, $dataDir, $conf));
     $this->setQueryBuilder($this->getStore()->createQueryBuilder());
   }
@@ -156,7 +158,8 @@ class SleekDB
    * @throws InvalidArgumentException
    * @throws IOException
    */
-  public function delete(int $returnOption = Query::DELETE_RETURN_BOOL){
+  public function delete(int $returnOption = Query::DELETE_RETURN_BOOL)
+  {
     return $this->getQuery()->delete($returnOption);
   }
 
@@ -370,7 +373,7 @@ class SleekDB
    * @return SleekDB
    * @throws InvalidArgumentException
    */
-  public function useCache(int $lifetime = null): SleekDB
+  public function useCache(?int $lifetime = null): SleekDB
   {
     $this->setQueryBuilder($this->getQueryBuilder()->useCache($lifetime));
     return $this;
@@ -429,8 +432,9 @@ class SleekDB
   /**
    * @param QueryBuilder $queryBuilder
    */
-  private function setQueryBuilder(QueryBuilder $queryBuilder){
-      $this->queryBuilder = $queryBuilder;
+  private function setQueryBuilder(QueryBuilder $queryBuilder)
+  {
+    $this->queryBuilder = $queryBuilder;
   }
 
   /**
@@ -456,8 +460,9 @@ class SleekDB
   /**
    * @param Store $store
    */
-  private function setStore(Store $store){
-      $this->store = $store;
+  private function setStore(Store $store)
+  {
+    $this->store = $store;
   }
 
   /**
@@ -471,8 +476,9 @@ class SleekDB
   /**
    * Handle shouldKeepConditions and reset queryBuilder accordingly
    */
-  private function resetQueryBuilder(){
-    if($this->shouldKeepConditions === true) {
+  private function resetQueryBuilder()
+  {
+    if ($this->shouldKeepConditions === true) {
       return;
     }
     $this->setQueryBuilder($this->getStore()->createQueryBuilder());
@@ -496,7 +502,8 @@ class SleekDB
    * @return array|null
    * @throws InvalidArgumentException
    */
-  public function findById(int $id){
+  public function findById(int $id)
+  {
     return $this->getStore()->findById($id);
   }
 
@@ -510,7 +517,7 @@ class SleekDB
    * @throws IOException
    * @throws InvalidArgumentException
    */
-  public function findBy(array $criteria, array $orderBy = null, int $limit = null, int $offset = null): array
+  public function findBy(array $criteria, ?array $orderBy = null, ?int $limit = null, ?int $offset = null): array
   {
     return $this->getStore()->findBy($criteria, $orderBy, $limit, $offset);
   }
@@ -547,7 +554,8 @@ class SleekDB
    * @throws IOException
    * @throws InvalidArgumentException
    */
-  public function deleteBy($criteria, $returnOption = Query::DELETE_RETURN_BOOL){
+  public function deleteBy($criteria, $returnOption = Query::DELETE_RETURN_BOOL)
+  {
     return $this->getStore()->deleteBy($criteria, $returnOption);
   }
 
@@ -574,5 +582,4 @@ class SleekDB
     $this->setQueryBuilder($this->getQueryBuilder()->nestedWhere($conditions));
     return $this;
   }
-
 }
