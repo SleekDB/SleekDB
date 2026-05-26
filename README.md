@@ -44,7 +44,7 @@ It is not designed to handle heavy-load IO operations, it is designed to have a 
 
 - ✨ **Dependency free, only needs PHP to run**
 
-  Supports PHP 7+. Requires no third-party plugins or software.
+  Supports PHP 8+. Requires no third-party plugins or software.
 
 - 🚀 **Default caching layer**
 
