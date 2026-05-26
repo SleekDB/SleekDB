@@ -39,6 +39,23 @@ class NestedHelper
   }
 
   /**
+   * Get nested values through a list of child documents.
+   * @param string $fieldName
+   * @param array $data
+   * @return array
+   * @throws InvalidArgumentException
+   */
+  public static function getNestedValues(string $fieldName, array $data): array
+  {
+    $fieldName = trim($fieldName);
+    if (empty($fieldName)) {
+      throw new InvalidArgumentException('fieldName is not allowed to be empty');
+    }
+
+    return self::getNestedValuesHelper(explode('.', $fieldName), $data);
+  }
+
+  /**
    * Check if a nested Property exists
    * @param string $fieldName
    * @param array $data
@@ -62,6 +79,23 @@ class NestedHelper
       $data = $data[$i];
     }
     return true;
+  }
+
+  /**
+   * Check if a nested property exists through a list of child documents.
+   * @param string $fieldName
+   * @param array $data
+   * @return bool
+   * @throws InvalidArgumentException
+   */
+  public static function nestedFieldExistsInArray(string $fieldName, array $data): bool
+  {
+    $fieldName = trim($fieldName);
+    if (empty($fieldName)) {
+      throw new InvalidArgumentException('fieldName is not allowed to be empty');
+    }
+
+    return self::nestedFieldExistsInArrayHelper(explode('.', $fieldName), $data);
   }
 
   public static function updateNestedValue(string $fieldName, array &$data, $newValue){
@@ -136,5 +170,66 @@ class NestedHelper
     }
     $result[$currentKey] = self::_updateNestedValueHelper(array_slice($keysArray, 1), $data[$currentKey], $newValue, $originalKeySize);
     return $result;
+  }
+
+  private static function getNestedValuesHelper(array $fieldNameArray, $data): array
+  {
+    if(empty($fieldNameArray)){
+      return [$data];
+    }
+
+    if(!is_array($data)){
+      return [];
+    }
+
+    $currentKey = array_shift($fieldNameArray);
+
+    if(array_key_exists($currentKey, $data)){
+      return self::getNestedValuesHelper($fieldNameArray, $data[$currentKey]);
+    }
+
+    if(!array_is_list($data)){
+      return [];
+    }
+
+    array_unshift($fieldNameArray, $currentKey);
+    $values = [];
+    foreach ($data as $item){
+      foreach (self::getNestedValuesHelper($fieldNameArray, $item) as $value){
+        $values[] = $value;
+      }
+    }
+
+    return $values;
+  }
+
+  private static function nestedFieldExistsInArrayHelper(array $fieldNameArray, $data): bool
+  {
+    if(empty($fieldNameArray)){
+      return true;
+    }
+
+    if(!is_array($data)){
+      return false;
+    }
+
+    $currentKey = array_shift($fieldNameArray);
+
+    if(array_key_exists($currentKey, $data)){
+      return self::nestedFieldExistsInArrayHelper($fieldNameArray, $data[$currentKey]);
+    }
+
+    if(!array_is_list($data)){
+      return false;
+    }
+
+    array_unshift($fieldNameArray, $currentKey);
+    foreach ($data as $item){
+      if(self::nestedFieldExistsInArrayHelper($fieldNameArray, $item)){
+        return true;
+      }
+    }
+
+    return false;
   }
 }

@@ -57,6 +57,7 @@ class DocumentFinder
     $skip = $queryBuilderProperties["skip"];
     $limit = $queryBuilderProperties["limit"];
     $fieldsToExclude = $queryBuilderProperties["fieldsToExclude"];
+    $joinBeforeWhere = $reduceAndJoinPossible === true && self::conditionsNeedJoinedData($conditions, $nestedWhereConditions, $listOfJoins);
 
     unset($queryBuilderProperties);
 
@@ -78,6 +79,12 @@ class DocumentFinder
         $data = @json_decode($data, true);
         if (!is_array($data)) {
           continue;
+        }
+
+        if($joinBeforeWhere === true){
+          $joinedData = [$data];
+          DocumentReducer::joinData($joinedData, $listOfJoins);
+          $data = $joinedData[0];
         }
 
         $storePassed = true;
@@ -111,7 +118,7 @@ class DocumentFinder
 
     // apply additional changes to result like sort and limit
 
-    if($reduceAndJoinPossible === true){
+    if($reduceAndJoinPossible === true && $joinBeforeWhere === false){
       DocumentReducer::joinData($found, $listOfJoins);
     }
 
@@ -167,6 +174,55 @@ class DocumentFinder
   private function getDataPath(): string
   {
     return $this->storePath . Store::dataDirectory;
+  }
+
+  private static function conditionsNeedJoinedData(array $conditions, array $nestedWhereConditions, array $listOfJoins): bool
+  {
+    if(empty($listOfJoins)){
+      return false;
+    }
+
+    $joinPropertyNames = [];
+    foreach ($listOfJoins as $join){
+      $joinPropertyNames[] = $join['propertyName'];
+    }
+
+    return self::conditionsContainJoinedData($conditions, $joinPropertyNames)
+      || self::conditionsContainJoinedData($nestedWhereConditions, $joinPropertyNames);
+  }
+
+  private static function conditionsContainJoinedData(array $conditions, array $joinPropertyNames): bool
+  {
+    if(empty($conditions)){
+      return false;
+    }
+
+    if(isset($conditions[0]) && is_string($conditions[0]) && isset($conditions[1]) && is_string($conditions[1])){
+      return self::isJoinedField($conditions[0], $joinPropertyNames);
+    }
+
+    foreach ($conditions as $condition){
+      if($condition instanceof \Closure){
+        return true;
+      }
+
+      if(is_array($condition) && self::conditionsContainJoinedData($condition, $joinPropertyNames)){
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private static function isJoinedField(string $fieldName, array $joinPropertyNames): bool
+  {
+    foreach ($joinPropertyNames as $joinPropertyName){
+      if($fieldName === $joinPropertyName || str_starts_with($fieldName, $joinPropertyName . '.')){
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**

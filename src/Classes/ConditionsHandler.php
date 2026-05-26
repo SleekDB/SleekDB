@@ -217,9 +217,24 @@ class ConditionsHandler
 
       $fieldName = $element[0];
       $condition = strtolower(trim($element[1]));
-      $fieldValue = ($condition === 'exists')
-        ? NestedHelper::nestedFieldExists($fieldName, $data)
-        : NestedHelper::getNestedValue($fieldName, $data);
+
+      if($condition === 'exists'){
+        $fieldValue = NestedHelper::nestedFieldExists($fieldName, $data);
+        if($fieldValue === false){
+          $fieldValue = NestedHelper::nestedFieldExistsInArray($fieldName, $data);
+        }
+
+        return self::verifyCondition($condition, $fieldValue, $element[2]);
+      }
+
+      $fieldValue = NestedHelper::getNestedValue($fieldName, $data);
+
+      if($fieldValue === null){
+        $fieldValues = NestedHelper::getNestedValues($fieldName, $data);
+        if(!empty($fieldValues)){
+          return self::verifyAnyCondition($condition, $fieldValues, $element[2]);
+        }
+      }
 
       return self::verifyCondition($condition, $fieldValue, $element[2]);
     }
@@ -308,6 +323,24 @@ class ConditionsHandler
     }
 
     return $returnValue;
+  }
+
+  /**
+   * @param string $condition
+   * @param array $fieldValues
+   * @param mixed $value
+   * @return bool
+   * @throws InvalidArgumentException
+   */
+  private static function verifyAnyCondition(string $condition, array $fieldValues, $value): bool
+  {
+    foreach ($fieldValues as $fieldValue){
+      if(self::verifyCondition($condition, $fieldValue, $value)){
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**
