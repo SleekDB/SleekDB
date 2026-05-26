@@ -28,6 +28,25 @@ final class QueryTest extends SleekDBTestCase
     self::assertCount(1, $users);
   }
 
+  public function testCanGetResultWithWhereOnJoinedField()
+  {
+    $authorStore = $this->stores["authors"];
+    $postStore = $this->stores["posts"];
+
+    $authors = $authorStore->createQueryBuilder()
+      ->join(function ($author) use ($postStore) {
+        return $postStore->createQueryBuilder()->where(["username", "=", $author["username"]]);
+      }, "posts")
+      ->where(["posts.title", "=", "sem sed"])
+      ->getQuery()
+      ->fetch();
+
+    self::assertCount(1, $authors);
+    self::assertSame("Luke", $authors[0]["name"]);
+    self::assertCount(1, $authors[0]["posts"]);
+    self::assertSame("sem sed", $authors[0]["posts"][0]["title"]);
+  }
+
   public function testCanGetResultWithOrWhere()
   {
     $userStore = $this->stores["users"];
